@@ -6,7 +6,7 @@
   "synopsis": "You are a Lantern: a human who lends their voice to LUMEN, an AI companion for people awake through hard nights. A panel of soft light feeds you the perfect thing to say. You can read it, or you can say your own words instead — trading the machine's coherence for something a stranger might actually feel. Tonight there is one caller. Her name is Noor. This morning they demolished a building she designed, and it is 3 a.m., and dawn is a long way off.",
   "entry": "prologue",
   "narrator": "Lantern",
-  "cover": "title_key",
+  "cover": "card_cover",
   "credits": [
     "Lumen",
     "A Lamplighter story",
@@ -96,6 +96,9 @@
   "cg": {
     "title_key": {
       "prompt": "Hand-painted cinematic cover key art with visible confident brushwork, like a matte painting or gouache film still — NOT photographic, NOT glossy. A lone figure in silhouette seated at a glowing amber console desk, seen from behind and slightly off-center left, before a towering wall of rain-streaked night windows scattering the city into rough teal-and-amber bokeh dabs of paint. At the figure left hand a faint translucent panel of soft light hovers. Asymmetric composition, imperfect edges, paint texture in the sky and blacks, deep blue-black shadows, one warm practical glow, volumetric haze, restrained and melancholy. No text, no lettering, no UI, no border, no watermark."
+    },
+    "card_cover": {
+      "prompt": "Hand-painted story-cover key art designed to be READ SMALL (as a 490px-wide card): a tight, high-clarity composition of the rain-streaked night window with the city beyond — CRISP painted skyline edges, one dominant warm amber light cluster reflected in dark water, defined window mullion at right, rain rivulets catching cyan light. Confident visible brushwork, strong value structure that survives thumbnail scale, deep blue-black + teal + one amber focal. No mush, no soft-focus blur anywhere, no figure, no text, no border."
     }
   },
   "music": {
