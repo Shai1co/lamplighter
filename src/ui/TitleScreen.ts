@@ -68,19 +68,43 @@ export class TitleScreen {
           el('div', { class: 'pq-title__lights pq-title__lights--far' }),
           el('div', { class: 'pq-title__lights pq-title__lights--mid' }),
           el('div', { class: 'pq-title__lights pq-title__lights--near' }),
+          // The window wall's own bokeh, hand-placed rather than blurred: discs
+          // from 4px to 24px so the right third has structure instead of smear.
+          el('div', { class: 'pq-title__lights pq-title__lights--city' }),
           el('div', { class: 'pq-title__rain' }),
           // The one sharp plane in the shot: rain actually running on the pane.
           el('div', { class: 'pq-title__glass' }),
           el('div', { class: 'pq-title__lamp' }),
           el('div', { class: 'pq-title__scrim' }),
+          // The desk practicals, re-lit ABOVE the scrim so the lamp, the monitor
+          // and the mug survive the print-down and the lower-left reads as a room
+          // rather than as a black corner.
+          el('div', { class: 'pq-title__practicals' }),
+          // The dead middle of the frame, given something to be: reflected rain
+          // on the glass plus dust drifting through the lamp's throw.
+          el('div', { class: 'pq-title__motes' }),
           // Foreground: the near edge of the desk, lit from the practical at left.
           el('div', { class: 'pq-title__sill' }),
           el('div', { class: 'pq-title__vignette' }),
+          // Shadow dither. The overlay grain plate above cannot move a near-black
+          // value at all (overlay is a no-op on 0), so the long falloffs in the
+          // upper-left sky band. This one screens fine noise into the blacks only.
+          el('div', { class: 'pq-title__dither' }),
         ]),
         el('div', { class: 'pq-title__inner' }, [
           el('div', { class: 'pq-title__lead' }, [
             el('h1', { class: 'pq-title__word' }, [
-              el('span', { class: 'pq-title__word-a', text: 'Picture' }),
+              // Hand-kerned. At 112px the two loose pairs in "Picture" are the
+              // cap-P against the i (the P's arm overhangs a bare stem) and the
+              // r against the e (the r's ear leaves a hole). Both are closed
+              // here as optical corrections on the *pair*, not as tracking on
+              // the word, so the rest of the fitting stays the designer's.
+              el('span', { class: 'pq-title__word-a' }, [
+                el('span', { class: 'pq-kern pq-kern--pi', text: 'P' }),
+                el('span', { text: 'ictu' }),
+                el('span', { class: 'pq-kern pq-kern--re', text: 'r' }),
+                el('span', { text: 'e' }),
+              ]),
               el('span', { class: 'pq-title__word-b', text: 'Quest' }),
             ]),
             el('p', {

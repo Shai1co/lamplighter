@@ -1,5 +1,5 @@
 /**
- * Picture Quest — PQScript parser.
+ * Lamplighter — PQScript parser.
  *
  * Turns readable `.pq` source into a ParsedStory (ordered labels → node lists).
  * The grammar is documented in docs/superpowers/specs (§4). The parser is

@@ -1,5 +1,5 @@
 /**
- * Picture Quest — shared type & interface contract.
+ * Lamplighter — shared type & interface contract.
  *
  * This file is the single source of truth that the engine, stage, ui, and audio
  * subsystems all code against. Subsystems communicate through the typed event bus

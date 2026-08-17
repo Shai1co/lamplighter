@@ -1,5 +1,5 @@
 /**
- * Picture Quest — story registry / auto-discovery.
+ * Lamplighter — story registry / auto-discovery.
  *
  * Uses Vite's `import.meta.glob` to find every story folder under /stories,
  * parse its script, and resolve manifest asset references to real bundled URLs

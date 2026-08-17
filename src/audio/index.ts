@@ -1,5 +1,5 @@
 /**
- * Picture Quest — audio subsystem barrel.
+ * Lamplighter — audio subsystem barrel.
  *
  * `main.ts` constructs the AudioManager with the shared Emitter and treats it
  * purely through the IAudioManager interface. The procedural synth exports are

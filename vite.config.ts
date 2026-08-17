@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-// Picture Quest — Vite config.
+// Lamplighter — Vite config.
 // Stories live in /stories and are auto-discovered at runtime via import.meta.glob.
 // Shaders are authored as TS template literals (no glsl plugin needed).
 export default defineConfig({

@@ -28,13 +28,31 @@ import { el } from './dom';
 /** Strokes in the caller waveform. Enough to read as a trace, not a bar chart. */
 const BARS = 34;
 
-/** Deterministic 0..1 per bar — a waveform, never a random sparkle. */
+/**
+ * Deterministic 0..1 per bar — a waveform, never a random sparkle.
+ *
+ * The previous shape was `sin(πt)^0.6 × detail` floored at 0.12, and sin^0.6 is
+ * almost perfectly flat across the middle 70% of its span: thirty of the
+ * thirty-four strokes came out within a few percent of each other and the row
+ * read as a picket fence, which is what a placeholder looks like. Speech does
+ * not look like that. It arrives in SYLLABLES — bursts of three or four loud
+ * samples separated by near-silence — inside an utterance envelope, with
+ * sample-to-sample grain on top.
+ *
+ * Three terms, all incommensurate so nothing repeats across the row:
+ *   • envelope — the breath, opening slightly late and closing at the end;
+ *   • syllable — the burst gate, and the term that puts real GAPS in the trace;
+ *   • grain    — the jitter inside a burst.
+ * Floor drops 0.12 → 0.05 so a gap is genuinely a gap; the mapping at the call
+ * site widens to match, giving the row about 8× the dynamic range it had.
+ */
 function barShape(i: number): number {
   const t = i / (BARS - 1);
-  const envelope = Math.sin(Math.PI * t) ** 0.6;
-  const detail =
-    0.55 + 0.45 * Math.sin(i * 1.9 + 0.7) * Math.cos(i * 0.83 + 1.4);
-  return Math.min(1, Math.max(0.12, envelope * detail));
+  const envelope = Math.sin(Math.PI * Math.min(1, t * 1.08)) ** 0.85;
+  const syllable =
+    0.32 + 0.68 * Math.abs(Math.sin(i * 0.62 + 0.35)) * (0.55 + 0.45 * Math.sin(i * 0.27 + 1.9));
+  const grain = 0.45 + 0.55 * Math.abs(Math.sin(i * 2.39 + 0.8) * Math.cos(i * 1.13 + 2.4));
+  return Math.min(1, Math.max(0.05, envelope * syllable * grain));
 }
 
 /**
@@ -92,8 +110,15 @@ export class CallStrip {
         el('i', {
           // --h is the live peak; --i is the idle floor the bar rests at when
           // the board is clear, so a closed line still shows a noise floor
-          // instead of a dead rule.
-          style: `--d:${(i % 8) * 105}ms;--h:${Math.round(20 + h * 74)}%;--i:${Math.round(15 + h * 27)}%`,
+          // instead of a dead rule. Range widened (20+74 → 10+88, 15+27 →
+          // 7+34): a trace whose quietest stroke is a fifth of its loudest is
+          // not a trace, and any frame grabbed off it looks like a fence.
+          // The delay mixes an 8-step and a 3-step period so adjacent bars
+          // never share a phase and the animation cannot resolve into a
+          // travelling 8-picket pattern of its own.
+          style:
+            `--d:${(i % 8) * 105 + (i % 3) * 37}ms;` +
+            `--h:${Math.round(10 + h * 88)}%;--i:${Math.round(7 + h * 34)}%`,
         }),
       );
     }

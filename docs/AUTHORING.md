@@ -1,4 +1,4 @@
-# Writing a Story for Picture Quest
+# Writing a Story for Lamplighter
 
 This is the complete guide to adding a story. You do **not** need to write any
 code. A story is one folder with two files you edit by hand — a **script**
@@ -6,7 +6,7 @@ code. A story is one folder with two files you edit by hand — a **script**
 folder in `stories/`, and it appears on the title screen automatically. No engine
 changes, ever.
 
-If you can write a screenplay and fill in a form, you can make a Picture Quest.
+If you can write a screenplay and fill in a form, you can make a Lamplighter.
 
 ---
 
@@ -90,7 +90,7 @@ noor: Only if you want to. {trust>=2}          # conditional line (shown if guar
 
 ### 2.3 The signature mechanic — suggested vs off-script
 
-This is the heart of Picture Quest. When the player must respond, you offer
+This is the heart of Lamplighter. When the player must respond, you offer
 choices. There are three kinds:
 
 ```
@@ -202,7 +202,7 @@ explained in §4.
   "synopsis": "A single night answering calls that aren't really about the calls.",
   "entry": "start",
   "cover": "title_key",
-  "credits": ["Written by Your Name", "Made with Picture Quest"],
+  "credits": ["Written by Your Name", "Made with Lamplighter"],
 
   "artStyle": "Painterly cinematic still, muted harbor palette of slate blue and sodium amber, soft volumetric fog, filmic grain, shallow depth of field, consistent character identity; no text, no UI, no border, no watermark.",
 

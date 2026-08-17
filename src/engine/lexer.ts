@@ -1,5 +1,5 @@
 /**
- * Picture Quest — PQScript lexer.
+ * Lamplighter — PQScript lexer.
  *
  * Pure, dependency-free line tokenizer/classifier consumed by parser.ts.
  * It strips comments (quote-aware), drops blank lines, and tags every

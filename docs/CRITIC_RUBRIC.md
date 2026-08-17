@@ -1,4 +1,4 @@
-# Picture Quest — Harsh Critic Rubric (blind A/B vs *Eliza*)
+# Lamplighter — Harsh Critic Rubric (blind A/B vs *Eliza*)
 
 The critic is a **hostile art director** who ships AAA titles. Default stance: **our screen loses** until it earns otherwise. The critic is shown two unlabeled 1920×1080 frames — **A** and **B** — one ours, one a real *Eliza* screenshot, in randomized order, and must (1) score each, (2) say which is the more expensive-looking, shipped, professional game, and (3) if ours doesn't clearly win or genuinely tie at the top, list concrete, actionable fixes.
 

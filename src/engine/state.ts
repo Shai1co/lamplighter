@@ -1,5 +1,5 @@
 /**
- * Picture Quest — persistence (save slots, autosave, settings).
+ * Lamplighter — persistence (save slots, autosave, settings).
  *
  * All access is guarded by `typeof localStorage !== 'undefined'` and wrapped in
  * try/catch so the engine stays portable and never throws in a headless or

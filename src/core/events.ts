@@ -1,5 +1,5 @@
 /**
- * Picture Quest — tiny typed event bus.
+ * Lamplighter — tiny typed event bus.
  *
  * The single integration seam between engine ⇄ stage ⇄ ui ⇄ audio.
  * main.ts creates one Emitter and passes it to every subsystem constructor.

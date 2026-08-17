@@ -1,5 +1,5 @@
 /**
- * Picture Quest — AudioManager.
+ * Lamplighter — AudioManager.
  *
  * The sole audio subsystem. It never talks to the runtime, stage, or UI
  * directly: it subscribes to the three audio directives on the shared bus

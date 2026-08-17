@@ -404,6 +404,23 @@ uniform sampler2D uLight;
 uniform float uHasLight;
 uniform vec2 uLightRes;
 /**
+ * Screen-space occupancy of the speaker — centre.xy, half-extents.zw, in the
+ * same 0..1 y-up frame as pqScreenUv(). Published every frame by the Stage
+ * (see Stage.publishFigureMask) from the plate's own solid core, so it tracks
+ * her breathing, her entrance and any camera drift without a second render.
+ *
+ * She is INDOORS. Every drop in this rig is on the far side of the pane, so a
+ * streak drawn at full strength across her cheek is not weather, it is proof
+ * that the weather layer and the figure were never in the same space — the
+ * loudest compositing tell the frame carries. The consumers below fence
+ * themselves against it: the falling field all but disappears over her, the
+ * water on the glass merely thins (the pane really is in front of her, and
+ * saying so is half of what makes the shot read as *through a window* rather
+ * than as rain stickered onto a portrait).
+ */
+uniform vec4 uFigure;
+uniform float uFigureAmt;
+/**
  * Where this fragment is on screen, 0..1, y up.
  *
  * Straight off gl_FragCoord, NEVER off an interpolated gl_Position.xy/w. Both
@@ -422,6 +439,18 @@ vec2 pqScreenUv() {
 vec3 lightHue(vec3 c) {
   float m = max(c.r, max(c.g, c.b));
   return c / max(m, 0.001);
+}
+/**
+ * 1 deep inside the speaker, 0 clear of her, with a long soft shoulder.
+ *
+ * The falloff is deliberately wide (0.70 → 1.10 of the core radius): a crisp
+ * cut-out would trade one seam for another — a rain-shaped hole in the exact
+ * silhouette of a portrait — and the plate's own edge is a 200px feather, not
+ * a line. A gradient is the only honest boundary here.
+ */
+float pqFigure(vec2 uv) {
+  vec2 d = (uv - uFigure.xy) / max(uFigure.zw, vec2(1e-4));
+  return uFigureAmt * (1.0 - smoothstep(0.70, 1.10, length(d)));
 }
 `;
 
@@ -458,6 +487,12 @@ diffuseColor.a *= mix(0.15, 1.0, _lit);
 // of the "identical ticks" tell; the field base is scaled up to compensate so
 // the overall density is unchanged.
 diffuseColor.a *= mix(0.30, 0.80, vStreak);
+// …and the figure fence. Rain falls OUTSIDE; she is at a desk inside. Held at
+// 18% rather than 0 so the two or three streaks crossing the bright bokeh
+// beside her ear still carry a whisper of continuity across the silhouette —
+// a field that stops dead at her outline reads as a matte, which is the very
+// thing this exists to remove.
+diffuseColor.a *= mix(1.0, 0.18, pqFigure(pqScreenUv()));
 diffuseColor.rgb = mix(diffuseColor.rgb, lightHue(_behind), 0.62 * _lit);
 diffuseColor.rgb *= 0.8 + 1.15 * _lit;
 outgoingLight = diffuseColor.rgb;
@@ -485,6 +520,14 @@ uniform vec2  uRefl;       // screen-space position of the reflected practical
 uniform vec3  uReflColor;
 uniform float uReflAmt;
 ${LIGHTFIELD_GLSL}
+
+/** Local 2->1 hash — GLSL_NOISE is not injected here, and the pane needs one
+ *  cheap stationary field for the dried-spray haze on its specular. */
+float pqHash21(vec2 p) {
+  p = fract(p * vec2(123.34, 345.45));
+  p += dot(p, p + 34.345);
+  return fract(p.x * p.y);
+}
 
 /**
  * One rivulet: a hairline core dragging a short decaying tail, with a slightly
@@ -541,11 +584,18 @@ void main() {
   // sill line retires them over the bottom quarter, which is also exactly the
   // band the dialogue is read in.
   float sill = smoothstep(0.06, 0.28, uv.y);
+  // The pane is genuinely in FRONT of her, so unlike the falling field the
+  // water does not stop at her outline — it thins. Half strength over the
+  // figure: present enough that the glass demonstrably continues across the
+  // shot (which is the whole claim of a through-the-window frame), quiet
+  // enough that nothing legible ever runs down a face.
+  float fig = pqFigure(uv);
   // Density lifted (0.24 → 0.34 at full light): the pane's copy literally says
   // "Rain on the glass", and at the old strength — under a modal's backdrop
   // blur especially — the frame simply did not show it. A line the picture does
   // not earn is worse than no line.
-  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.12, 0.42, lit) * sill;
+  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.12, 0.42, lit) * sill
+             * mix(1.0, 0.50, fig);
 
   // Refraction. A bead of water is a cylindrical lens: the city behind it does
   // not merely brighten, it SHIFTS. The field's own horizontal derivative gives
@@ -579,9 +629,33 @@ void main() {
   float reflBand = smoothstep(0.40, 0.54, uv.y);
   float aRefl = clamp(lobe * 0.8 + drag * 0.3, 0.0, 1.0) * uReflAmt * uOpacity * reflBand;
 
-  float a = clamp(aRiv + aRefl, 0.0, 1.0);
+  /* ── The sheet itself ────────────────────────────────────────────────────
+   * Six rivulets and one reflection describe things ON the glass and still
+   * never describe the GLASS: between them the pane is a perfect vacuum, so
+   * the eye reads streaks floating in front of a photograph rather than a
+   * surface with weather on it. Two ~2% terms give it a body:
+   *
+   *   • a broad diagonal specular — the room's own light raking across the
+   *     sheet, the single cheapest cue that says "there is a plane here".
+   *     Wide (sigma ~ 0.30 of the diagonal) and gated on the lit term, so it
+   *     only ever appears where something is actually behind it to reflect;
+   *   • a fine haze of dried spray, sampled off the same displaced light the
+   *     rivulets refract, which is what stops the specular from reading as a
+   *     flat gradient laid over the frame.
+   *
+   * Both are fenced by the sill line and thinned over the figure on the same
+   * terms as the water. Ceiling is ~4% alpha: it must be felt, never seen.
+   */
+  float diag = uv.x * 0.62 + uv.y * 0.78;
+  float sheenBand = exp(-pow((diag - 0.86) / 0.30, 2.0));
+  float haze = 0.55 + 0.45 * pqHash21(floor(uv * uLightRes / 3.0));
+  float aSheen = sheenBand * haze * (0.006 + 0.022 * lit) * uOpacity * sill
+               * mix(1.0, 0.55, fig);
+  vec3 cSheen = mix(vec3(0.70, 0.80, 0.88), lightHue(behind), 0.55 * lit);
+
+  float a = clamp(aRiv + aRefl + aSheen, 0.0, 1.0);
   if (a < 0.002) discard;
-  vec3 c = (cRiv * aRiv + uReflColor * aRefl) / max(a, 0.0001);
+  vec3 c = (cRiv * aRiv + uReflColor * aRefl + cSheen * aSheen) / max(a, 0.0001);
   gl_FragColor = vec4(c, a);
 }
 `;

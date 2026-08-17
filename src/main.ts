@@ -1,5 +1,5 @@
 /**
- * Picture Quest — composition root.
+ * Lamplighter — composition root.
  *
  * This is the ONLY module that knows about every subsystem at once. It wires the
  * five lanes together through a single shared Emitter (the bus) and implements the

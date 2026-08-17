@@ -1,5 +1,5 @@
 /**
- * Picture Quest — procedural WebAudio fallback synths.
+ * Lamplighter — procedural WebAudio fallback synths.
  *
  * When a story ships without binary audio (art & audio are generated in a later
  * phase), the AudioManager still needs *something* to play. These generators

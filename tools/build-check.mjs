@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Picture Quest — build check.
+ * Lamplighter — build check.
  *
  *   node tools/build-check.mjs
  *
@@ -69,7 +69,7 @@ function banner(ok) {
 }
 
 async function main() {
-  console.log(C.bold('Picture Quest — build check'));
+  console.log(C.bold('Lamplighter — build check'));
 
   const tsOk = await run('typecheck (tsc --noEmit)', ['tsc', '--noEmit']);
   // Always attempt the build too, so a single run surfaces every problem.

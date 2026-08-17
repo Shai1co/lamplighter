@@ -1,5 +1,5 @@
 /**
- * Picture Quest — engine barrel.
+ * Lamplighter — engine barrel.
  *
  * The pure, portable story runtime: PQScript parsing, guard evaluation, the
  * Runtime state machine, save/settings persistence, and story auto-discovery.

@@ -1,4 +1,4 @@
-# Picture Quest — Design Spec
+# Lamplighter — Design Spec
 
 **Date:** 2026-08-17
 **Status:** Approved for autonomous build (user directive: "utterly perfect, AAA, don't stop until perfect, ultracode, fan out sub-agents").
@@ -104,7 +104,7 @@ Parser is tolerant: unknown `@directive` → warn + skip (forward-compat). Blank
   "id": "lumen",
   "title": "Lumen",
   "subtitle": "A long night, in someone else's words",
-  "author": "Picture Quest",
+  "author": "Lamplighter",
   "synopsis": "One night as a Lantern...",
   "entry": "prologue",                         // starting label
   "credits": ["Written by ...", "..."],

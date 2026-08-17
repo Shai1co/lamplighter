@@ -1,5 +1,5 @@
 /**
- * Picture Quest — story runtime (pure, headless state machine).
+ * Lamplighter — story runtime (pure, headless state machine).
  *
  * The Runtime walks a ParsedStory's node lists and drives the whole experience
  * by emitting typed events on the shared bus. It is the SOLE emitter of

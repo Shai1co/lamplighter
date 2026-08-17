@@ -218,10 +218,16 @@
      longer the lead-in, the less there is for the eye to call an edge. */
   --pq-scrim-h: clamp(320px, 42vh, 454px);
   /* …and the DESIGNED band inside that long tail — the element the eye reads as
-     "the dialogue bar". It starts exactly 30% up the frame (y=756 at 1080) and
+     "the dialogue bar". It starts exactly 28% up the frame (y=778 at 1080) and
      carries the fade's real density on an eased curve, while --pq-scrim-h keeps
-     a much fainter veil above it so the band is never entered through a step. */
-  --pq-scrim-band: clamp(228px, 30vh, 324px);
+     a much fainter veil above it so the band is never entered through a step.
+     30vh → 28vh, with the band's own floor lifted 0.72 → 0.80 and the tail's
+     0.30 → 0.26 (composited: 1 − 0.20 × 0.74 ≈ 0.85). Shorter AND deeper is the
+     point: Eliza's prose sits in a well of atmosphere that arrives late and
+     goes properly dark, so the type has a floor under it rather than a haze.
+     Ours was long and thin — the reading white was fighting the wet reflections
+     behind it for the last 8% of contrast it needed. */
+  --pq-scrim-band: clamp(214px, 28vh, 302px);
 
   /* ── Proxy panel geometry ───────────────────────────────────────────────
      The panel shares the frame with the speaker's face, and a UI edge across a
@@ -229,11 +235,16 @@
      the pane 8% narrower and drop it ~85px so its top arris clears the chin
      with room to spare; everything inside it was retuned to hold the same
      footprint. Anchored to vh/vw so the clearance survives a resize. */
-  /* Relay panel (the always-on Lumen readout, top right). ~356px at 1920 — the
-     width at which three telemetry rows can carry a label, a full track and a
-     tabular value without any of the three being abbreviated. Below ~300 the
-     rows collapse into a badge again, which is the thing it stopped being. */
-  --pq-relay-w: clamp(300px, 19vw, 356px);
+  /* Relay panel (the always-on Lumen readout, top right). 356 → 330px at 1920:
+     the panel's lower-left corner was cropping the speaker's hair, and a 7%
+     trim plus a 24px step down (see .pq-callstrip) clears it without touching a
+     single type size — scaling the panel itself would have taken the 11.5px
+     mono back under the aliasing floor it was raised above.
+     The floor holds at ~292: below that the three telemetry rows can no longer
+     carry a label, a full scale and a tabular value without one of the three
+     being abbreviated, and the panel collapses into the badge it stopped
+     being. Content width at 330 is 290 — label 84 + scale 148 + value 38. */
+  --pq-relay-w: clamp(292px, 17.2vw, 330px);
   --pq-proxy-w: clamp(324px, 27.3vw, 524px);
   --pq-proxy-bottom: clamp(146px, 19.63vh, 212px);
   --pq-blur: 18px;
@@ -252,8 +263,10 @@
   /* Where the lens is focused, in frame coordinates. The plates put the
      speaker's face right of centre and above the horizon; that face is the
      subject of every modal in the game, so it is the plane everything else is
-     defocused relative to. */
-  --pq-focal-x: 74%;
+     defocused relative to. Tracked left with the reframe (74% → 68%): the
+     anchor moved onto the right-third power point, and a focal plane left
+     behind on the old mark is a rack focus onto her ear. */
+  --pq-focal-x: 68%;
   --pq-focal-y: 44%;
   /* Defocus at the far edge of the frame — the deepest point of the ramp that
      starts at zero on the focal plane. 7px is a stop and a half of separation:

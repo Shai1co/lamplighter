@@ -159,6 +159,36 @@ export class Character {
     this.mesh.scale.set(w, h, 1);
   }
 
+  /**
+   * World-space centre and half-extents of the plate's SOLID CORE — the region
+   * the weather rig fences itself against (see LIGHTFIELD_GLSL → pqFigure).
+   *
+   * Not the quad: a portrait plate is mostly feather, and a mask cut to the
+   * quad would carve a rain-free rectangle two hundred pixels wider than she
+   * is. These fractions are read straight off the presence mask — its centre
+   * sits at (0.45, 0.43) of the image with a superellipse core reaching ~0.30
+   * of the width and ~0.40 of the height before the ramp begins.
+   */
+  static readonly CORE = { cx: 0.45, cy: 0.43, hx: 0.3, hy: 0.4 } as const;
+
+  coreBounds(): { x: number; y: number; hx: number; hy: number } {
+    const w = this.mesh.scale.x;
+    const h = this.mesh.scale.y;
+    return {
+      x: this.group.position.x + this.mesh.position.x + (Character.CORE.cx - 0.5) * w,
+      // Image space runs y-down, world runs y-up, hence the flip.
+      y: this.group.position.y + this.mesh.position.y + (0.5 - Character.CORE.cy) * h,
+      hx: w * Character.CORE.hx,
+      hy: h * Character.CORE.hy,
+    };
+  }
+
+  /** How present the plate currently is — drives the mask's own strength so a
+   *  figure mid-entrance never punches a hole in the weather ahead of itself. */
+  get presence(): number {
+    return this.group.visible ? this.material.opacity : 0;
+  }
+
   /** Re-layout on resize: new height + anchor positions. */
   relayout(height: number, anchors: Record<CharSide, number>): void {
     this.baseHeight = height;

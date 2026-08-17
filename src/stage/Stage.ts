@@ -67,6 +67,80 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 /**
+ * Unsharp mask with a negative amount, in place, on RGBA bytes.
+ *
+ * `out = blur + (src - blur) · (1 - amount)`, so `amount` is literally the
+ * fraction of local contrast removed. Two separable box passes approximate the
+ * Gaussian closely enough at this radius and cost O(w·h) rather than O(w·h·r) —
+ * the running sum is what makes a 15% detail knock-down affordable at load time
+ * on a full-size portrait.
+ *
+ * Alpha is never touched: this runs before the presence mask, on a plate that
+ * is still fully opaque, and the silhouette is not its business.
+ */
+function softenLocalContrast(
+  px: Uint8ClampedArray,
+  w: number,
+  h: number,
+  amount: number,
+  radius: number,
+): void {
+  if (amount <= 0 || radius < 1) return;
+  const n = w * h;
+  const src = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    src[i * 3] = px[i * 4];
+    src[i * 3 + 1] = px[i * 4 + 1];
+    src[i * 3 + 2] = px[i * 4 + 2];
+  }
+  const blur = Float32Array.from(src);
+  const tmp = new Float32Array(n * 3);
+  const win = radius * 2 + 1;
+
+  for (let pass = 0; pass < 2; pass++) {
+    // Horizontal.
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        for (let k = -radius; k <= radius; k++) {
+          sum += blur[(row + Math.min(w - 1, Math.max(0, k))) * 3 + c];
+        }
+        for (let x = 0; x < w; x++) {
+          tmp[(row + x) * 3 + c] = sum / win;
+          const add = Math.min(w - 1, x + radius + 1);
+          const drop = Math.max(0, x - radius);
+          sum += blur[(row + add) * 3 + c] - blur[(row + drop) * 3 + c];
+        }
+      }
+    }
+    // Vertical.
+    for (let x = 0; x < w; x++) {
+      for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        for (let k = -radius; k <= radius; k++) {
+          sum += tmp[(Math.min(h - 1, Math.max(0, k)) * w + x) * 3 + c];
+        }
+        for (let y = 0; y < h; y++) {
+          blur[(y * w + x) * 3 + c] = sum / win;
+          const add = Math.min(h - 1, y + radius + 1);
+          const drop = Math.max(0, y - radius);
+          sum += tmp[(add * w + x) * 3 + c] - tmp[(drop * w + x) * 3 + c];
+        }
+      }
+    }
+  }
+
+  const keep = 1 - amount;
+  for (let i = 0; i < n; i++) {
+    for (let c = 0; c < 3; c++) {
+      const b = blur[i * 3 + c];
+      px[i * 4 + c] = b + (src[i * 3 + c] - b) * keep;
+    }
+  }
+}
+
+/**
  * Tuning for the character "presence" treatment (see `toPresenceTexture`).
  * All coordinates are normalized image space, origin top-left.
  *
@@ -145,6 +219,65 @@ const PRESENCE = {
   rimG: 164,
   rimB: 92,
 
+  /* ── Cool kicker ──────────────────────────────────────────────────────────
+   * One rim is one light, and a figure lit by exactly one light in a room that
+   * demonstrably has two is a figure that was lit somewhere else. Behind her is
+   * a wall of glass carrying a whole city of teal bokeh; the amber band above
+   * cannot account for it, so the outermost pixels of her silhouette — the ones
+   * sitting directly against that bokeh — arrive as the only edge in frame with
+   * no window in them.
+   *
+   * So the feather is lit TWICE, in two colours, at two depths:
+   *   • this cool band sits just INBOARD of the warm one (0.44–0.96 against
+   *     0.36–0.95), hugging the solid edge of the silhouette;
+   *   • it is weighted to camera-left, where the pane runs closest past her and
+   *     the reduction carries the most transmitted light, and floored (not
+   *     zeroed) on the far side so the wrap is continuous around the crown.
+   *
+   * The hue is the room's own key (#7db4c8) pushed a step cooler and brighter
+   * — the same teal the glass, the rain and the split-tone are all struck from,
+   * so this is the grade arriving at her edge rather than a second palette.
+   *
+   * The window was first authored OUTBOARD of the warm one (0.22–0.86), on the
+   * reasoning that a distant source wraps furthest round. It printed a grey
+   * aura the width of her hair. The reason is worth keeping: at alpha ~0.5 the
+   * band is not on her edge at all, it is out in the dissolving backdrop, and
+   * a teal lift of 20 units over near-black bokeh is a THREE-FOLD lift — the
+   * brightest relative change anywhere in the frame, landing on the one thing
+   * that is supposed to be disappearing. Rim light belongs where there is a
+   * surface to catch it; past alpha ~0.9 there is one, below ~0.4 there is not.
+   */
+  rimCoolIn: 0.44,
+  rimCoolPeak: 0.7,
+  rimCoolOut: 0.96,
+  /** Well under the amber, and under its own first draft (0.19): a key names
+   *  the light, a kicker only separates, and this one is separating her from a
+   *  background that is already almost black. */
+  rimCoolAmt: 0.11,
+  /** Floor on the camera-right side — the wrap never fully closes. */
+  rimCoolDirMin: 0.34,
+  rimCoolR: 116,
+  rimCoolG: 186,
+  rimCoolB: 204,
+
+  /* ── Local contrast ───────────────────────────────────────────────────────
+   * The plate is a photograph and the room is a painting, and the difference
+   * survives every colour operation in the pipeline: a photograph carries an
+   * octave of micro-detail — pore, stray hair, fabric weave — that no painted
+   * surface in the frame has anywhere. Graded identically, the two still read
+   * as two renderers, and the eye finds the sharper one and calls it pasted.
+   *
+   * So the plate is unsharp-masked with a NEGATIVE amount: a wide blur is taken
+   * of it and 15% of its own detail-over-blur is subtracted back out. Values,
+   * edges and silhouette are untouched — only the finest octave comes down,
+   * which is precisely the octave the painting does not have. Run once, at
+   * load, on the CPU beside the presence mask.
+   */
+  localContrast: 0.15,
+  /** Blur radius as a fraction of plate width; ~1.4% ≈ 8px on a 600px plate,
+   *  which is a skin-texture radius rather than a form-shadow one. */
+  localRadius: 0.014,
+
   /* ── Torso falloff ────────────────────────────────────────────────────────
    * The alpha tail above dissolves the bottom of the plate, which is right for
    * her SILHOUETTE and wrong for her VALUE: a lit torso fading to transparent
@@ -222,6 +355,8 @@ export class Stage implements IStage {
   /** Framing bias for the current plate, in frame fractions (+x right, +y up). */
   private framingX = 0;
   private framingY = 0;
+  /** Scratch for the per-frame figure-mask projection — never allocate in a loop. */
+  private readonly figureProbe = new THREE.Vector3();
 
   private readonly unsub: Array<() => void> = [];
 
@@ -658,16 +793,18 @@ export class Stage implements IStage {
   /**
    * Side anchors, as a fraction of the frustum width at `z`.
    *
-   * 0.28 pushed the speaker hard enough into the corner that her shoulder was
-   * clipped by the frame edge AND crowded directly under the call strip — two
-   * separate collisions in the same 200px. 0.24 gives back ~80px at 1920, which
-   * is the width of the breathing room the composition wanted: the plate now
-   * has a right margin, the strip has air under it, and the figure moves a
-   * little further into the middle third that was reading as empty.
+   * 0.28 → 0.24 → 0.18. The rule-of-thirds power point is at exactly ±1/6 of
+   * the frame (0.1667); 0.24 put her at 74% of frame width, which is not the
+   * right third at all but the right MARGIN — pinned against the edge, directly
+   * under the relay panel, and leaving the entire middle 40% of the frame with
+   * nothing in it. 0.18 lands her core on 68%, a hair outboard of the power
+   * point so the plate still has a right margin, and buys back ~115px at 1920:
+   * the panel now clears her hair with air to spare, and the dead centre closes
+   * by the same distance from the other side.
    */
   private anchorsAt(z: number): Record<CharSide, number> {
     const f = this.frustum(z);
-    return { left: -f.w * 0.24, center: 0, right: f.w * 0.24 };
+    return { left: -f.w * 0.18, center: 0, right: f.w * 0.18 };
   }
 
   private charTexture(key: string, pose: string): THREE.Texture {
@@ -817,12 +954,55 @@ export class Stage implements IStage {
       if (layer.mesh.visible) layer.update(t, this.camera.panX, this.camera.panY, reduced);
     }
     for (const ch of this.characters.values()) ch.update(t, dt);
+    this.publishFigureMask();
     this.weather.update(dt, t);
     this.transitions.update(t);
     this.postfx.update(dt, t);
     this.postfx.setFocus(this.camera.distanceTo(this.focusZ));
 
     this.postfx.render(dt);
+  }
+
+  /**
+   * Project the most-present speaker's solid core into screen space and hand it
+   * to the weather rig, so rain stops falling through a woman who is indoors.
+   *
+   * The camera's inverse is refreshed here rather than trusted: this runs before
+   * `postfx.render`, i.e. before three has had a chance to update it, and a
+   * stale inverse puts the fence a Ken-Burns drift away from the figure — which
+   * is worse than no fence, because the hole then has no object in it.
+   */
+  private publishFigureMask(): void {
+    let best: Character | null = null;
+    let presence = 0;
+    for (const ch of this.characters.values()) {
+      const p = ch.presence;
+      if (p > presence) {
+        presence = p;
+        best = ch;
+      }
+    }
+    if (!best || presence <= 0.01) {
+      this.weather.setFigureMask(0.5, 0.5, 1e-4, 1e-4, 0);
+      return;
+    }
+    const cam = this.camera.camera;
+    cam.updateMatrixWorld();
+    cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+
+    const b = best.coreBounds();
+    const v = this.figureProbe;
+    v.set(b.x, b.y, CHAR_Z).project(cam);
+    const cx = v.x * 0.5 + 0.5;
+    const cy = v.y * 0.5 + 0.5;
+    v.set(b.x + b.hx, b.y + b.hy, CHAR_Z).project(cam);
+    this.weather.setFigureMask(
+      cx,
+      cy,
+      Math.abs(v.x * 0.5 + 0.5 - cx),
+      Math.abs(v.y * 0.5 + 0.5 - cy),
+      presence,
+    );
   }
 
   /* ───────────────────────────  settings / resize  ─────────────────────────── */
@@ -945,6 +1125,10 @@ export class Stage implements IStage {
     }
 
     const px = frame.data;
+    // Detail octave first, while the plate is still rectangular: the mask below
+    // multiplies alpha and adds rim light, and a blur taken after either would
+    // be pulling feathered edge pixels and painted kicker back into the face.
+    softenLocalContrast(px, w, h, PRESENCE.localContrast, Math.max(1, Math.round(w * PRESENCE.localRadius)));
     const invPower = 1 / PRESENCE.power;
     for (let y = 0; y < h; y++) {
       const v = (y + 0.5) / h;
@@ -986,9 +1170,19 @@ export class Stage implements IStage {
         // the plate that has just been committed to black is a light with no
         // surface under it.
         const lift = PRESENCE.rimAmt * band * dirW * rimRow * shadeRow;
-        px[i] = Math.min(255, px[i] * shade + lift * PRESENCE.rimR);
-        px[i + 1] = Math.min(255, px[i + 1] * shade + lift * PRESENCE.rimG);
-        px[i + 2] = Math.min(255, px[i + 2] * shade + lift * PRESENCE.rimB);
+        // The window's own band, outboard of the lamp's. Same construction —
+        // zero at both ends of its own ramp — so it can no more draw a line at
+        // the plate edge than the amber one can.
+        const coolBand =
+          smoothstep(PRESENCE.rimCoolIn, PRESENCE.rimCoolPeak, a) *
+          (1 - smoothstep(PRESENCE.rimCoolPeak, PRESENCE.rimCoolOut, a));
+        const coolDir =
+          PRESENCE.rimCoolDirMin +
+          (1 - PRESENCE.rimCoolDirMin) * (1 - smoothstep(-0.06, 0.22, dx));
+        const cool = PRESENCE.rimCoolAmt * coolBand * coolDir * shadeRow;
+        px[i] = Math.min(255, px[i] * shade + lift * PRESENCE.rimR + cool * PRESENCE.rimCoolR);
+        px[i + 1] = Math.min(255, px[i + 1] * shade + lift * PRESENCE.rimG + cool * PRESENCE.rimCoolG);
+        px[i + 2] = Math.min(255, px[i + 2] * shade + lift * PRESENCE.rimB + cool * PRESENCE.rimCoolB);
         px[i + 3] *= a;
       }
     }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Picture Quest — asset generator (drives Codex image generation).
+ * Lamplighter — asset generator (drives Codex image generation).
  *
  *   node tools/gen-assets.mjs <id> [--only backgrounds|characters|cg] [--force]
  *
@@ -354,7 +354,7 @@ async function main() {
     pending.push(job);
   }
 
-  console.log(C.bold(`Picture Quest — generating assets for "${id}"`));
+  console.log(C.bold(`Lamplighter — generating assets for "${id}"`));
   console.log(
     C.dim(
       `  ${jobs.length} candidate(s), ${skipped} already present, ${pending.length} to generate` +

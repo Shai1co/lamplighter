@@ -1,5 +1,5 @@
 /**
- * Picture Quest — safe guard expression evaluator.
+ * Lamplighter — safe guard expression evaluator.
  *
  * A tiny recursive-descent interpreter for the guard mini-language used in
  * `{ ... }` conditions and `-> label {expr}` jumps. NO eval / Function — the

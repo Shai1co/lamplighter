@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Picture Quest — new-story scaffolder.
+ * Lamplighter — new-story scaffolder.
  *
  *   node tools/new-story.mjs <id> "Title"
  *
@@ -50,7 +50,7 @@ function embeddedTemplate(id, title) {
     author: 'Your Name',
     synopsis: 'A short synopsis shown on the title screen.',
     entry: 'start',
-    credits: [`Written by Your Name`, 'Made with Picture Quest'],
+    credits: [`Written by Your Name`, 'Made with Lamplighter'],
     cover: 'title_key',
     artStyle:
       'painterly cinematic still, muted Pacific-Northwest palette, soft volumetric light, ' +
@@ -108,7 +108,7 @@ function embeddedTemplate(id, title) {
   };
 
   const story = `# ${title}  (id: ${id})
-# Picture Quest story script — see docs/AUTHORING.md for the full reference.
+# Lamplighter story script — see docs/AUTHORING.md for the full reference.
 # Everything after '#' is a comment. One statement per line.
 
 :: start

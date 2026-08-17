@@ -191,6 +191,9 @@ export class Weather {
   private readonly uHasLight: THREE.IUniform<number>;
   /** Render-target size in device pixels — both systems read gl_FragCoord. */
   private readonly uLightRes: THREE.IUniform<THREE.Vector2>;
+  /** Screen-space occupancy of the speaker: (cx, cy, rx, ry), y-up 0..1. */
+  private readonly uFigure: THREE.IUniform<THREE.Vector4>;
+  private readonly uFigureAmt: THREE.IUniform<number>;
 
   private readonly rnd = mulberry32(STAGE_SEED ^ 0x51ed270b);
   private readonly tweens = new Set<gsap.core.Tween>();
@@ -214,6 +217,8 @@ export class Weather {
     this.uLight = { value: this.neutralTex };
     this.uHasLight = { value: 0 };
     this.uLightRes = { value: new THREE.Vector2(1920, 1080) };
+    this.uFigure = { value: new THREE.Vector4(0.5, 0.5, 0.001, 0.001) };
+    this.uFigureAmt = { value: 0 };
 
     // Field opacities are the PRE-jitter base: each drop then keeps 30–80% of it
     // (RAIN_DIFFUSE_PATCH), mean 0.55, so these carry the old effective density.
@@ -285,6 +290,8 @@ export class Weather {
         uLight: this.uLight,
         uHasLight: this.uHasLight,
         uLightRes: this.uLightRes,
+        uFigure: this.uFigure,
+        uFigureAmt: this.uFigureAmt,
       },
       vertexShader: GLASS_VERTEX,
       fragmentShader: GLASS_FRAGMENT,
@@ -352,6 +359,8 @@ export class Weather {
       shader.uniforms.uLight = this.uLight;
       shader.uniforms.uHasLight = this.uHasLight;
       shader.uniforms.uLightRes = this.uLightRes;
+      shader.uniforms.uFigure = this.uFigure;
+      shader.uniforms.uFigureAmt = this.uFigureAmt;
       shader.vertexShader =
         RAIN_VERTEX_DECL + shader.vertexShader.replace('gl_PointSize = size;', RAIN_POINTSIZE_PATCH);
       shader.fragmentShader =
@@ -368,6 +377,17 @@ export class Weather {
   /** Render-target size in device pixels (Stage owns the sizing). */
   setResolution(width: number, height: number): void {
     this.uLightRes.value.set(Math.max(1, width), Math.max(1, height));
+  }
+
+  /**
+   * Publish the speaker's screen-space footprint so the weather can fence
+   * itself against her. Centre and radii are 0..1 of the framed screen, y-up;
+   * `amount` 0 retires the fence entirely (no cast on stage, or a plate still
+   * fading in). See LIGHTFIELD_GLSL → pqFigure.
+   */
+  setFigureMask(cx: number, cy: number, rx: number, ry: number, amount: number): void {
+    this.uFigure.value.set(cx, cy, Math.max(rx, 1e-4), Math.max(ry, 1e-4));
+    this.uFigureAmt.value = THREE.MathUtils.clamp(amount, 0, 1);
   }
 
   setLightField(map: THREE.Texture | null, refl: ReflectionSpec | null): void {
