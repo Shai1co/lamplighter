@@ -58,6 +58,18 @@ float hash21(vec2 p) {
   p += dot(p, p + 34.345);
   return fract(p.x * p.y);
 }
+/**
+ * hash13 — Dave Hoskins' sin-free 3->1 hash. Unlike the fract(p.x * p.y) form
+ * above it stays well-distributed at large integer coordinates, which is exactly
+ * where a screen-space grain field lives (0…1920). The older hash visibly
+ * *repeats* across a 1080p frame: on flat darks it resolves into a dot lattice
+ * that reads as dithering, so grain must never be built on it.
+ */
+float hash13(vec3 p3) {
+  p3 = fract(p3 * 0.1031);
+  p3 += dot(p3, p3.zyx + 31.32);
+  return fract((p3.x + p3.y) * p3.z);
+}
 float vnoise(vec2 p) {
   vec2 i = floor(p);
   vec2 f = fract(p);
@@ -94,6 +106,7 @@ uniform float uSaturation;
 uniform float uSplitTone;
 uniform float uVignette;
 uniform float uGrain;
+uniform float uGrainSize;
 uniform float uAberration;
 uniform float uFlash;
 uniform float uGlitch;
@@ -141,13 +154,59 @@ void main() {
   vec3 split = mix(shadowTint, highTint, smoothstep(0.0, 0.9, luma));
   color = mix(color, color * (0.55 + 0.9 * split), clamp(uSplitTone, 0.0, 1.0) * 0.55);
 
-  // Vignette.
-  float vig = smoothstep(0.9, 0.25, r2 * (1.0 + uVignette * 2.2));
-  color *= mix(1.0, vig, clamp(uVignette, 0.0, 1.0));
+  // Vignette. Deliberately a LONG, shallow falloff: the old curve reached its
+  // floor before the corner and stamped the frame with a near-black ring, which
+  // over an already dark plate reads as muddy crush rather than as a lens. The
+  // radius now starts outside the safe area, the shoulder is gentle, and the
+  // applied strength is capped so window mullions and the desk silhouette stay
+  // barely readable in the corners instead of disappearing.
+  float vAmt = min(clamp(uVignette, 0.0, 1.0), 0.55);
+  float vig = smoothstep(1.30, 0.30, r2 * (1.0 + vAmt * 1.6));
+  color *= 1.0 - vAmt * (1.0 - vig);
 
-  // Animated film grain.
-  float g = vnoise(vUv * uResolution * 0.5 + uTime * 60.0);
-  color += (g - 0.5) * uGrain * 0.12;
+  // Black floor. Crushing to pure 0 turns whole regions into a void that reads
+  // as "missing render" rather than "night". Lift the toe onto a near-black
+  // that survives the transfer curve — these values land around #09 0a 09 once
+  // three's ACES fit and the sRGB encode are through with them, and the paper
+  // scrims layered over the canvas carry the composite to roughly #0a0d0c.
+  // Deliberately NEUTRAL: the previous floor was blue enough that anywhere the
+  // vignette bit went cyan-muddy rather than simply dark. White is untouched.
+  const vec3 BLACK_FLOOR = vec3(0.0105, 0.0106, 0.0098);
+  color = BLACK_FLOOR + color * (1.0 - BLACK_FLOOR);
+
+  // Film grain. Six disciplines keep it emulsion and not a screen door:
+  //   • the field is hashed per grain CELL straight off gl_FragCoord — no value
+  //     -noise lattice, no interpolation, no texture — so it cannot tile;
+  //   • hash13 (sin-free, well distributed at 4-digit coordinates) replaces the
+  //     old fract(p.x*p.y) hash, which resolved into a visible dot grid on flats;
+  //   • the cell lattice is OFFSET BY A RANDOM AMOUNT EVERY STEP, so the grain
+  //     never locks to the pixel grid twice running. A fixed lattice at a fine
+  //     cell size is precisely what reads as a fixed fine grid / screen door,
+  //     however well distributed the hash inside it is;
+  //   • it is high-passed against a 3× coarser field, killing the low-frequency
+  //     clumping that reads as blotch and leaving a blue-noise-ish sparkle;
+  //   • it is ACHROMATIC (luminance-only) and applied MULTIPLICATIVELY. A
+  //     linear-space *additive* grain explodes in the toe once sRGB encoding
+  //     stretches it; a relative modulation survives the transfer curve at
+  //     near-constant perceived strength. The coefficient is set so the DEFAULT
+  //     mix (0.5 setting × 0.5 theme) peaks around 2% and a maxed-out slider
+  //     still stays inside ~9% — the old 0.55 reached ±40% and gridded the frame;
+  //   • it is masked OUT of the deepest blacks (below ~8% display luma) and
+  //     rolled off in the highlights, so neither the night sky nor a practical
+  //     picks up crawl.
+  float gLum = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  float gw = 1.0 - 0.55 * smoothstep(0.25, 1.2, gLum);       // roll off in highlights
+  gw *= smoothstep(0.0035, 0.0210, gLum);                     // and out of the toe
+  float gt = floor(uTime * 16.0);
+  vec2 gjit = vec2(hash13(vec3(gt, 3.7, 11.3)), hash13(vec3(gt, 91.1, 5.9))) * 512.0;
+  vec2 gcell = floor((gl_FragCoord.xy + gjit) / max(uGrainSize, 0.5));
+  float gFine = hash13(vec3(gcell, gt));
+  float gCoarse = hash13(vec3(floor(gcell * 0.3333), gt + 19.0));
+  float g = (gFine - 0.5) - (gCoarse - 0.5) * 0.5;
+  color *= 1.0 + g * uGrain * 0.14 * gw;
+  // A whisper of additive grain so the near-blacks are not plastic-clean —
+  // deliberately an order of magnitude below the multiplicative term.
+  color += g * uGrain * 0.0005 * gw;
 
   // Glitch scanline darkening.
   if (uGlitch > 0.0001) {
@@ -243,4 +302,122 @@ diffuseColor.rgb *= uBright;
 float _spriteLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
 diffuseColor.rgb = mix(vec3(_spriteLuma), diffuseColor.rgb, 1.0 - clamp(uDesat, 0.0, 1.0));
 diffuseColor.rgb = mix(diffuseColor.rgb, uTint, clamp(uTintAmt, 0.0, 1.0));
+`;
+
+/* ───────────────────────────  Rain ↔ light coupling  ───────────────────────────
+ *
+ * Uniform white ticks over a whole frame read as an overlay pasted on top of the
+ * art. Real rain is only visible where something is lighting it. `uLight` is a
+ * 64×36 luminance/colour reduction of the background currently on stage (built
+ * once per scene, see Stage.updateLightField), sampled in SCREEN space: a streak
+ * crossing the amber lamp cone flares amber, one crossing the teal skyline bloom
+ * flares teal, and one over dead black all but disappears.
+ *
+ * Injected into three's PointsMaterial via onBeforeCompile so size attenuation,
+ * the sprite map and tone mapping all keep working. */
+export const LIGHTFIELD_GLSL = /* glsl */ `
+uniform sampler2D uLight;
+uniform float uHasLight;
+/** Peak-normalized hue of the light behind a screen-space point. */
+vec3 lightHue(vec3 c) {
+  float m = max(c.r, max(c.g, c.b));
+  return c / max(m, 0.001);
+}
+`;
+
+export const RAIN_VERTEX_DECL = /* glsl */ `
+varying vec2 vScreenUv;
+`;
+
+export const RAIN_PROJECT_PATCH = /* glsl */ `
+#include <project_vertex>
+vScreenUv = gl_Position.xy / max(gl_Position.w, 0.0001) * 0.5 + 0.5;
+`;
+
+export const RAIN_FRAGMENT_DECL = /* glsl */ `
+varying vec2 vScreenUv;
+${LIGHTFIELD_GLSL}
+`;
+
+export const RAIN_DIFFUSE_PATCH = /* glsl */ `
+vec3 _behind = texture2D(uLight, clamp(vScreenUv, 0.0, 1.0)).rgb;
+float _behindLum = dot(_behind, vec3(0.2126, 0.7152, 0.0722));
+float _lit = mix(1.0, smoothstep(0.03, 0.30, _behindLum), uHasLight);
+// Over dead blacks a streak keeps only a whisper; in a practical it flares.
+diffuseColor.a *= mix(0.15, 1.0, _lit);
+diffuseColor.rgb = mix(diffuseColor.rgb, lightHue(_behind), 0.62 * _lit);
+diffuseColor.rgb *= 0.8 + 1.15 * _lit;
+outgoingLight = diffuseColor.rgb;
+`;
+
+/**
+ * Rain-on-glass pass — a screen-space near plane carrying the two things that
+ * separate "weather on the glass" from "weather overlay":
+ *   • 3 slow rivulets tracking down the pane, lit only by what is behind them,
+ *   • a soft reflection of the scene's own brightest practical, thrown onto the
+ *     glass on the opposite side of frame (position/colour derived from the
+ *     background itself, so it is always motivated and never invented).
+ * Everything is gated by `uOpacity`, which follows the rain amount.
+ */
+export const GLASS_VERTEX = /* glsl */ `
+varying vec2 vScreenUv;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  vScreenUv = gl_Position.xy / max(gl_Position.w, 0.0001) * 0.5 + 0.5;
+}
+`;
+
+export const GLASS_FRAGMENT = /* glsl */ `
+varying vec2 vScreenUv;
+uniform float uTime;
+uniform float uOpacity;
+uniform vec2  uRefl;       // screen-space position of the reflected practical
+uniform vec3  uReflColor;
+uniform float uReflAmt;
+${LIGHTFIELD_GLSL}
+
+/**
+ * One rivulet: a hairline core dragging a short decaying tail, with a slightly
+ * fatter bead at the head. Widths are in screen-UV, so ~0.001 ≈ 2px at 1080p —
+ * any thicker and it stops being water and starts being a worm.
+ */
+float rivulet(vec2 uv, float x0, float speed, float phase, float width) {
+  float wob = sin(uv.y * 9.0 + phase) * 0.0022 + sin(uv.y * 23.0 + phase * 2.3) * 0.0008;
+  float dx = uv.x - (x0 + wob);
+  float head = 1.16 - fract(uTime * speed + phase * 0.13) * 1.4;
+  float above = uv.y - head;
+  float tail = smoothstep(-0.010, 0.004, above) * exp(-max(above, 0.0) * 4.6);
+  float core = exp(-pow(dx / width, 2.0)) * tail;
+  float bead = exp(-pow(dx / (width * 2.3), 2.0)) * exp(-pow(above / 0.013, 2.0));
+  return core + bead * 0.55;
+}
+
+void main() {
+  vec2 uv = clamp(vScreenUv, 0.0, 1.0);
+  vec3 behind = texture2D(uLight, uv).rgb;
+  float behindLum = dot(behind, vec3(0.2126, 0.7152, 0.0722));
+  float lit = mix(1.0, smoothstep(0.03, 0.30, behindLum), uHasLight);
+
+  float riv =
+      rivulet(uv, 0.585, 0.055, 0.0, 0.0011)
+    + rivulet(uv, 0.742, 0.038, 2.1, 0.0009)
+    + rivulet(uv, 0.906, 0.047, 4.4, 0.0010);
+  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.05, 0.32, lit);
+  vec3 cRiv = mix(vec3(0.72, 0.80, 0.86), lightHue(behind), 0.7 * lit) * (0.75 + 0.8 * lit);
+
+  // Reflected practical: a small soft lobe plus the vertical drag wet glass
+  // gives it. Deliberately faint — the bloom pass downstream does the rest, and
+  // anything stronger reads as a lens smudge instead of a reflection.
+  vec2 rp = vScreenUv - uRefl;
+  float lobe = exp(-dot(rp / vec2(0.085, 0.042), rp / vec2(0.085, 0.042)));
+  float drag = exp(-pow(rp.x / 0.026, 2.0)) * exp(-pow(max(-rp.y, 0.0) / 0.14, 1.7))
+             * step(rp.y, 0.0);
+  float aRefl = clamp(lobe * 0.8 + drag * 0.3, 0.0, 1.0) * uReflAmt * uOpacity;
+
+  float a = clamp(aRiv + aRefl, 0.0, 1.0);
+  if (a < 0.002) discard;
+  vec3 c = (cRiv * aRiv + uReflColor * aRefl) / max(a, 0.0001);
+  gl_FragColor = vec4(c, a);
+}
 `;

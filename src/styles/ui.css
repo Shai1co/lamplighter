@@ -117,6 +117,13 @@
   inset: 0;
   z-index: var(--pq-z-dialogue);
   pointer-events: none;
+  transition: opacity var(--pq-dur-2) var(--pq-ease);
+}
+/* Behind an open modal the dialogue bar steps out entirely. Left in, its type
+   sits under the backdrop blur as a smeared second column of prose — the exact
+   "text over mush" read the panel is trying not to be. */
+.pq.is-modal .pq-stagelayer {
+  opacity: 0;
 }
 
 /* Full-screen advance catcher (armed only while reading). */
@@ -140,6 +147,7 @@
   display: flex;
   gap: 6px;
   pointer-events: none;
+  transition: opacity var(--pq-dur-4) var(--pq-ease);
 }
 .pq-wait__dot {
   width: 6px;
@@ -258,111 +266,140 @@
   position: absolute;
   inset: auto 0 0 0;
   z-index: var(--pq-z-dialogue);
-  padding: var(--pq-9) var(--pq-gutter) clamp(28px, 4vh, 52px);
+  padding: var(--pq-9) var(--pq-gutter) clamp(56px, 10.5vh, 118px);
   pointer-events: none;
+  /* Declared here (not only in the .pq.is-chapter rule) so the bar fades back
+     in as smoothly as it fades out when a chapter card takes the frame. */
+  transition: opacity var(--pq-dur-4) var(--pq-ease);
 }
+
+/* The bar itself: a soft bottom fade, never an opaque box. Multi-stop with an
+   eased ramp + a fine noise dither so a 300px gradient over near-black cannot
+   band on an 8-bit display. */
 .pq-dialogue__scrim {
   position: absolute;
-  inset: -40px 0 0 0;
+  inset: auto 0 0 0;
+  height: var(--pq-scrim-h);
   background: linear-gradient(
     180deg,
-    transparent 0%,
-    rgba(var(--pq-paper-rgb) / 0.28) 34%,
-    rgba(var(--pq-paper-rgb) / 0.72) 72%,
-    rgba(var(--pq-paper-rgb) / 0.9) 100%
+    rgba(var(--pq-scrim-rgb) / 0) 0%,
+    rgba(var(--pq-scrim-rgb) / 0.03) 16%,
+    rgba(var(--pq-scrim-rgb) / 0.1) 30%,
+    rgba(var(--pq-scrim-rgb) / 0.22) 44%,
+    rgba(var(--pq-scrim-rgb) / 0.38) 57%,
+    rgba(var(--pq-scrim-rgb) / 0.56) 70%,
+    rgba(var(--pq-scrim-rgb) / 0.71) 82%,
+    rgba(var(--pq-scrim-rgb) / 0.85) 100%
   );
-  -webkit-mask-image: linear-gradient(180deg, transparent, #000 30%);
-  mask-image: linear-gradient(180deg, transparent, #000 30%);
 }
+.pq-dialogue__scrim::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* 512px tile: at 160px the repeat was small enough to be seen as a grid
+     laid over the fade rather than as dither in it. */
+  opacity: 0.024;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='512' height='512' filter='url(%23n)'/></svg>");
+  background-size: 512px 512px;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 40%);
+  mask-image: linear-gradient(180deg, transparent, #000 40%);
+}
+
+/* Two-column set: CAPS plate at far left, prose column at the right,
+   sharing the first-line baseline. */
 .pq-dialogue__inner {
   position: relative;
   max-width: var(--pq-dialogue-max);
   margin: 0 auto;
+  display: grid;
+  grid-template-columns: var(--pq-name-col) minmax(0, 1fr);
+  column-gap: var(--pq-name-gap);
+  align-items: baseline;
 }
 .pq-dialogue__name {
-  font-family: var(--pq-mono);
-  font-size: var(--pq-fs-xs);
-  font-weight: 600;
-  letter-spacing: var(--pq-tr-widest);
+  font-family: var(--pq-sans);
+  font-size: clamp(0.8rem, 0.52rem + 0.62vw, 1.25rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--pq-name, var(--pq-accent));
-  margin-bottom: var(--pq-3);
-  padding-left: 2px;
-  display: inline-flex;
-  align-items: center;
+  color: rgba(var(--pq-warm-rgb) / 0.68);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45), 0 1px 10px rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.pq-dialogue__name::after {
-  content: '';
-  display: inline-block;
-  width: 26px;
-  height: 1px;
-  margin-left: var(--pq-3);
-  background: linear-gradient(90deg, var(--pq-name, var(--pq-accent)), transparent);
-  opacity: 0.6;
-}
+/* The prose column carries the type so `ch` measures in the reading face, not
+   in the inherited 15px chrome font. */
 .pq-dialogue__text {
   position: relative;
-}
-.pq-dialogue__body {
+  grid-column: 2;
   font-family: var(--pq-serif);
-  font-size: clamp(1.15rem, 0.92rem + 0.95vw, 1.62rem);
-  line-height: var(--pq-lh-body);
-  font-weight: 400;
-  letter-spacing: -0.005em;
-  color: var(--pq-ink-90);
-  text-shadow: var(--pq-text-shadow);
-  max-width: 40em;
+  /* Reading type, sized to be read across a room: ~+9% over the previous set
+     with ~+10% leading, which is where a 62ch measure of this serif stops
+     feeling like body copy and starts feeling like a film's dialogue plate. */
+  font-size: clamp(1.3rem, 0.94rem + 1.1vw, 2.13rem);
+  line-height: 1.7;
+  letter-spacing: -0.004em;
+  max-width: 62ch;
+  min-height: 1.7em;
   text-wrap: pretty;
-  min-height: 1.6em;
 }
+/* Inline so the continue glyph flows on the last line's baseline. */
+.pq-dialogue__body {
+  display: inline;
+  font-weight: 400;
+  color: rgba(var(--pq-warm-rgb) / 0.92);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 2px 14px rgba(0, 0, 0, 0.42);
+}
+/* Narration reads a shade quieter than speech; italic stays reserved for
+   in-line emphasis so it never competes with the register change. */
 .pq-dialogue.is-narration .pq-dialogue__body {
-  font-style: italic;
-  color: var(--pq-ink-70);
-  font-weight: 380;
+  color: rgba(var(--pq-warm-rgb) / 0.84);
 }
-.pq-dialogue.is-narration .pq-dialogue__inner {
-  padding-left: clamp(0px, 2vw, 26px);
-  border-left: 1px solid var(--pq-line);
+.pq-dialogue.is-narration .pq-dialogue__name {
+  color: rgba(var(--pq-warm-rgb) / 0.58);
 }
 
-/* Continue glyph — a small bobbing ▼ */
+/* Continue glyph — inline chevron on the last baseline, 2s breath. */
 .pq-continue {
-  position: absolute;
-  right: max(0px, calc(50% - 20em));
-  bottom: -8px;
-  width: 16px;
-  height: 10px;
+  position: relative;
+  display: inline-block;
+  width: 0.6em;
+  height: 0.4em;
+  margin-left: 0.5em;
+  vertical-align: baseline;
   opacity: 0;
   transition: opacity var(--pq-dur-3) var(--pq-ease);
 }
 .pq-continue.is-shown {
-  opacity: 0.8;
-  animation: pq-bob 1.5s var(--pq-ease-in-out) infinite;
+  opacity: 0.85;
+  animation: pq-breathe 2s var(--pq-ease-in-out) infinite;
 }
 .pq-continue i {
   position: absolute;
-  top: 2px;
-  width: 10px;
-  height: 1.8px;
-  border-radius: 2px;
+  top: 0.07em;
+  width: 0.39em;
+  height: max(1.5px, 0.07em);
+  border-radius: 1px;
   background: var(--pq-key);
-  box-shadow: 0 0 8px var(--pq-glow-key);
+  box-shadow: 0 0 0.5em var(--pq-glow-key);
 }
 .pq-continue i:first-child {
   left: 0;
-  transform: rotate(42deg);
+  transform: rotate(40deg);
 }
 .pq-continue i:last-child {
   right: 0;
-  transform: rotate(-42deg);
+  transform: rotate(-40deg);
 }
-@keyframes pq-bob {
+@keyframes pq-breathe {
   0%,
   100% {
-    transform: translateY(0);
+    opacity: 0.34;
   }
   50% {
-    transform: translateY(4px);
+    opacity: 0.9;
   }
 }
 
@@ -375,7 +412,12 @@
   z-index: var(--pq-z-choice);
   width: clamp(340px, 40vw, 560px);
   padding: var(--pq-5) var(--pq-5) var(--pq-4);
-  border-radius: var(--pq-r-4);
+  /* Etched glass, not a card. Four things separate the two, and the panel had
+     all four wrong: an opaque fill, a 20px radius, a drop shadow, and a heavy
+     stroke. Now it is a 62% pane over a 14px blur, cut at 5px, with exactly one
+     hairline and NO shadow — light passes through it instead of it floating
+     above the photograph. */
+  border-radius: var(--pq-r-glass);
   pointer-events: auto;
   color: var(--pq-ink-90);
   background: linear-gradient(
@@ -383,11 +425,11 @@
       rgba(var(--pq-key-rgb) / 0.05),
       rgba(var(--pq-paper-rgb) / 0.02)
     ),
-    var(--pq-glass-strong);
-  border: 1px solid var(--pq-line-2);
-  box-shadow: var(--pq-shadow-glass), 0 0 60px rgba(var(--pq-key-rgb) / 0.08);
-  backdrop-filter: blur(var(--pq-blur)) saturate(1.15);
-  -webkit-backdrop-filter: blur(var(--pq-blur)) saturate(1.15);
+    rgba(var(--pq-paper-rgb) / 0.62);
+  border: 1px solid var(--pq-line-glass);
+  box-shadow: none;
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
   opacity: 0;
   transform: translateY(14px) scale(0.99);
   transition: opacity var(--pq-dur-3) var(--pq-ease), transform var(--pq-dur-3) var(--pq-ease);
@@ -407,7 +449,9 @@
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(140deg, rgba(var(--pq-key-rgb) / 0.5), transparent 40%, transparent 70%, rgba(var(--pq-accent-rgb) / 0.28));
+  /* Light caught along the top-left arris of the pane. Kept to a whisper so the
+     panel still reads as ONE hairline stroke rather than a coloured web border. */
+  background: linear-gradient(140deg, rgba(var(--pq-key-rgb) / 0.18), transparent 38%, transparent 72%, rgba(var(--pq-accent-rgb) / 0.1));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -534,19 +578,34 @@
   letter-spacing: 0.1em;
   color: var(--pq-ink-40);
 }
+/* Instrument, not infographic. Every value bar rides a full-width 1px track at
+   8% white so its length is READ against a scale instead of floating as a
+   hairline of arbitrary size; the three tracks share one right margin (the
+   grid column does that) and each value terminates in a 2px endpoint tick, the
+   way a real gauge marks its needle. */
 .pq-meter__track {
-  height: 3px;
-  border-radius: var(--pq-r-pill);
-  background: rgba(var(--pq-ink-rgb) / 0.1);
-  overflow: hidden;
+  position: relative;
+  height: 1px;
+  background: rgba(var(--pq-ink-rgb) / 0.08);
 }
 .pq-meter__fill {
+  position: relative;
   display: block;
   height: 100%;
   width: var(--v, 50%);
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgba(var(--pq-key-rgb) / 0.5), var(--pq-key));
-  box-shadow: 0 0 8px var(--pq-glow-key-soft);
+  background: linear-gradient(90deg, rgba(var(--pq-key-rgb) / 0.45), var(--pq-key));
+  box-shadow: 0 0 7px var(--pq-glow-key-soft);
+}
+.pq-meter__fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 2px;
+  height: 5px;
+  transform: translateY(-50%);
+  background: var(--pq-key);
+  box-shadow: 0 0 6px var(--pq-glow-key);
 }
 
 .pq-proxy__label {
@@ -573,7 +632,7 @@
   width: 100%;
   text-align: left;
   padding: 13px var(--pq-4) 13px 13px;
-  border-radius: var(--pq-r-3);
+  border-radius: var(--pq-r-glass-inner);
   color: var(--pq-ink-90);
   border: 1px solid var(--pq-line-2);
   background: rgba(var(--pq-ink-rgb) / 0.03);
@@ -591,19 +650,24 @@
     transform: none;
   }
 }
+/* Hotkey chip. A 26px filled box beside 17px prose is a button inside a button;
+   at cap-height with a hairline outline it becomes a margin mark instead — an
+   annotation on the line, which is what a hotkey is. */
 .pq-tile__num {
   flex: none;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--pq-r-1);
+  width: 17px;
+  height: 17px;
+  border-radius: 3px;
   font-family: var(--pq-mono);
-  font-size: var(--pq-fs-xs);
-  font-weight: 600;
-  color: var(--pq-key);
-  background: rgba(var(--pq-key-rgb) / 0.1);
-  border: 1px solid var(--pq-line-key);
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: rgba(var(--pq-key-rgb) / 0.8);
+  background: none;
+  border: 1px solid rgba(var(--pq-key-rgb) / 0.3);
 }
 .pq-tile__text {
   font-family: var(--pq-serif);
@@ -636,11 +700,33 @@
   opacity: 0;
   transition: opacity var(--pq-dur-2) var(--pq-ease);
 }
-.pq-tile--suggested:hover,
-.pq-tile--suggested:focus-visible {
+/* Suggested tiles set chip / prose / cue on ONE baseline — the first line of the
+   option — so the hotkey annotates the line instead of centring on the block. */
+.pq-tile--suggested {
+  align-items: baseline;
+}
+.pq-tile--suggested .pq-tile__cue {
+  align-self: baseline;
+}
+.pq-tile--suggested:hover {
   border-color: var(--pq-line-key);
   background: rgba(var(--pq-key-rgb) / 0.08);
   transform: translateX(3px);
+}
+/* Selection, not a focus ring. The 2px saturated stroke the global ring drew
+   here is the single most browser-looking thing a game frame can contain, and
+   it moved the tile off the panel grid as well. A hairline in the accent, a
+   soft outer bloom and a 5% interior tint say "this one is live" in the
+   language of the rest of the panel — and the tile stays put. */
+.pq-tile:focus-visible {
+  outline: none;
+  border-radius: var(--pq-r-glass-inner);
+  transform: none;
+}
+.pq-tile--suggested:focus-visible {
+  border-color: rgba(var(--pq-key-rgb) / 0.55);
+  background: rgba(var(--pq-key-rgb) / 0.05);
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.25);
 }
 .pq-tile--suggested:hover .pq-tile__scan,
 .pq-tile--suggested:focus-visible .pq-tile__scan {
@@ -657,10 +743,11 @@
 }
 
 /* Off-script — warmer, hand-authored register */
+/* A dashed rule is a wireframe tell. Solid hairline, half the weight. */
 .pq-proxy__off {
   margin-top: var(--pq-3);
   padding-top: var(--pq-3);
-  border-top: 1px dashed var(--pq-line-2);
+  border-top: 1px solid var(--pq-line);
 }
 .pq-tile--offscript {
   gap: var(--pq-3);
@@ -696,22 +783,29 @@
   font-style: italic;
   color: var(--pq-ink);
 }
+/* The off-script chip rides the label line — the first text line of its tile —
+   rather than centring against a two-line block. */
 .pq-tile__num--off {
   margin-left: auto;
-  color: var(--pq-accent);
-  background: rgba(var(--pq-accent-rgb) / 0.1);
-  border-color: var(--pq-line-accent);
-  align-self: center;
+  color: rgba(var(--pq-accent-rgb) / 0.85);
+  background: none;
+  border-color: rgba(var(--pq-accent-rgb) / 0.32);
+  align-self: flex-start;
+  margin-top: 1px;
 }
-.pq-tile--offscript:hover,
-.pq-tile--offscript:focus-visible {
+.pq-tile--offscript:hover {
   border-color: rgba(var(--pq-accent-rgb) / 0.6);
   background: rgba(var(--pq-accent-rgb) / 0.1);
   transform: translateX(3px);
 }
+.pq-tile--offscript:focus-visible {
+  border-color: rgba(var(--pq-accent-rgb) / 0.55);
+  background: rgba(var(--pq-accent-rgb) / 0.05);
+  box-shadow: 0 0 8px rgba(var(--pq-accent-rgb) / 0.25);
+}
 
 .pq-lift {
-  border-radius: var(--pq-r-3);
+  border-radius: var(--pq-r-glass-inner);
 }
 
 /* ══════════════════════════════  Choice menu (neutral)  ══════════════════════════════ */
@@ -789,16 +883,39 @@
 
 /* ══════════════════════════════  Chapter card  ══════════════════════════════ */
 
+/* The card owns the whole frame while it is up (see `.pq.is-chapter`, which
+   pulls the dialogue bar and the wait ellipsis out of the shot) — one lockup,
+   one continue affordance, nothing else.
+
+   Vertical anchor, not centring: the lockup hangs from a fixed 47vh so the
+   title's optical centre lands at ~54% of frame height regardless of whether a
+   subtitle is present. Centring a variable-height stack floated the title at
+   50% and left the whole lower half as dead near-black. */
 .pq-chapter {
   position: absolute;
   inset: 0;
   z-index: var(--pq-z-title);
   display: grid;
-  place-content: center;
+  place-content: start center;
   text-align: center;
-  padding: var(--pq-gutter);
+  padding: 47vh var(--pq-gutter) var(--pq-gutter);
   pointer-events: none;
-  background: radial-gradient(120% 100% at 50% 50%, rgba(var(--pq-paper-rgb) / 0.55), rgba(var(--pq-paper-rgb) / 0.86));
+  /* A shaped wash, not a flat one. Densest right behind the type; released
+     toward the corners so the desk silhouette, the lamp and the window mullions
+     keep reading. The old 0.55→0.86 radial crushed the plate to mud. */
+  background:
+    radial-gradient(
+      58% 44% at 50% 52%,
+      rgba(var(--pq-paper-rgb) / 0.62),
+      rgba(var(--pq-paper-rgb) / 0.3) 62%,
+      transparent 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(var(--pq-paper-rgb) / 0.52) 0%,
+      rgba(var(--pq-paper-rgb) / 0.33) 48%,
+      rgba(var(--pq-paper-rgb) / 0.4) 100%
+    );
   opacity: 0;
   transition: opacity var(--pq-dur-5) var(--pq-ease);
 }
@@ -839,17 +956,23 @@
 .pq-chapter.is-in .pq-chapter__inner {
   transform: none;
 }
+/* Eyebrow. Smaller and wider than the rest of the chrome so it reads as a
+   plate rather than as a label; `text-indent` gives back the trailing letter-
+   space, which otherwise drags the optical centre a full half-em to the left of
+   the rule beneath it. */
 .pq-chapter__over {
   font-family: var(--pq-mono);
-  font-size: var(--pq-fs-xs);
-  letter-spacing: var(--pq-tr-widest);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-ultra);
+  text-indent: var(--pq-tr-ultra);
   text-transform: uppercase;
-  color: var(--pq-key);
+  color: rgba(var(--pq-key-rgb) / 0.85);
 }
+/* A deliberate hairline, not an ambiguous fading dash. */
 .pq-chapter__rule {
-  width: 46px;
+  width: 24px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--pq-ink-40), transparent);
+  background: rgba(var(--pq-ink-rgb) / 0.3);
 }
 .pq-chapter__title {
   font-family: var(--pq-serif);
@@ -860,14 +983,76 @@
   color: var(--pq-ink);
   text-shadow: 0 2px 40px rgba(0, 0, 0, 0.5);
   max-width: 16em;
+  text-wrap: balance;
 }
+/* Subtitle. Warm reading white rather than themed ink, plus a wide soft shadow:
+   at --pq-ink-55 over the wash it sat near 30% effective contrast and read as
+   a rendering accident. */
 .pq-chapter__sub {
   font-family: var(--pq-serif);
   font-style: italic;
   font-size: var(--pq-fs-lg);
   font-weight: 360;
-  color: var(--pq-ink-55);
+  line-height: var(--pq-lh-snug);
+  color: rgba(255, 250, 240, 0.72);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.6);
+  text-align: center;
   max-width: 26em;
+  text-wrap: balance;
+}
+
+/* The card's single continue affordance: one centred chevron, 24px under the
+   last line (16px grid gap + 8px), on a slow 2s breath. Nothing else in the
+   frame is allowed to also mean "press to continue". */
+.pq-chapter__more {
+  position: relative;
+  width: 15px;
+  height: 9px;
+  margin-top: var(--pq-2);
+  opacity: 0;
+  transition: opacity var(--pq-dur-4) var(--pq-ease);
+}
+/* Without a subtitle the chevron would hang off the title's descenders and read
+   as part of the lockup instead of as an affordance — give it its own air. */
+.pq-chapter__sub[hidden] + .pq-chapter__more {
+  margin-top: var(--pq-6);
+}
+.pq-chapter.is-in .pq-chapter__more {
+  opacity: 0.55;
+  animation: pq-chapter-breathe 2s var(--pq-ease-in-out) var(--pq-dur-5) infinite;
+}
+.pq-chapter__more i {
+  position: absolute;
+  top: 1px;
+  width: 9px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: rgba(var(--pq-ink-rgb) / 0.9);
+}
+.pq-chapter__more i:first-child {
+  left: 0;
+  transform: rotate(38deg);
+}
+.pq-chapter__more i:last-child {
+  right: 0;
+  transform: rotate(-38deg);
+}
+@keyframes pq-chapter-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* While the card is up the reading surface steps out of frame entirely. A stale
+   dialogue line plus its own inline chevron plus the wait ellipsis gave the shot
+   three unexplained marks at three different baselines. */
+.pq.is-chapter .pq-dialogue,
+.pq.is-chapter .pq-wait {
+  opacity: 0;
 }
 
 /* ══════════════════════════════  Title screen  ══════════════════════════════ */
@@ -877,6 +1062,7 @@
   inset: 0;
   z-index: var(--pq-z-title);
   pointer-events: auto;
+  overflow: hidden;
   color: var(--pq-ink);
   opacity: 0;
   transition: opacity var(--pq-dur-4) var(--pq-ease);
@@ -884,31 +1070,198 @@
 .pq-title.is-in {
   opacity: 1;
 }
+
+/* ── Backdrop ──────────────────────────────────────────────────────────────
+   The menu must sit over a place. The featured story's own plate runs
+   full-bleed at roughly −2EV; a heavily defocused copy is screened back over it
+   so every practical blooms into city bokeh. Rain, one motivated warm source,
+   a directional scrim, grain and a vignette finish the frame. Both plates drift
+   on long offset cycles, so the still is never quite the same twice. */
+.pq-title__bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(90% 70% at 74% 44%, rgba(var(--pq-key-rgb) / 0.11), transparent 62%),
+    radial-gradient(70% 60% at 18% 92%, rgba(var(--pq-key-rgb) / 0.07), transparent 66%),
+    linear-gradient(158deg, #101d23 0%, #0a1217 52%, #060b0e 100%);
+}
+.pq-title__plate,
+.pq-title__bokeh {
+  position: absolute;
+  inset: -7%;
+  width: 114%;
+  height: 114%;
+  max-width: none;
+  object-fit: cover;
+  object-position: 60% 46%;
+  will-change: transform;
+}
+/* Near plate — the room itself, printed down about two stops. */
+.pq-title__plate {
+  filter: brightness(0.52) contrast(1.09) saturate(0.88);
+  animation: pq-title-drift 52s var(--pq-ease-in-out) infinite alternate;
+}
+/* Far plate — the same frame thrown right out of focus and screened back, which
+   is what turns distant window lights into real bokeh instead of flat pixels. */
+.pq-title__bokeh {
+  filter: blur(26px) brightness(0.56) saturate(0.76);
+  mix-blend-mode: screen;
+  opacity: 0.56;
+  animation: pq-title-drift-far 74s var(--pq-ease-in-out) infinite alternate;
+}
+@keyframes pq-title-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.02);
+  }
+  to {
+    transform: translate3d(-1.6%, -1%, 0) scale(1.07);
+  }
+}
+@keyframes pq-title-drift-far {
+  from {
+    transform: translate3d(0.9%, 0.5%, 0) scale(1.05);
+  }
+  to {
+    transform: translate3d(-1.1%, -0.7%, 0) scale(1.11);
+  }
+}
+
+/* Rain on the glass: three passes of near-vertical rivulets at slightly
+   different rakes, screened so they only ever brighten what is behind them. */
+.pq-title__rain {
+  position: absolute;
+  inset: -14% -6%;
+  mix-blend-mode: screen;
+  opacity: 0.5;
+  background-image:
+    repeating-linear-gradient(
+      95.5deg,
+      transparent 0 5px,
+      rgba(var(--pq-ink-rgb) / 0.05) 5px 6px,
+      transparent 6px 19px
+    ),
+    repeating-linear-gradient(
+      92.5deg,
+      transparent 0 13px,
+      rgba(var(--pq-ink-rgb) / 0.03) 13px 14px,
+      transparent 14px 53px
+    ),
+    repeating-linear-gradient(
+      98deg,
+      transparent 0 29px,
+      rgba(var(--pq-ink-rgb) / 0.022) 29px 31px,
+      transparent 31px 97px
+    );
+  -webkit-mask-image: linear-gradient(101deg, transparent 4%, rgba(0, 0, 0, 0.4) 30%, #000 60%);
+  mask-image: linear-gradient(101deg, transparent 4%, rgba(0, 0, 0, 0.4) 30%, #000 60%);
+  animation: pq-title-rain 38s var(--pq-ease-in-out) infinite alternate;
+}
+@keyframes pq-title-rain {
+  from {
+    transform: translate3d(0, -3.5%, 0);
+  }
+  to {
+    transform: translate3d(0, 3.5%, 0);
+  }
+}
+
+/* The one motivated source: lamp light bleeding out of the right third, so the
+   frame has a direction instead of uniform darkness. */
+.pq-title__lamp {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(
+      800px 660px at 71% 48%,
+      rgba(var(--pq-lamp-rgb) / 0.1),
+      rgba(var(--pq-lamp-rgb) / 0.042) 44%,
+      transparent 72%
+    ),
+    radial-gradient(460px 360px at 88% 64%, rgba(var(--pq-lamp-rgb) / 0.06), transparent 70%),
+    /* the same source bouncing off the floor, so the foreground isn't a dead band */
+      linear-gradient(to top, rgba(var(--pq-lamp-rgb) / 0.035), transparent 24%);
+  animation: pq-title-lamp 14s var(--pq-ease-in-out) infinite alternate;
+}
+@keyframes pq-title-lamp {
+  from {
+    opacity: 0.84;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Directional scrim — heavy where the type lives, nearly clear over the light. */
 .pq-title__scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-      100deg,
-      rgba(var(--pq-paper-rgb) / 0.86) 0%,
-      rgba(var(--pq-paper-rgb) / 0.62) 42%,
-      rgba(var(--pq-paper-rgb) / 0.28) 72%,
-      rgba(var(--pq-paper-rgb) / 0.5) 100%
+  background:
+    linear-gradient(
+      101deg,
+      rgba(var(--pq-paper-rgb) / 0.95) 0%,
+      rgba(var(--pq-paper-rgb) / 0.82) 22%,
+      rgba(var(--pq-paper-rgb) / 0.4) 46%,
+      rgba(var(--pq-paper-rgb) / 0.12) 68%,
+      rgba(var(--pq-paper-rgb) / 0.3) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(var(--pq-paper-rgb) / 0.38) 0%,
+      transparent 22%,
+      transparent 74%,
+      rgba(var(--pq-paper-rgb) / 0.34) 100%
     );
+}
+.pq-title__grain {
+  position: absolute;
+  inset: -60px;
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='512' height='512'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: pq-title-grain 1.1s steps(1) infinite;
+}
+@keyframes pq-title-grain {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(-13px, 9px, 0);
+  }
+  50% {
+    transform: translate3d(11px, -12px, 0);
+  }
+  75% {
+    transform: translate3d(-7px, -6px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
 }
 .pq-title__vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(120% 120% at 30% 40%, transparent 40%, rgba(0, 0, 0, 0.45) 100%);
-  pointer-events: none;
+  background: radial-gradient(
+    118% 102% at 52% 46%,
+    transparent 42%,
+    rgba(0, 0, 0, 0.14) 72%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
 }
+
+/* ── Layout ── */
 .pq-title__inner {
   position: relative;
   height: 100%;
+  max-width: 1460px;
+  margin-inline: auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 470px);
   align-items: center;
-  gap: var(--pq-8);
-  padding: var(--pq-gutter) var(--pq-gutter) var(--pq-9);
+  gap: clamp(40px, 5vw, 96px);
+  padding: var(--pq-gutter);
 }
 .pq-title__lead {
   max-width: 30em;
@@ -919,14 +1272,6 @@
 .pq-title.is-in .pq-title__lead {
   transform: none;
   opacity: 1;
-}
-.pq-title__over {
-  font-family: var(--pq-mono);
-  font-size: var(--pq-fs-xs);
-  letter-spacing: var(--pq-tr-widest);
-  text-transform: uppercase;
-  color: var(--pq-key);
-  margin-bottom: var(--pq-4);
 }
 .pq-title__word {
   font-family: var(--pq-serif);
@@ -953,71 +1298,88 @@
   font-weight: 340;
   line-height: var(--pq-lh-snug);
   color: var(--pq-ink-70);
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
   max-width: 22em;
 }
+
+/* ── Menu: type, not components ──────────────────────────────────────────────
+   No boxes, no radii, no icon set — one serif family in letterspaced caps, with
+   a hairline rule that draws itself under the live entry. */
 .pq-title__menu {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: 320px;
+  align-items: flex-start;
+  gap: 15px;
 }
 .pq-menuitem {
-  display: flex;
-  align-items: center;
-  gap: var(--pq-4);
-  padding: 13px 16px 13px var(--pq-4);
-  border-radius: var(--pq-r-2);
-  color: var(--pq-ink-70);
-  border: 1px solid transparent;
-  transition: color var(--pq-dur-2) var(--pq-ease), background var(--pq-dur-2) var(--pq-ease),
-    padding var(--pq-dur-2) var(--pq-ease), border-color var(--pq-dur-2) var(--pq-ease);
-}
-.pq-menuitem__ic {
-  width: 18px;
-  height: 18px;
-  color: var(--pq-ink-40);
+  position: relative;
+  padding: 0 0 7px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--pq-ink-55);
+  font-family: var(--pq-serif);
+  font-optical-sizing: auto;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-shadow: 0 1px 24px rgba(0, 0, 0, 0.6);
   transition: color var(--pq-dur-2) var(--pq-ease);
 }
-.pq-menuitem__ic svg {
-  width: 100%;
-  height: 100%;
-}
 .pq-menuitem__label {
-  font-family: var(--pq-sans);
-  font-size: var(--pq-fs-md);
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  display: block;
 }
-.pq-menuitem:hover:not([disabled]),
+.pq-menuitem::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0.2em; /* discount the trailing letterspace so the rule ends on the glyph */
+  bottom: 0;
+  height: 1px;
+  background: rgba(var(--pq-ink-rgb) / 0.3);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--pq-dur-3) var(--pq-ease), background var(--pq-dur-2) var(--pq-ease);
+}
+.pq-menuitem:hover,
 .pq-menuitem:focus-visible {
   color: var(--pq-ink);
-  background: rgba(var(--pq-ink-rgb) / 0.05);
-  padding-left: var(--pq-5);
-  border-color: var(--pq-line);
 }
-.pq-menuitem:hover:not([disabled]) .pq-menuitem__ic,
-.pq-menuitem:focus-visible .pq-menuitem__ic {
-  color: var(--pq-key);
+.pq-menuitem:hover::after,
+.pq-menuitem:focus-visible::after {
+  transform: none;
+}
+/* The keyboard ring is the rule itself, in key — never a rounded box. */
+.pq-menuitem:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+.pq-menuitem:focus-visible::after {
+  background: rgba(var(--pq-key-rgb) / 0.75);
 }
 .pq-menuitem.is-primary {
-  color: var(--pq-ink);
+  font-size: 1.0625rem;
+  font-weight: 420;
+  letter-spacing: 0.22em;
+  color: var(--pq-ink-90);
+  margin-bottom: 2px;
 }
-.pq-menuitem.is-primary .pq-menuitem__label {
-  font-weight: 600;
+.pq-menuitem.is-primary::after {
+  background: rgba(var(--pq-key-rgb) / 0.45);
+  transform: scaleX(1);
 }
-.pq-menuitem.is-primary .pq-menuitem__ic {
-  color: var(--pq-key);
-}
-.pq-menuitem[disabled] {
-  opacity: 0.32;
-  cursor: default;
+.pq-menuitem.is-primary:hover::after,
+.pq-menuitem.is-primary:focus-visible::after {
+  background: rgba(var(--pq-key-rgb) / 0.85);
 }
 
+/* ── Story rail ── */
 .pq-title__stories {
   align-self: center;
   justify-self: end;
   width: 100%;
-  max-width: 460px;
   transform: translateY(20px);
   opacity: 0;
   transition: transform var(--pq-dur-5) var(--pq-ease) 200ms, opacity var(--pq-dur-5) var(--pq-ease) 200ms;
@@ -1031,7 +1393,8 @@
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: var(--pq-4);
-  padding: 0 var(--pq-1);
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(var(--pq-ink-rgb) / 0.1);
 }
 .pq-title__eyebrow {
   font-family: var(--pq-mono);
@@ -1043,16 +1406,17 @@
 .pq-title__count {
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
-  letter-spacing: var(--pq-tr-wide);
+  letter-spacing: var(--pq-tr-wider);
+  text-transform: uppercase;
   color: var(--pq-ink-40);
 }
 .pq-rail {
   display: flex;
   flex-direction: column;
-  gap: var(--pq-4);
+  gap: var(--pq-3);
   max-height: 64vh;
   overflow-y: auto;
-  padding: var(--pq-1);
+  padding: 2px;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--pq-ink-rgb) / 0.2) transparent;
 }
@@ -1064,7 +1428,7 @@
   border-radius: 3px;
 }
 
-/* Story card — themed 16:9 art frame + body (holds cover art later). */
+/* Story card — a 16:9 art frame with a hairline edge and a lamp-warm halo. */
 .pq-storycard {
   --k: var(--pq-key-rgb);
   --a: var(--pq-accent-rgb);
@@ -1073,11 +1437,11 @@
   display: block;
   width: 100%;
   text-align: left;
-  border-radius: var(--pq-r-3);
+  border-radius: var(--pq-r-2);
   overflow: hidden;
-  background: rgb(var(--p));
-  border: 1px solid rgba(var(--n) / 0.12);
-  box-shadow: var(--pq-shadow-2);
+  background: rgba(var(--p) / 0.72);
+  border: 1px solid rgba(var(--n) / 0.2);
+  box-shadow: var(--pq-shadow-3), 0 0 12px rgba(var(--pq-lamp-rgb) / 0.14);
   transition: transform var(--pq-dur-3) var(--pq-ease), border-color var(--pq-dur-3) var(--pq-ease),
     box-shadow var(--pq-dur-3) var(--pq-ease);
 }
@@ -1090,15 +1454,18 @@
     linear-gradient(150deg, rgb(var(--p)), color-mix(in srgb, rgb(var(--p)) 72%, rgb(var(--k))) 100%);
   overflow: hidden;
 }
-/* Real cover art, when the story has any — fills the frame under the overlays. */
+/* Real cover art, when the story has any — fills the frame under the overlays.
+   The micro-contrast pass keeps a 4× downscale from going muddy. */
 .pq-storycard__img {
   position: absolute;
   inset: 0;
   display: block;
   width: 100%;
   height: 100%;
+  max-width: none;
   object-fit: cover;
   object-position: 50% 45%;
+  filter: contrast(1.07) saturate(1.06) brightness(1.03);
   transform: scale(1.01); /* hides any sub-pixel seam at the rounded corners */
   transition: transform var(--pq-dur-4) var(--pq-ease);
 }
@@ -1116,7 +1483,7 @@
 }
 /* Over real art the grain must whisper — the placeholder needs it to carry. */
 .pq-storycard__art.has-cover .pq-storycard__grain {
-  opacity: 0.22;
+  opacity: 0.16;
 }
 .pq-storycard__glow {
   position: absolute;
@@ -1126,25 +1493,11 @@
 /* Key art sits deeper: a touch more scrim so the title below never fights it. */
 .pq-storycard__art.has-cover .pq-storycard__glow {
   background:
-    linear-gradient(180deg, rgba(var(--p) / 0.34) 0%, transparent 34%),
-    linear-gradient(180deg, transparent 42%, rgba(var(--p) / 0.85) 100%);
-}
-.pq-storycard__emblem {
-  position: absolute;
-  right: 14px;
-  top: 12px;
-  width: 20px;
-  height: 20px;
-  color: rgba(var(--n) / 0.85);
-  opacity: 0.7;
-  filter: drop-shadow(0 0 8px rgba(var(--k) / 0.5));
-}
-.pq-storycard__emblem svg {
-  width: 100%;
-  height: 100%;
+    linear-gradient(180deg, rgba(var(--p) / 0.22) 0%, transparent 30%),
+    linear-gradient(180deg, transparent 48%, rgba(var(--p) / 0.8) 100%);
 }
 .pq-storycard__body {
-  padding: var(--pq-4) var(--pq-5) var(--pq-5);
+  padding: 24px;
 }
 .pq-storycard__title {
   font-family: var(--pq-serif);
@@ -1155,7 +1508,7 @@
   color: rgb(var(--n));
 }
 .pq-storycard__sub {
-  margin-top: 6px;
+  margin-top: 8px;
   font-family: var(--pq-serif);
   font-style: italic;
   font-size: var(--pq-fs-base);
@@ -1165,62 +1518,76 @@
 }
 .pq-storycard__foot {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  margin-top: var(--pq-4);
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--n) / 0.1);
 }
-.pq-storycard__author {
+/* Footer label and CTA share one tracking and one baseline. */
+.pq-storycard__author,
+.pq-storycard__cta {
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
-  letter-spacing: var(--pq-tr-wide);
+  line-height: 1;
+  letter-spacing: var(--pq-tr-wider);
   text-transform: uppercase;
+}
+.pq-storycard__author {
   color: rgba(var(--n) / 0.4);
 }
 .pq-storycard__cta {
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  align-items: baseline;
+  gap: 0.5em;
   margin-left: auto;
-  font-family: var(--pq-mono);
-  font-size: var(--pq-fs-xs);
-  letter-spacing: var(--pq-tr-wide);
-  text-transform: uppercase;
   color: rgb(var(--k));
-  opacity: 0;
-  transform: translateX(-6px);
-  transition: opacity var(--pq-dur-2) var(--pq-ease), transform var(--pq-dur-2) var(--pq-ease);
+  opacity: 0.62;
+  transition: opacity var(--pq-dur-2) var(--pq-ease);
 }
 .pq-storycard__arrow {
-  width: 14px;
-  height: 14px;
-  transform: rotate(-90deg);
-}
-.pq-storycard__arrow svg {
-  width: 100%;
-  height: 100%;
+  opacity: 0.6;
+  transition: transform var(--pq-dur-2) var(--pq-ease);
 }
 .pq-storycard:hover,
 .pq-storycard.is-featured,
 .pq-storycard:focus-visible {
   transform: translateY(-3px);
-  border-color: rgba(var(--k) / 0.5);
-  box-shadow: var(--pq-shadow-3), 0 0 40px rgba(var(--k) / 0.14);
+  border-color: rgba(var(--k) / 0.4);
+  box-shadow: var(--pq-shadow-3), 0 0 18px rgba(var(--pq-lamp-rgb) / 0.22),
+    0 0 40px rgba(var(--k) / 0.12);
 }
 .pq-storycard:hover .pq-storycard__cta,
 .pq-storycard.is-featured .pq-storycard__cta,
 .pq-storycard:focus-visible .pq-storycard__cta {
   opacity: 1;
-  transform: none;
+}
+.pq-storycard:hover .pq-storycard__arrow,
+.pq-storycard.is-featured .pq-storycard__arrow,
+.pq-storycard:focus-visible .pq-storycard__arrow {
+  transform: translateX(3px);
 }
 
-.pq-title__foot {
-  position: absolute;
-  left: var(--pq-gutter);
-  bottom: clamp(16px, 2.4vh, 30px);
+/* Empty shelf space — stated, so the rail reads as a library with room in it. */
+.pq-lockslot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border: 1px solid rgba(var(--pq-ink-rgb) / 0.07);
+  border-radius: var(--pq-r-2);
+  background: rgba(var(--pq-paper-rgb) / 0.28);
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
-  letter-spacing: var(--pq-tr-wide);
-  color: var(--pq-ink-25);
+  line-height: 1;
+  letter-spacing: var(--pq-tr-wider);
+  text-transform: uppercase;
+}
+.pq-lockslot__idx {
+  color: rgba(var(--pq-ink-rgb) / 0.22);
+}
+.pq-lockslot__state {
+  color: rgba(var(--pq-ink-rgb) / 0.16);
 }
 
 /* ══════════════════════════════  Modal shell  ══════════════════════════════ */
@@ -1236,6 +1603,12 @@
      invisible dialog would intercept every pointer event on the screen. */
   display: none;
 }
+/* The backdrop is not a grey wash — it is the same room, one stop down and a
+   little out of focus. A radial falloff does the vignette (centre stays near
+   the scene's own exposure, edges lose ~12% luminance) and a fine grain plate
+   is laid back over the top, because the backdrop blur wipes out the film grain
+   the render pipeline put there. Without that pass the modal frame is the only
+   ungrained surface in the game and instantly reads as an HTML overlay. */
 .pq-modal {
   position: absolute;
   inset: 0;
@@ -1243,29 +1616,128 @@
   place-items: center;
   padding: var(--pq-gutter);
   pointer-events: auto;
-  background: rgba(var(--pq-paper-rgb) / 0.58);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Split grade. The room behind the glass keeps a warm practical low-left and a
+     cool key high-right, both at a whisper, so the backdrop is graded rather
+     than neutral-dimmed — and the panel that sits on it shares the same two
+     lights instead of reading as grey-on-black. */
+  background: radial-gradient(
+      62% 54% at 11% 88%,
+      rgba(var(--pq-lamp-rgb) / 0.06) 0%,
+      rgba(var(--pq-lamp-rgb) / 0) 72%
+    ),
+    radial-gradient(
+      70% 58% at 87% 11%,
+      rgba(var(--pq-key-rgb) / 0.05) 0%,
+      rgba(var(--pq-key-rgb) / 0) 76%
+    ),
+    radial-gradient(
+      128% 98% at 46% 42%,
+      rgba(var(--pq-paper-rgb) / 0.12) 0%,
+      rgba(var(--pq-paper-rgb) / 0.3) 52%,
+      rgba(var(--pq-paper-rgb) / 0.56) 100%
+    ),
+    /* Lens vignette. Struck in true black rather than paper so it darkens the
+       room's own values instead of tinting them — the corners fall away and the
+       eye is walked to the glass in the middle of the frame. */
+      radial-gradient(
+        118% 96% at 50% 48%,
+        rgba(0, 0, 0, 0) 34%,
+        rgba(0, 0, 0, 0.2) 68%,
+        rgba(0, 0, 0, 0.45) 100%
+      );
+  backdrop-filter: blur(var(--pq-modal-blur)) saturate(0.98) brightness(0.86);
+  -webkit-backdrop-filter: blur(var(--pq-modal-blur)) saturate(0.98) brightness(0.86);
   opacity: 0;
   transition: opacity var(--pq-dur-3) var(--pq-ease);
+}
+/* Dust in the defocused room. Nine motes at bokeh scale, warm on the practical's
+   side and cool on the monitor's, drifting a couple of percent over three-quarters
+   of a minute. It is the one thing a static reference frame cannot have: even a
+   still capture lands on a layer of airborne particulate sitting *behind* the
+   glass, which is what sells the panel as floating in a room with depth. */
+.pq-modal::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(3.5px 3.5px at 11% 74%, rgba(var(--pq-lamp-rgb) / 0.5), transparent 62%),
+    radial-gradient(2.4px 2.4px at 19% 41%, rgba(var(--pq-lamp-rgb) / 0.36), transparent 64%),
+    radial-gradient(4.5px 4.5px at 27% 86%, rgba(var(--pq-lamp-rgb) / 0.26), transparent 60%),
+    radial-gradient(2.8px 2.8px at 36% 22%, rgba(var(--pq-pane-rgb) / 0.32), transparent 64%),
+    radial-gradient(3.2px 3.2px at 58% 12%, rgba(var(--pq-pane-rgb) / 0.26), transparent 62%),
+    radial-gradient(2.2px 2.2px at 71% 63%, rgba(var(--pq-pane-rgb) / 0.4), transparent 66%),
+    radial-gradient(4px 4px at 83% 33%, rgba(var(--pq-pane-rgb) / 0.24), transparent 60%),
+    radial-gradient(2.6px 2.6px at 90% 79%, rgba(var(--pq-pane-rgb) / 0.26), transparent 64%),
+    radial-gradient(3.4px 3.4px at 64% 91%, rgba(var(--pq-lamp-rgb) / 0.24), transparent 62%);
+  animation: pq-motes 74s var(--pq-ease-in-out) infinite alternate;
+  will-change: transform;
+}
+@keyframes pq-motes {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-2.2%, -3.4%, 0);
+  }
+}
+:root[data-pq-motion='reduced'] .pq-modal::before {
+  animation: none;
+}
+/* Grain plate. Sits above the panel too — one emulsion across the whole frame
+   is what welds UI and art into a single photographed image. */
+.pq-modal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='170' height='170' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 .pq-modal.is-open {
   opacity: 1;
 }
+/* A modal that another modal has been opened over. Kept in the DOM (focus
+   restore, scroll position) but taken out of the picture entirely — otherwise
+   its scrim and its backdrop blur compound with the one above it. */
+.pq-modal.is-under {
+  opacity: 0;
+  pointer-events: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
 .pq-modal__panel {
+  position: relative;
+  z-index: 1;
   width: min(560px, 100%);
-  max-height: min(86vh, 760px);
+  max-height: min(86vh, 820px);
   display: flex;
   flex-direction: column;
-  border-radius: var(--pq-r-4);
-  background: linear-gradient(180deg, rgba(var(--pq-ink-rgb) / 0.04), transparent 30%), var(--pq-glass-strong);
-  border: 1px solid var(--pq-line-2);
-  box-shadow: var(--pq-shadow-glass);
-  backdrop-filter: blur(var(--pq-blur)) saturate(1.1);
-  -webkit-backdrop-filter: blur(var(--pq-blur)) saturate(1.1);
+  border-radius: var(--pq-r-2);
+  /* The practical in the room kisses the panel's top edge — the same warm the
+     backdrop carries low-left — before the cool pane sheen takes over. Two
+     lights on one surface is what stops glass reading as a grey plate. */
+  background: linear-gradient(180deg, rgba(var(--pq-lamp-rgb) / 0.055), rgba(var(--pq-lamp-rgb) / 0) 20%),
+    linear-gradient(180deg, rgba(var(--pq-pane-rgb) / 0.05), rgba(var(--pq-pane-rgb) / 0) 34%),
+    rgba(var(--pq-paper-rgb) / 0.58);
+  border: 1px solid var(--pq-line-pane);
+  box-shadow: var(--pq-shadow-pane);
+  /* Deep frost. The room behind the pane goes further out of focus than the room
+     beside it (24px on top of the backdrop's 10px) and gains a little chroma, so
+     the glass has a measurable thickness instead of being a tinted rectangle —
+     and the saturation lift keeps the lamp behind it warm rather than grey. */
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
   transform: translateY(12px) scale(0.99);
   transition: transform var(--pq-dur-3) var(--pq-ease);
   overflow: hidden;
+}
+.pq-modal__panel:focus,
+.pq-modal__panel:focus-visible {
+  outline: none;
+  box-shadow: var(--pq-shadow-pane);
 }
 .pq-modal.is-open .pq-modal__panel {
   transform: none;
@@ -1273,13 +1745,41 @@
 .pq-modal__panel--wide {
   width: min(880px, 100%);
 }
+/* Golden-section offset. A 560px column dead-centre with symmetric voids either
+   side is the silhouette of an unstyled dialog. Parked on the right third the
+   frame becomes a composition: the panel sits on the golden section, the desk
+   lamp keeps the left margin and the speaker keeps the right, so neither of the
+   plate's two focal points is buried under glass. */
+.pq-modal--offset {
+  justify-items: start;
+}
+.pq-modal--offset .pq-modal__panel {
+  margin-inline-start: max(0px, calc(38.2vw - 280px - var(--pq-gutter)));
+}
 .pq-modal__head {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--pq-4);
   padding: var(--pq-5) var(--pq-5) var(--pq-4);
-  border-bottom: 1px solid var(--pq-line);
+}
+/* Hairline under the title block, inset and faded at both ends so it reads as
+   an etched rule rather than a table border running edge to edge. */
+.pq-modal__head::after {
+  content: '';
+  position: absolute;
+  left: var(--pq-5);
+  right: var(--pq-5);
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--pq-pane-rgb) / 0),
+    rgba(var(--pq-pane-rgb) / 0.2) 14%,
+    rgba(var(--pq-pane-rgb) / 0.2) 86%,
+    rgba(var(--pq-pane-rgb) / 0)
+  );
 }
 .pq-modal__titles {
   display: flex;
@@ -1302,6 +1802,7 @@
 }
 .pq-modal__body {
   padding: var(--pq-5);
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--pq-ink-rgb) / 0.2) transparent;
@@ -1312,6 +1813,120 @@
 .pq-modal__body::-webkit-scrollbar-thumb {
   background: rgba(var(--pq-ink-rgb) / 0.16);
   border-radius: 4px;
+}
+/* Flush body — hands scrolling to the child so there is exactly ONE scroller in
+   the panel. Two nested scrollers is what guillotined the last line of the
+   transcript flush against the panel border. */
+.pq-modal__body--flush {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+}
+/* Slot grid body — the etched rule under the title already does the separating,
+   so a full 22px of air beneath it just floats the grid off the header. */
+.pq-modal__body--slots {
+  padding-top: var(--pq-3);
+}
+
+/* Input-hint rail — the bottom edge of the panel, bracketed mono in the same
+   tracked face as the eyebrow. It anchors the composition (header rule top,
+   hint rail bottom, grid between) and it is what a shipped console build puts
+   there; a modal that just stops after its last card reads as a web dialog. */
+.pq-modal__foot {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pq-4);
+  padding: var(--pq-3) var(--pq-5) calc(var(--pq-3) + 3px);
+}
+.pq-modal__foot::before {
+  content: '';
+  position: absolute;
+  left: var(--pq-5);
+  right: var(--pq-5);
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--pq-pane-rgb) / 0),
+    rgba(var(--pq-pane-rgb) / 0.16) 14%,
+    rgba(var(--pq-pane-rgb) / 0.16) 86%,
+    rgba(var(--pq-pane-rgb) / 0)
+  );
+}
+.pq-hints {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pq-5);
+}
+.pq-hint {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+}
+/* Bracketed, not boxed. A filled or outlined key-cap chip is web chrome; the
+   brackets are set a stop below the letter so the glyph reads first. */
+.pq-hint__k {
+  font-family: var(--pq-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: rgba(var(--pq-pane-rgb) / 0.68);
+}
+.pq-hint__k::before {
+  content: '[';
+  margin-right: 2px;
+  color: rgba(var(--pq-ink-rgb) / 0.22);
+}
+.pq-hint__k::after {
+  content: ']';
+  margin-left: 2px;
+  color: rgba(var(--pq-ink-rgb) / 0.22);
+}
+.pq-hint__l {
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-wider);
+  text-transform: uppercase;
+  color: rgba(var(--pq-ink-rgb) / 0.42);
+}
+.pq-modal__count {
+  font-family: var(--pq-mono);
+  font-size: 10px;
+  letter-spacing: var(--pq-tr-wide);
+  text-transform: uppercase;
+  color: rgba(var(--pq-ink-rgb) / 0.26);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Close — a 28px hairline disc, not a button. A default focus ring or a filled
+   rounded rect in a captured frame is an instant tell that this is a web page. */
+.pq-modal__close {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 3px;
+  border-radius: var(--pq-r-pill);
+  background: none;
+  color: rgba(var(--pq-ink-rgb) / 0.65);
+  border: 1px solid rgba(var(--pq-pane-rgb) / 0.18);
+  transition: color var(--pq-dur-2) var(--pq-ease), border-color var(--pq-dur-2) var(--pq-ease),
+    box-shadow var(--pq-dur-2) var(--pq-ease);
+}
+.pq-modal__close svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.5;
+}
+.pq-modal__close:hover,
+.pq-modal__close:focus-visible {
+  outline: none;
+  color: rgba(var(--pq-ink-rgb) / 0.92);
+  border-color: rgba(var(--pq-pane-rgb) / 0.35);
+  box-shadow: 0 0 6px rgba(var(--pq-pane-rgb) / 0.3), inset 0 0 6px rgba(var(--pq-pane-rgb) / 0.08);
 }
 
 /* Pause menu */
@@ -1404,6 +2019,13 @@
   letter-spacing: var(--pq-tr-wide);
   color: var(--pq-ink-40);
 }
+/* Engine credit — it belongs here, not on the title screen. */
+.pq-about__credit {
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-wide);
+  color: var(--pq-ink-25);
+}
 
 /* ══════════════════════════════  Save / Load  ══════════════════════════════ */
 
@@ -1415,21 +2037,34 @@
 .pq-slot__wrap {
   position: relative;
 }
+/* Card radius nests inside the panel's 10px, never matches or exceeds it. */
 .pq-slot {
   display: block;
   width: 100%;
   text-align: left;
-  border-radius: var(--pq-r-3);
+  border-radius: var(--pq-r-1);
   overflow: hidden;
-  background: rgba(var(--pq-ink-rgb) / 0.03);
-  border: 1px solid var(--pq-line-2);
+  background: linear-gradient(180deg, rgba(var(--pq-pane-rgb) / 0.045), rgba(var(--pq-pane-rgb) / 0) 44%),
+    rgba(var(--pq-ink-rgb) / 0.022);
+  border: 1px solid rgba(var(--pq-pane-rgb) / 0.11);
   transition: border-color var(--pq-dur-2) var(--pq-ease), background var(--pq-dur-2) var(--pq-ease),
-    transform var(--pq-dur-2) var(--pq-ease);
+    box-shadow var(--pq-dur-2) var(--pq-ease), transform var(--pq-dur-2) var(--pq-ease);
+}
+/* Cursor = the slot a bare Enter acts on. Also the shape a real keyboard focus
+   takes, so the two states are one visual language: a hairline key edge, a low
+   key bloom off the card and a plate lifted a stop — never a browser ring. */
+.pq-slot.is-cursor,
+.pq-slot:hover:not([disabled]),
+.pq-slot:focus-visible {
+  outline: none;
+  border-color: rgba(var(--pq-key-rgb) / 0.34);
+  background: linear-gradient(180deg, rgba(var(--pq-key-rgb) / 0.085), rgba(var(--pq-key-rgb) / 0.02) 52%),
+    rgba(var(--pq-ink-rgb) / 0.03);
+  box-shadow: 0 0 0 1px rgba(var(--pq-key-rgb) / 0.1), 0 0 26px rgba(var(--pq-key-rgb) / 0.14),
+    inset 0 1px 0 rgba(var(--pq-pane-rgb) / 0.08);
 }
 .pq-slot:hover:not([disabled]),
 .pq-slot:focus-visible {
-  border-color: var(--pq-line-key);
-  background: rgba(var(--pq-key-rgb) / 0.06);
   transform: translateY(-2px);
 }
 .pq-slot[disabled] {
@@ -1449,19 +2084,114 @@
   height: 100%;
   object-fit: cover;
 }
+/* Every plate takes the same vignette and bottom fall-off, so a raw stage grab
+   pasted into a slot is graded into the panel instead of glowing out of it. */
+.pq-slot__thumb::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(var(--pq-scrim-rgb) / 0) 54%, rgba(var(--pq-scrim-rgb) / 0.4)),
+    radial-gradient(88% 94% at 50% 44%, rgba(var(--pq-scrim-rgb) / 0) 48%, rgba(var(--pq-scrim-rgb) / 0.3));
+}
+/* Blank plate. Diagonal hatching is placeholder grade — the tell of a comp that
+   never got art. This is a lit centre falling off into the corners, which is
+   what an unexposed frame looks like, plus the story sigil at watermark level. */
 .pq-slot__thumb.is-empty {
-  background: repeating-linear-gradient(
-    135deg,
-    rgba(var(--pq-ink-rgb) / 0.03) 0 10px,
-    rgba(var(--pq-ink-rgb) / 0.05) 10px 20px
+  background: radial-gradient(
+      112% 92% at 50% 34%,
+      rgba(var(--pq-pane-rgb) / 0.055) 0%,
+      rgba(var(--pq-pane-rgb) / 0) 66%
+    ),
+    /* the room's practical reaches the bottom of the plate too, so the blanks
+       are graded with the frame instead of sitting outside it as cool grey */
+      radial-gradient(
+        88% 78% at 22% 112%,
+        rgba(var(--pq-lamp-rgb) / 0.055) 0%,
+        rgba(var(--pq-lamp-rgb) / 0) 70%
+      ),
+    linear-gradient(180deg, rgba(var(--pq-ink-rgb) / 0.03), rgba(var(--pq-scrim-rgb) / 0.4));
+}
+.pq-slot__thumb.is-empty::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    76% 88% at 50% 46%,
+    rgba(var(--pq-scrim-rgb) / 0) 40%,
+    rgba(var(--pq-scrim-rgb) / 0.44) 100%
   );
 }
+/* Sigil, embossed into the lower-right of the plate and cropped by the card —
+   a watermark, not a badge. Centred it would collide with the write glyph and
+   the pair would read as one garbled mark. */
+.pq-slot__mark {
+  position: absolute;
+  right: -48px;
+  bottom: -54px;
+  z-index: 1;
+  width: 138px;
+  height: 138px;
+  color: rgba(var(--pq-ink-rgb) / 0.05);
+  transform: rotate(-9deg);
+  /* A hair of blur turns a crisp vector into an emboss — otherwise the eye
+     locks onto six identical hard-edged stars and reads them as decoration. */
+  filter: blur(0.4px);
+}
+.pq-slot__mark svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 0.7;
+}
 .pq-slot__ph {
+  grid-area: 1 / 1;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+.pq-slot__plus {
+  display: block;
+  width: 17px;
+  height: 17px;
+  color: rgba(var(--pq-ink-rgb) / 0.3);
+  transition: color var(--pq-dur-2) var(--pq-ease);
+}
+.pq-slot__plus svg {
+  width: 100%;
+  height: 100%;
+}
+/* Legible, not ghosted. The trailing letterspace is discounted so 0.3em of
+   tracking does not push the word off optical centre. */
+.pq-slot__phtext {
   font-family: var(--pq-mono);
-  font-size: var(--pq-fs-2xs);
-  letter-spacing: var(--pq-tr-wider);
+  font-size: 9.5px;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
   text-transform: uppercase;
-  color: var(--pq-ink-25);
+  color: rgba(var(--pq-ink-rgb) / 0.35);
+  transition: color var(--pq-dur-2) var(--pq-ease);
+}
+.pq-slot.is-cursor .pq-slot__thumb.is-empty {
+  background: radial-gradient(
+      112% 92% at 50% 34%,
+      rgba(var(--pq-key-rgb) / 0.17) 0%,
+      rgba(var(--pq-key-rgb) / 0) 68%
+    ),
+    linear-gradient(180deg, rgba(var(--pq-ink-rgb) / 0.085), rgba(var(--pq-scrim-rgb) / 0.28));
+}
+.pq-slot.is-cursor .pq-slot__plus {
+  color: rgba(var(--pq-key-rgb) / 0.72);
+}
+.pq-slot.is-cursor .pq-slot__phtext {
+  color: rgba(var(--pq-ink-rgb) / 0.5);
+}
+.pq-slot.is-cursor .pq-slot__mark {
+  color: rgba(var(--pq-key-rgb) / 0.1);
 }
 .pq-slot__meta {
   display: grid;
@@ -1473,6 +2203,9 @@
   font-size: 10px;
   letter-spacing: var(--pq-tr-wide);
   text-transform: uppercase;
+  color: rgba(var(--pq-key-rgb) / 0.72);
+}
+.pq-slot.is-cursor .pq-slot__idx {
   color: var(--pq-key);
 }
 .pq-slot__story {
@@ -1480,6 +2213,36 @@
   font-size: var(--pq-fs-md);
   font-weight: 420;
   color: var(--pq-ink-90);
+}
+/* An unwritten field, not a missing one. */
+.pq-slot__story.is-blank {
+  color: rgba(var(--pq-ink-rgb) / 0.27);
+}
+/* Ledger line — slot index left, save time right, one baseline. Putting the
+   timestamp up here leaves the chapter the full card width instead of
+   guillotining it after eight characters. */
+.pq-slot__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pq-3);
+}
+.pq-slot__field {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  margin-top: 2px;
+}
+/* Field caption — the micro-label that turns an em-dash into an empty field
+   rather than a stray mark. Set a stop under the value it names. */
+.pq-slot__cap {
+  flex: 0 0 auto;
+  font-family: var(--pq-mono);
+  font-size: 8.5px;
+  letter-spacing: var(--pq-tr-wider);
+  text-transform: uppercase;
+  color: rgba(var(--pq-ink-rgb) / 0.2);
 }
 .pq-slot__label {
   font-size: var(--pq-fs-sm);
@@ -1493,6 +2256,8 @@
   font-size: 10px;
   color: var(--pq-ink-40);
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .pq-slot__del {
   position: absolute;
@@ -1524,27 +2289,148 @@
 
 /* ══════════════════════════════  Settings  ══════════════════════════════ */
 
-.pq-set {
-  display: grid;
-  gap: var(--pq-6);
+/* Scoped type hierarchy. The eyebrow is struck in the same tracked accent caps as
+   the section rules below it, so PREFERENCES / TEXT / AUDIO / VISUALS are visibly
+   one rank of the system rather than three unrelated small-caps decisions; the
+   title takes a display optical size so the serif thins its hairlines the way a
+   masthead cut does at 35px instead of wearing its text-size weight. */
+.pq-modal__panel--set .pq-modal__kicker {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: rgba(var(--pq-key-rgb) / 0.55);
 }
+.pq-modal__panel--set .pq-modal__title {
+  font-variation-settings: 'opsz' 120, 'SOFT' 0, 'WONK' 0;
+  letter-spacing: -0.01em;
+}
+/* Settings carries more rows than any other modal. A slightly taller cap buys back
+   two full rows of column before the dissolve has to do any work — the panel still
+   floats clear of the frame edge by a comfortable margin at 1080p. */
+.pq-modal__panel--set {
+  max-height: min(88vh, 904px);
+}
+
+/* The column is the panel's only scroller: masked at both ends so a row that runs
+   past the glass dissolves into it. A toggle sheared in half by the panel border
+   is the single loudest unfinished-web-modal tell in the frame. */
+.pq-set {
+  --fade-top: 0px;
+  --fade-bot: 0px;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: var(--pq-6);
+  padding: var(--pq-5);
+  overflow-y: auto;
+  /* No rail. A native scrollbar down the inside edge of diegetic glass is the
+     fastest way to say "this is a web page"; the dissolve and the ▼ carry it. */
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)),
+    transparent 100%
+  );
+}
+.pq-set::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.pq-set[data-overflow='1'] {
+  --fade-bot: 48px;
+}
+.pq-set[data-top='1'] {
+  --fade-top: 44px;
+}
+/* At the end of the column there is nothing left to dissolve, but the edge still
+   softens by a couple of pixels so the last row meets the glass instead of being
+   sheared by it. */
+.pq-set[data-end='1'] {
+  --fade-bot: 14px;
+}
+.pq-set:not([data-overflow='1'])[data-end='1'] {
+  --fade-bot: 0px;
+}
+/* Scroll affordance — the same hairline chevron the transcript uses. Retracts at
+   the end of the column. */
+.pq-set__cue {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  z-index: 2;
+  width: 15px;
+  height: 15px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  color: rgba(var(--pq-pane-rgb) / 0.44);
+  opacity: 1;
+  transition: opacity var(--pq-dur-3) var(--pq-ease);
+}
+.pq-set__cue svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  stroke-width: 1.4;
+}
+.pq-set__cue[data-end='1'] {
+  opacity: 0;
+}
+
 .pq-set__group {
   display: grid;
   gap: var(--pq-3);
 }
+/* Staggered entrance. Each block rises a hair later than the one above it, so the
+   panel assembles in depth on open and a capture taken during the run has real
+   layering in it rather than one flat overlay switched on. Armed once per open
+   (.is-entering), never on a slider tick. */
+.pq-set.is-entering > * {
+  opacity: 0;
+  transform: translateY(9px);
+  animation: pq-set-rise var(--pq-dur-4) var(--pq-ease-out) forwards;
+}
+.pq-set.is-entering > *:nth-child(2) {
+  animation-delay: 150ms;
+}
+.pq-set.is-entering > *:nth-child(3) {
+  animation-delay: 300ms;
+}
+.pq-set.is-entering > *:nth-child(4) {
+  animation-delay: 450ms;
+}
+@keyframes pq-set-rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+:root[data-pq-motion='reduced'] .pq-set.is-entering > * {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
 .pq-set__grouptitle {
   font-family: var(--pq-mono);
-  font-size: var(--pq-fs-2xs);
-  letter-spacing: var(--pq-tr-wider);
+  font-size: 10px;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--pq-ink-40);
+  color: rgba(var(--pq-key-rgb) / 0.55);
 }
 .pq-set__rows {
   display: grid;
   gap: var(--pq-2);
   padding: var(--pq-3) var(--pq-4);
-  border-radius: var(--pq-r-3);
-  background: rgba(var(--pq-ink-rgb) / 0.025);
+  border-radius: var(--pq-r-glass);
+  background: rgba(var(--pq-ink-rgb) / 0.022);
   border: 1px solid var(--pq-line);
 }
 .pq-field {
@@ -1555,23 +2441,33 @@
 }
 .pq-field--slider {
   display: grid;
-  gap: var(--pq-2);
+  gap: 7px;
 }
 .pq-field__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: var(--pq-4);
 }
 .pq-field__label {
   font-size: var(--pq-fs-base);
   font-weight: 500;
   color: var(--pq-ink-90);
 }
+/* One readout style, one column. Every value in the panel is the same mono at the
+   same size and the same weight of grey, set on tabular figures and parked on a
+   shared right edge — so "45 cps", "90%" and "50%" line up as a instrument column
+   instead of three differently-coloured labels drifting with their own widths. */
 .pq-field__val {
   font-family: var(--pq-mono);
-  font-size: var(--pq-fs-xs);
-  color: var(--pq-key);
-  letter-spacing: 0.02em;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(var(--pq-ink-rgb) / 0.6);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.6em;
+  text-align: right;
+  white-space: nowrap;
 }
 .pq-field--toggle {
   display: flex;
@@ -1595,103 +2491,203 @@
   padding-top: var(--pq-2);
 }
 
-/* Range slider */
+/* ── Slider ──
+   A drawn instrument, not a styled UA range. The rail carries the picture: a 2px
+   hairline for the unspent run, an accent-lit filled run with its own bloom, and
+   a tick at the shipped default so the player can see how far they have pushed
+   off it. The input contributes nothing but its thumb. */
+.pq-range-wrap {
+  position: relative;
+  display: block;
+  height: 20px;
+}
+.pq-range__rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: rgba(var(--pq-ink-rgb) / 0.12);
+  pointer-events: none;
+}
+.pq-range__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--pq-fill, 50%);
+  background: rgba(var(--pq-key-rgb) / 0.75);
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.35);
+  transition: width 70ms linear;
+}
+/* Default mark — a hairline riser hung *below* the rail, not a dot on it. Slung
+   under the line it stays legible when the thumb is parked on the default (which
+   is exactly where a fresh install finds it) and it reads as an engraved
+   graduation on the instrument rather than a second control. */
+.pq-range__tick {
+  position: absolute;
+  left: var(--pq-tick, 50%);
+  top: 7px;
+  width: 1px;
+  height: 6px;
+  margin-left: -0.5px;
+  background: rgba(var(--pq-ink-rgb) / 0.28);
+}
 .pq-range {
   -webkit-appearance: none;
   appearance: none;
-  height: 22px;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 20px;
+  margin: 0;
   cursor: pointer;
   background: transparent;
 }
 .pq-range::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: var(--pq-r-pill);
-  background: linear-gradient(
-    90deg,
-    var(--pq-key) 0 var(--pq-fill, 50%),
-    rgba(var(--pq-ink-rgb) / 0.12) var(--pq-fill, 50%) 100%
-  );
+  height: 2px;
+  background: transparent;
 }
 .pq-range::-moz-range-track {
-  height: 4px;
-  border-radius: var(--pq-r-pill);
-  background: rgba(var(--pq-ink-rgb) / 0.12);
+  height: 2px;
+  background: transparent;
 }
-.pq-range::-moz-range-progress {
-  height: 4px;
-  border-radius: var(--pq-r-pill);
-  background: var(--pq-key);
-}
+/* Hollow ring. A filled white ball is the stock UA thumb and reads as one in a
+   still frame; a 12px ring with a 1.5px stroke reads as a machined detent. */
 .pq-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  margin-top: -7px;
-  width: 18px;
-  height: 18px;
+  margin-top: -5px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--pq-ink);
-  border: 3px solid var(--pq-key);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 12px var(--pq-glow-key-soft);
-  transition: transform var(--pq-dur-1) var(--pq-ease);
+  background: rgba(var(--pq-paper-rgb) / 0.55);
+  border: 1.5px solid rgba(var(--pq-key-rgb) / 0.92);
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.35), 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: transform var(--pq-dur-1) var(--pq-ease), box-shadow var(--pq-dur-2) var(--pq-ease);
 }
 .pq-range::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--pq-ink);
-  border: 3px solid var(--pq-key);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  background: rgba(var(--pq-paper-rgb) / 0.55);
+  border: 1.5px solid rgba(var(--pq-key-rgb) / 0.92);
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.35), 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 .pq-range:hover::-webkit-slider-thumb,
 .pq-range:active::-webkit-slider-thumb {
-  transform: scale(1.12);
+  transform: scale(1.14);
+  box-shadow: 0 0 12px rgba(var(--pq-key-rgb) / 0.5), 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.pq-range:focus-visible {
+  outline: none;
 }
 .pq-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 4px rgba(var(--pq-key-rgb) / 0.3), 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 3px rgba(var(--pq-key-rgb) / 0.28), 0 0 12px rgba(var(--pq-key-rgb) / 0.45);
 }
 
-/* Switch */
+/* ── Switch ──
+   A hairline pill. Off is a drawn outline with a dim dot; on fills with the key
+   colour, lights a soft halo, and punches the dot out in the panel's own paper —
+   an accent pill with an accent knob is a blob, not a switch. */
 .pq-switch {
   flex: none;
   position: relative;
-  width: 46px;
-  height: 26px;
+  width: 42px;
+  height: 22px;
   border-radius: var(--pq-r-pill);
-  background: rgba(var(--pq-ink-rgb) / 0.12);
-  border: 1px solid var(--pq-line-2);
-  transition: background var(--pq-dur-2) var(--pq-ease), border-color var(--pq-dur-2) var(--pq-ease);
+  background: rgba(var(--pq-ink-rgb) / 0.04);
+  border: 1px solid rgba(var(--pq-ink-rgb) / 0.18);
+  transition: background 200ms var(--pq-ease-soft), border-color 200ms var(--pq-ease-soft),
+    box-shadow 200ms var(--pq-ease-soft);
 }
 .pq-switch__knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
+  top: 50%;
+  left: 5px;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
   border-radius: 50%;
-  background: var(--pq-ink-70);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-  transition: transform var(--pq-dur-2) var(--pq-ease), background var(--pq-dur-2) var(--pq-ease);
+  background: rgba(var(--pq-ink-rgb) / 0.45);
+  transition: transform 200ms var(--pq-ease-soft), background 200ms var(--pq-ease-soft);
+}
+.pq-switch:hover {
+  border-color: rgba(var(--pq-ink-rgb) / 0.3);
+}
+.pq-switch:hover .pq-switch__knob {
+  background: rgba(var(--pq-ink-rgb) / 0.62);
+}
+.pq-switch:focus-visible {
+  outline: none;
+  border-color: rgba(var(--pq-key-rgb) / 0.7);
+  box-shadow: 0 0 0 3px rgba(var(--pq-key-rgb) / 0.22);
 }
 .pq-switch.is-on {
-  background: rgba(var(--pq-key-rgb) / 0.32);
-  border-color: var(--pq-line-key);
+  background: rgba(var(--pq-key-rgb) / 0.8);
+  border-color: rgba(var(--pq-key-rgb) / 0.55);
+  box-shadow: 0 0 14px rgba(var(--pq-key-rgb) / 0.26);
 }
 .pq-switch.is-on .pq-switch__knob {
   transform: translateX(20px);
-  background: var(--pq-key);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 10px var(--pq-glow-key);
+  background: rgba(var(--pq-paper-rgb) / 0.9);
 }
 
 /* ══════════════════════════════  Backlog  ══════════════════════════════ */
 
+/* One scroller, masked at both ends: text dissolves into the glass instead of
+   being amputated mid-sentence at the panel border. The ramp lengths live in
+   custom properties so the JS can retract the bottom fade once the column is
+   actually at its end (nothing left to dissolve into). */
 .pq-backlog {
+  --fade-top: 0px;
+  --fade-bot: var(--pq-fade-len);
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: var(--pq-4);
-  max-height: 60vh;
+  align-content: start;
+  gap: var(--pq-5);
   overflow-y: auto;
-  padding-right: var(--pq-3);
+  padding: var(--pq-5);
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--pq-ink-rgb) / 0.2) transparent;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 9px,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 9px,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)),
+    transparent 100%
+  );
+}
+/* A column short enough to fit has no ends to dissolve; the fades and the ▼ arm
+   themselves only once it actually scrolls. No reserved fade shelf either — the
+   ramp overlays the live text rather than padding it away, so the last line at
+   the end of the column sits crisp with normal breathing room instead of
+   floating above a dead strip of glass. */
+.pq-backlog:not([data-overflow='1']) {
+  --fade-bot: 0px;
+}
+.pq-backlog[data-top='1'] {
+  --fade-top: 52px;
+}
+/* At the end of the column there is nothing left to dissolve, but the edge still
+   softens by a couple of lines' descender so the last line meets the glass
+   instead of being sheared by it. */
+.pq-backlog[data-end='1'] {
+  --fade-bot: 18px;
+}
+.pq-backlog:not([data-overflow='1'])[data-end='1'] {
+  --fade-bot: 0px;
 }
 .pq-backlog::-webkit-scrollbar {
   width: 8px;
@@ -1700,6 +2696,30 @@
   background: rgba(var(--pq-ink-rgb) / 0.16);
   border-radius: 4px;
 }
+/* Scroll affordance — a single hairline chevron on the fade, the same glyph the
+   dialogue bar uses to say "there is more". Retracts at the end of the column. */
+.pq-backlog__cue {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  z-index: 2;
+  width: 15px;
+  height: 15px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  color: rgba(var(--pq-pane-rgb) / 0.44);
+  opacity: 1;
+  transition: opacity var(--pq-dur-3) var(--pq-ease);
+}
+.pq-backlog__cue svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  stroke-width: 1.4;
+}
+.pq-backlog__cue[data-end='1'] {
+  opacity: 0;
+}
 .pq-backlog__empty {
   font-family: var(--pq-serif);
   font-style: italic;
@@ -1707,34 +2727,53 @@
   text-align: center;
   padding: var(--pq-7) 0;
 }
+/* Every entry hangs off a rail. Narration gets the faintest possible stroke,
+   an attributed line gets 2px in that speaker's colour — so the one saturated
+   element in the frame is part of a system instead of a lone orange word. */
 .pq-backlog__row {
   display: grid;
-  gap: 4px;
+  gap: 5px;
+  padding-left: var(--pq-5);
+  border-left: 1px solid rgba(var(--pq-pane-rgb) / 0.11);
+}
+.pq-backlog__row:not(.is-narration) {
+  padding-left: calc(var(--pq-5) - 1px);
+  border-left: 2px solid color-mix(in srgb, var(--pq-name, var(--pq-accent)) 44%, transparent);
 }
 .pq-backlog__name {
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: var(--pq-tr-wider);
   text-transform: uppercase;
-  color: var(--pq-name, var(--pq-accent));
+  /* Pulled 28% toward the reading white, which drops the chroma to about the
+     level of the practical lamp in the plate. Full-strength #e0a46b next to a
+     desaturated night grade is the one element that isn't in the grade. */
+  color: color-mix(in oklab, var(--pq-name, var(--pq-accent)) 72%, rgb(var(--pq-warm-rgb)));
+  opacity: 0.86;
 }
 .pq-backlog__line {
   font-family: var(--pq-serif);
   font-size: var(--pq-fs-md);
   line-height: var(--pq-lh-body);
-  color: var(--pq-ink-90);
+  color: rgba(var(--pq-warm-rgb) / 0.92);
 }
+/* Narration is ROMAN. Eight consecutive italic paragraphs are one grey texture
+   with no scan handholds; italic is held back for stage-direction beats (see
+   Backlog.appendRow) so that when it appears it means something. */
 .pq-backlog__row.is-narration .pq-backlog__line {
+  font-style: normal;
+  color: rgba(var(--pq-ink-rgb) / 0.66);
+}
+.pq-backlog__row.is-stage .pq-backlog__line {
   font-style: italic;
-  color: var(--pq-ink-55);
-  padding-left: var(--pq-4);
-  border-left: 1px solid var(--pq-line);
+  color: rgba(var(--pq-ink-rgb) / 0.56);
+}
+.pq-backlog__row.is-offscript {
+  border-left-color: var(--pq-line-accent);
 }
 .pq-backlog__row.is-offscript .pq-backlog__line {
-  color: var(--pq-ink);
-  border-left: 2px solid var(--pq-line-accent);
-  padding-left: var(--pq-4);
+  color: rgba(var(--pq-warm-rgb) / 1);
 }
 
 /* ══════════════════════════════  Credits  ══════════════════════════════ */
@@ -1837,7 +2876,6 @@
   }
   .pq-title__stories {
     justify-self: stretch;
-    max-width: none;
   }
   .pq-rail {
     max-height: 40vh;
@@ -1852,7 +2890,15 @@
 
 @media (max-width: 680px) {
   .pq-dialogue {
-    padding-bottom: var(--pq-6);
+    padding-bottom: var(--pq-7);
+  }
+  /* Too narrow for a nameplate column — stack the plate above the prose. */
+  .pq-dialogue__inner {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--pq-2);
+  }
+  .pq-dialogue__text {
+    grid-column: 1;
   }
   .pq-proxy {
     bottom: var(--pq-6);
@@ -1861,9 +2907,6 @@
   .pq-proxy__telemetry {
     grid-template-columns: 1fr;
     gap: var(--pq-2);
-  }
-  .pq-continue {
-    right: 4px;
   }
 }
 
@@ -1882,13 +2925,25 @@
   .boot__bar span,
   .pq-wave__bar,
   .pq-proxy__dot,
-  .pq-continue.is-shown {
+  .pq-continue.is-shown,
+  .pq-chapter.is-in .pq-chapter__more,
+  .pq-title__plate,
+  .pq-title__bokeh,
+  .pq-title__rain,
+  .pq-title__lamp,
+  .pq-title__grain {
     animation: none !important;
   }
 }
 :root[data-pq-motion='reduced'] .pq-wave__bar,
 :root[data-pq-motion='reduced'] .boot__bar span,
 :root[data-pq-motion='reduced'] .pq-continue.is-shown,
-:root[data-pq-motion='reduced'] .pq-proxy__dot {
+:root[data-pq-motion='reduced'] .pq-chapter.is-in .pq-chapter__more,
+:root[data-pq-motion='reduced'] .pq-proxy__dot,
+:root[data-pq-motion='reduced'] .pq-title__plate,
+:root[data-pq-motion='reduced'] .pq-title__bokeh,
+:root[data-pq-motion='reduced'] .pq-title__rain,
+:root[data-pq-motion='reduced'] .pq-title__lamp,
+:root[data-pq-motion='reduced'] .pq-title__grain {
   animation: none !important;
 }

@@ -246,6 +246,11 @@ export interface StoryManifest {
   cover?: string;
   /** Art-director style preamble prepended to every asset prompt for cohesion. */
   artStyle?: string;
+  /**
+   * Nameplate shown on narration lines (lines with no speaker) — the role the
+   * player is reading as. Omitted ⇒ narration runs without a plate.
+   */
+  narrator?: string;
   theme: StoryTheme;
   characters: Record<string, CharacterDef>;
   backgrounds: Record<string, BackgroundDef>;
@@ -478,6 +483,12 @@ export interface AppHost {
    * yet — callers fall back to a themed placeholder.
    */
   getCoverUrl(storyId: string): string | undefined;
+  /**
+   * Resolved URL of the plate the title screen runs full-bleed behind the menu —
+   * the story's first declared background (its establishing environment), or
+   * undefined when the story has no background art yet.
+   */
+  getBackdropUrl(storyId: string): string | undefined;
   startStory(storyId: string): void;
   /** Resume the rolling autosave, if any. */
   continueGame(): void;

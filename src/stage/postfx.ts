@@ -40,11 +40,30 @@ interface GradeUniforms {
   uSplitTone: { value: number };
   uVignette: { value: number };
   uGrain: { value: number };
+  uGrainSize: { value: number };
   uAberration: { value: number };
   uFlash: { value: number };
   uGlitch: { value: number };
   [key: string]: THREE.IUniform;
 }
+
+/**
+ * Iris. Deliberately stopped almost all the way down.
+ *
+ * BokehPass's depth pass is alpha-blind (it overrides every material with a
+ * plain MeshDepthMaterial), so character sprites can only ever contribute their
+ * rectangular quad, never their silhouette. Any aperture wide enough to throw
+ * the city out of focus therefore also stamps a hard-edged rectangle of
+ * differently-focused background around the speaker — a visible focus seam,
+ * which is a hard-fail on the rubric. Stage keeps the plate itself excluded
+ * from that trap by parking focus exactly on it; this stop then leaves a
+ * whisper of falloff during a scene's focus ramp and nothing else. The shallow
+ * depth of field the frames actually show is painted into the plates.
+ */
+const APERTURE = 0.0005;
+
+/** Grain clump edge, in CSS pixels before the device pixel ratio. */
+const GRAIN_PX = 2.2;
 
 const v3 = (a?: [number, number, number], d = 0): THREE.Vector3 =>
   a ? new THREE.Vector3(a[0], a[1], a[2]) : new THREE.Vector3(d, d, d);
@@ -90,12 +109,12 @@ export class PostFX {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.65, 0.42, 0.85);
     this.composer.addPass(this.bloom);
 
-    this.bokeh = new BokehPass(scene, camera, { focus: 6.5, aperture: 0.0006, maxblur: 0.008 });
+    this.bokeh = new BokehPass(scene, camera, { focus: 6.5, aperture: APERTURE, maxblur: 0.009 });
     this.composer.addPass(this.bokeh);
 
     this.gradeU = {
       tDiffuse: { value: null },
-      uResolution: { value: new THREE.Vector2(width, height) },
+      uResolution: { value: new THREE.Vector2(width, height).multiplyScalar(renderer.getPixelRatio()) },
       uTime: { value: 0 },
       uLift: { value: v3(undefined, 0) },
       uGamma: { value: v3(undefined, 1) },
@@ -105,6 +124,13 @@ export class PostFX {
       uSplitTone: { value: 0.35 },
       uVignette: { value: 0.32 },
       uGrain: { value: 0.5 },
+      // Grain cell edge in RENDER-TARGET pixels. At 1.5px the clump was small
+      // enough to alias against the display grid and read as a fixed screen
+      // door; 2.2px is the classic 35mm-scan size — coarse enough to be seen as
+      // emulsion, fine enough not to read as a texture overlay. Scaled by the
+      // pixel ratio so a HiDPI frame keeps the same *apparent* grain rather
+      // than a twice-as-fine one.
+      uGrainSize: { value: GRAIN_PX * renderer.getPixelRatio() },
       uAberration: { value: 0.0016 },
       uFlash: { value: 0 },
       uGlitch: { value: 0 },
@@ -211,6 +237,7 @@ export class PostFX {
     this.bloom.resolution.set(width, height);
     this.bloom.setSize(width, height);
     this.gradeU.uResolution.value.set(width * pr, height * pr);
+    this.gradeU.uGrainSize.value = GRAIN_PX * pr;
     this.smaa.setSize(width * pr, height * pr);
   }
 

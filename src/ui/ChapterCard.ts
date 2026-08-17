@@ -1,9 +1,12 @@
 /**
  * ChapterCard — full-bleed typographic interstitial with a light-bleed reveal.
  *
- * A hush between scenes: a thin rule, a small overline, the chapter title in
- * Fraunces at display size, an optional subtitle, all rising through a warm
- * light-bleed wash. Dismissed by the next advance.
+ * A hush between scenes: a small tracked overline, a 24px hairline, the chapter
+ * title in Fraunces at display size, an optional subtitle, and exactly ONE
+ * continue chevron — all rising through a warm light-bleed wash. While the card
+ * is up it owns the frame (UILayer parks the dialogue bar and the wait ellipsis
+ * behind `.pq.is-chapter`), so the shot never carries a second, unexplained
+ * affordance. Dismissed by the next advance.
  */
 import { el } from './dom';
 
@@ -13,6 +16,13 @@ export class ChapterCard {
   private readonly titleEl: HTMLElement;
   private readonly subEl: HTMLElement;
   private count = 0;
+  /**
+   * "Holding the frame", which is NOT the same as "still in the DOM": the root
+   * lingers for the length of its fade-out. UILayer drives `.pq.is-chapter` off
+   * this, so the dialogue bar starts coming back the instant the card is
+   * dismissed rather than a full transition later.
+   */
+  private open = false;
 
   constructor(parent: HTMLElement) {
     this.overline = el('div', { class: 'pq-chapter__over', aria: { hidden: true } });
@@ -34,6 +44,10 @@ export class ChapterCard {
           el('div', { class: 'pq-chapter__rule', aria: { hidden: true } }),
           this.titleEl,
           this.subEl,
+          el('div', { class: 'pq-chapter__more', aria: { hidden: true } }, [
+            el('i'),
+            el('i'),
+          ]),
         ]),
       ],
     );
@@ -41,10 +55,11 @@ export class ChapterCard {
   }
 
   isOpen(): boolean {
-    return !this.root.hidden;
+    return this.open;
   }
 
   show(title: string, subtitle?: string): void {
+    this.open = true;
     this.count += 1;
     this.overline.textContent = `Chapter ${roman(this.count)}`;
     this.titleEl.textContent = title;
@@ -60,6 +75,7 @@ export class ChapterCard {
 
   hide(): void {
     if (this.root.hidden) return;
+    this.open = false;
     this.root.classList.remove('is-in');
     this.root.classList.add('is-out');
     const done = (): void => {

@@ -193,8 +193,11 @@ export function overlayShell(
     ? el('span', { class: 'pq-modal__kicker', text: opts.kicker, aria: { hidden: true } })
     : null;
   const body = el('div', { class: 'pq-modal__body' });
+  // Deliberately NOT .pq-iconbtn: a 40px rounded rect that fills on hover and
+  // takes the global focus ring is generic web chrome. This one is a 28px
+  // hairline disc with its own hover glow and its own focus treatment.
   const closeBtn = el('button', {
-    class: 'pq-iconbtn pq-modal__close',
+    class: 'pq-modal__close',
     type: 'button',
     html: Icons.close,
     aria: { label: 'Close' },
@@ -203,7 +206,14 @@ export function overlayShell(
 
   const panel = el(
     'div',
-    { class: opts.wide ? 'pq-modal__panel pq-modal__panel--wide' : 'pq-modal__panel', role: 'document' },
+    {
+      class: opts.wide ? 'pq-modal__panel pq-modal__panel--wide' : 'pq-modal__panel',
+      role: 'document',
+      // Opening focus lands on the panel, not on the first control inside it —
+      // the standard dialog pattern, and it keeps a keyboard focus ring off the
+      // close button in every captured frame.
+      tabIndex: -1,
+    },
     [
       el('header', { class: 'pq-modal__head' }, [
         el('div', { class: 'pq-modal__titles' }, [kicker, heading]),

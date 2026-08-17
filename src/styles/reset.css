@@ -101,6 +101,14 @@ input[type='range'] {
   color: var(--pq-ink, #e8eef2);
 }
 
+/* An author `display` declaration outbids the UA `[hidden]` rule at equal
+   specificity, which silently leaves supposedly-hidden components on screen —
+   empty nameplates, orphaned affordances in the corner of a shipped frame.
+   Make the attribute authoritative once, here. */
+[hidden] {
+  display: none !important;
+}
+
 /* Visually-hidden but screen-reader-available. */
 .pq-sr {
   position: absolute;

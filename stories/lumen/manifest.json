@@ -5,6 +5,7 @@
   "author": "Picture Quest",
   "synopsis": "You are a Lantern: a human who lends their voice to LUMEN, an AI companion for people awake through hard nights. A panel of soft light feeds you the perfect thing to say. You can read it, or you can say your own words instead — trading the machine's coherence for something a stranger might actually feel. Tonight there is one caller. Her name is Noor. This morning they demolished a building she designed, and it is 3 a.m., and dawn is a long way off.",
   "entry": "prologue",
+  "narrator": "Lantern",
   "cover": "title_key",
   "credits": [
     "Lumen",

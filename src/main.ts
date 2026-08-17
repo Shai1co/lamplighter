@@ -154,6 +154,17 @@ async function boot(): Promise<void> {
       if (!bundle || !key) return undefined;
       return bundle.assets.cg[key];
     },
+    getBackdropUrl(storyId: string) {
+      const bundle = bundleById.get(storyId);
+      if (!bundle) return undefined;
+      // First declared background = the story's establishing shot; its near-most
+      // layer is the sharpest plate we have of the place.
+      for (const bg of Object.values(bundle.assets.backgrounds)) {
+        const near = bg.layers[bg.layers.length - 1];
+        if (near) return near;
+      }
+      return undefined;
+    },
     startStory(storyId: string) {
       const bundle = bundleById.get(storyId);
       if (!bundle) {

@@ -40,7 +40,6 @@ body {
 .pq-slot__idx,
 .pq-slot__when,
 .pq-modal__kicker,
-.pq-title__over,
 .pq-title__eyebrow {
   font-family: var(--pq-mono);
   font-weight: 500;

@@ -17,6 +17,17 @@
   --pq-ink-rgb: 232 238 242;
   --pq-paper-rgb: 13 20 24;
 
+  /* Motivated practical — the lamp inside the art. Used only for light that is
+     supposed to come from somewhere (title backdrop bleed, key-art card glow). */
+  --pq-lamp-rgb: 232 160 92;
+
+  /* Reading white — the paper stock of the dialogue bar. Deliberately NOT
+     theme-driven: prose keeps one warm, filmic white across every story so the
+     reading surface never picks up a cast from a story's key color. */
+  --pq-warm-rgb: 232 226 214;
+  /* Bottom-fade behind the dialogue: a near-black that is never pure #000. */
+  --pq-scrim-rgb: 5 8 10;
+
   /* ── Derived surfaces (glass) ── */
   --pq-glass: rgba(var(--pq-paper-rgb) / 0.52);
   --pq-glass-2: rgba(var(--pq-paper-rgb) / 0.66);
@@ -34,6 +45,17 @@
   /* ── Hairlines & edges ── */
   --pq-line: rgba(var(--pq-ink-rgb) / 0.1);
   --pq-line-2: rgba(var(--pq-ink-rgb) / 0.16);
+  /* Pane steel — ink cooled toward the key light. A sheet of glass never edges
+     in white; it edges in the colour of the room behind it, which here is a
+     cold monitor blue. Every modal hairline, close-button stroke and inner
+     highlight is struck from this so the panel edges belong to the grade. */
+  --pq-pane-rgb: 178 208 218;
+  --pq-line-pane: rgba(var(--pq-pane-rgb) / 0.16);
+  --pq-line-pane-hi: rgba(var(--pq-pane-rgb) / 0.35);
+  /* The single hairline that etches diegetic glass into the scene. One stroke,
+     no shadow — a drop-shadowed rounded card reads as an HTML overlay pasted on
+     the art, which is the fastest way to lose a blind A/B. */
+  --pq-line-glass: rgba(var(--pq-ink-rgb) / 0.12);
   --pq-line-key: rgba(var(--pq-key-rgb) / 0.34);
   --pq-line-accent: rgba(var(--pq-accent-rgb) / 0.4);
 
@@ -69,6 +91,9 @@
   --pq-tr-wide: 0.04em;
   --pq-tr-wider: 0.14em;
   --pq-tr-widest: 0.26em;
+  /* Plate tracking — reserved for the small caps eyebrow on interstitials,
+     where the letters must read as an engraved plate, not as a word. */
+  --pq-tr-ultra: 0.35em;
 
   /* ── Spacing ── */
   --pq-1: 4px;
@@ -88,12 +113,21 @@
   --pq-r-3: 14px;
   --pq-r-4: 20px;
   --pq-r-pill: 999px;
+  /* Glass radii. Cut sheet glass has almost no corner round; anything past
+     ~6px starts reading as a web card rather than a pane in the world. */
+  --pq-r-glass: 5px;
+  --pq-r-glass-inner: 4px;
 
   /* ── Shadows ── */
   --pq-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
   --pq-shadow-2: 0 8px 30px rgba(0, 0, 0, 0.36);
   --pq-shadow-3: 0 24px 70px rgba(0, 0, 0, 0.5), 0 4px 14px rgba(0, 0, 0, 0.3);
   --pq-shadow-glass: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(var(--pq-ink-rgb) / 0.08);
+  /* Pane float — one deep, wide, very soft cast plus a tight contact shadow, so
+     the glass reads as hovering a hand's width off the scene rather than being
+     stuck to it. Paired with the inner top highlight that gives it thickness. */
+  --pq-shadow-pane: 0 24px 64px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(var(--pq-pane-rgb) / 0.1);
   --pq-text-shadow: 0 1px 22px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.55);
 
   /* ── Motion ── */
@@ -123,8 +157,20 @@
 
   /* ── Layout ── */
   --pq-gutter: clamp(20px, 4.5vw, 76px);
-  --pq-dialogue-max: 1180px;
+  --pq-dialogue-max: 1420px;
+  /* Nameplate column + gap of the dialogue bar (Eliza-style two-column set). */
+  --pq-name-col: clamp(88px, 11.5vw, 208px);
+  --pq-name-gap: clamp(14px, 2vw, 36px);
+  /* Height of the bottom fade under the dialogue (~top edge at 70% of frame). */
+  --pq-scrim-h: clamp(220px, 29vh, 320px);
   --pq-blur: 18px;
+  /* Modal backdrop defocus. Deliberately shallow: the room behind a modal must
+     stay a *place* (lamp, monitor, silhouette all still readable) rather than
+     collapsing into grey mush, so the panel floats in an environment instead of
+     on a blur. Anything past ~20px erases the set. */
+  --pq-modal-blur: 10px;
+  /* Length of the dissolve at the ends of a long scrolling column. */
+  --pq-fade-len: 96px;
 }
 
 /* Reduced motion: collapse durations and disable ambient loops. */

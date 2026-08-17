@@ -1,9 +1,11 @@
 /**
  * DialogueBox — the reading surface.
  *
- * Filmic dialogue bar in the Eliza idiom: a CAPS speaker nameplate at far left,
- * body set in a transitional serif with generous leading, resting over a soft
- * bottom-fade gradient (never a hard opaque box), with a small ▼ continue glyph.
+ * Filmic dialogue bar in the Eliza idiom: a CAPS nameplate at far left of a
+ * two-column set, body in a transitional serif with generous leading, resting
+ * over a soft bottom-fade gradient (never a hard opaque box). The continue
+ * chevron is *inline* — it flows on the last line's baseline right after the
+ * final glyph, so it can never orphan itself below the block.
  * Owns a time-based typewriter with punctuation-aware cadence, skippable instantly.
  */
 import type { CharacterView } from '../core/types';
@@ -14,6 +16,11 @@ export interface ShowOptions {
   speed: number;
   /** Force an instant reveal regardless of speed. */
   instant?: boolean;
+  /**
+   * Plate to show for narration (no speaker) — e.g. the role the player is
+   * reading as. Omitted ⇒ narration runs plate-less.
+   */
+  narrator?: string;
 }
 
 export class DialogueBox {
@@ -79,17 +86,12 @@ export class DialogueBox {
     this.root.classList.remove('is-done');
     this.continueEl.classList.remove('is-shown');
 
-    // Speaker nameplate — narration (null) collapses the plate and italicises body.
-    if (speaker) {
-      this.root.classList.remove('is-narration');
-      this.nameEl.textContent = speaker.name;
-      this.nameEl.style.setProperty('--pq-name', speaker.color || 'var(--pq-accent)');
-      this.nameEl.hidden = false;
-    } else {
-      this.root.classList.add('is-narration');
-      this.nameEl.hidden = true;
-      this.nameEl.textContent = '';
-    }
+    // Nameplate. Speech uses the character's name; narration falls back to the
+    // story's narrator role, so a line is never anonymous when one is declared.
+    const plate = speaker ? speaker.name : (opts.narrator ?? '');
+    this.root.classList.toggle('is-narration', !speaker);
+    this.nameEl.textContent = plate;
+    this.nameEl.hidden = plate.length === 0;
 
     const instant = opts.instant || opts.speed <= 0;
     if (instant) {
@@ -141,6 +143,7 @@ export class DialogueBox {
     this.revealed = 0;
     this.bodyEl.textContent = '';
     this.nameEl.textContent = '';
+    this.nameEl.hidden = true;
     this.continueEl.classList.remove('is-shown');
     this.root.classList.remove('is-done');
     this.root.hidden = true;

@@ -135,6 +135,7 @@ export class Stage implements IStage {
   private readonly procedural: THREE.Texture[] = [];
   private gradientTex: THREE.Texture | null = null;
   private readonly silhouettes = new Map<string, THREE.Texture>();
+  private lightTex: THREE.DataTexture | null = null;
 
   private width = 1280;
   private height = 720;
@@ -143,6 +144,7 @@ export class Stage implements IStage {
   private hasBackground = false;
   private focusZ = CHAR_Z;
   private currentParallax = 0.05;
+  private depthHidden: [boolean, boolean] = [true, true];
 
   private readonly unsub: Array<() => void> = [];
 
@@ -174,6 +176,37 @@ export class Stage implements IStage {
 
     this.weather = new Weather(WEATHER_Z);
     this.scene.add(this.weather.group);
+
+    // BokehPass builds its depth buffer by rendering the scene a SECOND time
+    // with an override MeshDepthMaterial — which is alpha-blind. Two kinds of
+    // object poison that buffer and both must sit the depth pass out:
+    //
+    //   • the weather rig — full-frame planes parked in front of the camera.
+    //     Rendered opaque they stamped THEIR distance over every pixel, so the
+    //     depth buffer claimed the whole world was one flat plane 5.2 units out
+    //     and the DoF degenerated into a uniform soft-focus wash over the frame,
+    //     background and faces alike. That wash is most of why the plate read
+    //     mushy rather than photographed.
+    //   • character sprites — an override material ignores their alphaTest, so
+    //     each one wrote its full quad, not its silhouette, and left a hard
+    //     RECTANGLE of differently-focused background around the speaker. A
+    //     visible focus seam is a hard-fail; a real fix needs alpha-aware
+    //     per-object depth, which BokehPass does not support.
+    //
+    // With both excluded the buffer carries the painted plate's own distance,
+    // focus lands exactly on it, and the frame resolves crisp — the shallow-DoF
+    // separation then comes from the art, which is where it is actually painted.
+    this.scene.onBeforeRender = (): void => {
+      if (!this.scene.overrideMaterial) return;
+      this.depthHidden = [this.weather.group.visible, this.characterGroup.visible];
+      this.weather.group.visible = false;
+      this.characterGroup.visible = false;
+    };
+    this.scene.onAfterRender = (): void => {
+      if (!this.scene.overrideMaterial) return;
+      this.weather.group.visible = this.depthHidden[0];
+      this.characterGroup.visible = this.depthHidden[1];
+    };
 
     this.transitions = new Transitions(
       this.renderer,
@@ -310,11 +343,13 @@ export class Stage implements IStage {
 
     if (textures.length === 0) {
       this.applyLayers([this.gradientOrMake()], parallax);
+      this.updateLightField(this.gradientOrMake());
     } else {
       this.applyLayers(textures, parallax);
+      this.updateLightField(textures[0]);
     }
 
-    this.focusZ = this.averageLayerZ();
+    this.refreshFocus();
     void this.transitions.play(transition ?? (this.hasBackground ? 'dissolve' : 'crossfade'));
     this.hasBackground = true;
   }
@@ -355,6 +390,107 @@ export class Stage implements IStage {
         layer.setTexture(null);
       }
     }
+  }
+
+  /** Resolution of the per-scene light reduction handed to the weather systems. */
+  private static readonly LIGHT_W = 64;
+  private static readonly LIGHT_H = 36;
+
+  /**
+   * Reduce the incoming background to a 64×36 colour map and hand it to the
+   * weather so rain and glass are lit by the art instead of by a constant.
+   *
+   * The same pass finds the frame's dominant *warm* practical and mirrors it
+   * across the frame as a reflection target — which is why the glass reflection
+   * always lands on a real light source in the painting rather than somewhere
+   * an artist would have to hand-place.
+   */
+  private updateLightField(texture: THREE.Texture | null): void {
+    const W = Stage.LIGHT_W;
+    const H = Stage.LIGHT_H;
+    const src = texture?.image as CanvasImageSource | undefined;
+    if (!src) {
+      this.weather.setLightField(null, null);
+      return;
+    }
+
+    let pixels: ImageData;
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = W;
+      cv.height = H;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      if (!ctx) throw new Error('no 2d context');
+      ctx.drawImage(src, 0, 0, W, H);
+      pixels = ctx.getImageData(0, 0, W, H);
+    } catch {
+      // Tainted or undecodable source — fall back to uncoupled weather.
+      this.weather.setLightField(null, null);
+      return;
+    }
+
+    const data = new Uint8Array(W * H * 4);
+    let best = -1;
+    let bx = 0.5;
+    let by = 0.5;
+    const bc = new THREE.Color(1, 1, 1);
+    for (let y = 0; y < H; y++) {
+      const sy = H - 1 - y; // canvas is y-down, texture UV is y-up
+      for (let x = 0; x < W; x++) {
+        const s = (sy * W + x) * 4;
+        const d = (y * W + x) * 4;
+        const r = pixels.data[s];
+        const g = pixels.data[s + 1];
+        const b = pixels.data[s + 2];
+        data[d] = r;
+        data[d + 1] = g;
+        data[d + 2] = b;
+        data[d + 3] = 255;
+        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        const warmth = Math.max(0, (r - b) / 255) + 0.22;
+        const score = lum * lum * warmth;
+        if (score > best) {
+          best = score;
+          bx = (x + 0.5) / W;
+          by = (y + 0.5) / H;
+          bc.setRGB(r / 255, g / 255, b / 255);
+        }
+      }
+    }
+
+    this.lightTex?.dispose();
+    const tex = new THREE.DataTexture(data, W, H);
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+    this.lightTex = tex;
+
+    // Peak-normalize the practical's colour, then walk it a touch toward white
+    // so the reflection reads as light on glass rather than a coloured decal.
+    const peak = Math.max(bc.r, bc.g, bc.b, 0.001);
+    bc.setRGB(bc.r / peak, bc.g / peak, bc.b / peak).lerp(new THREE.Color(1, 1, 1), 0.14);
+
+    this.weather.setLightField(tex, {
+      // Mirror the practical across frame centre and pull it back in a little,
+      // so it counterweights the source instead of pinning to the far edge.
+      x: THREE.MathUtils.clamp(0.5 + (0.5 - bx) * 0.78, 0.1, 0.9),
+      y: THREE.MathUtils.clamp(by, 0.12, 0.88),
+      color: bc,
+      amount: best > 0.02 ? 0.09 : 0,
+    });
+  }
+
+  /**
+   * Park the plane of focus on the painted plate. Sprites are excluded from the
+   * DoF depth pass (see the scene.onBeforeRender note), so the plate's distance
+   * is the only real depth in the buffer — focusing anywhere else just softens
+   * the entire frame uniformly, faces included, which is exactly the mush this
+   * replaced. Kept as a hook so a scene change re-lands focus on the new plate.
+   */
+  private refreshFocus(): void {
+    this.focusZ = this.averageLayerZ();
   }
 
   private averageLayerZ(): number {
@@ -430,6 +566,7 @@ export class Stage implements IStage {
     this.characters.set(key, character);
     this.characterGroup.add(character.group);
     character.enter(side, this.settings.reducedMotion);
+    this.refreshFocus();
   }
 
   private firstPose(key: string): string | null {
@@ -443,6 +580,7 @@ export class Stage implements IStage {
     const character = this.characters.get(key);
     if (!character) return;
     this.characters.delete(key);
+    this.refreshFocus();
     void character.exit(to ?? 'left', this.settings.reducedMotion).then(() => {
       this.characterGroup.remove(character.group);
       character.dispose();
@@ -464,7 +602,7 @@ export class Stage implements IStage {
       if (speaker === null) ch.setSpeaking('neutral');
       else ch.setSpeaking(key === speaker ? 'speaker' : 'listener');
     }
-    if (speaker && this.characters.has(speaker)) this.focusZ = CHAR_Z;
+    this.refreshFocus();
   }
 
   /* ───────────────────────────  fx  ─────────────────────────── */
@@ -791,6 +929,8 @@ export class Stage implements IStage {
     this.procedural.length = 0;
     this.silhouettes.clear();
     this.gradientTex = null;
+    this.lightTex?.dispose();
+    this.lightTex = null;
 
     this.camera.dispose();
     this.scene.clear();

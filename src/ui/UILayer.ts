@@ -70,6 +70,7 @@ export class UILayer implements IUILayer {
   private choiceOptions: ResolvedChoice[] = [];
   private choiceEls: HTMLElement[] = [];
   private waitActive = false;
+  private narratorLabel: string | undefined;
   private creditsActive = false;
   private creditsDone = false;
   private autoTimer = 0;
@@ -130,6 +131,7 @@ export class UILayer implements IUILayer {
       onAbout: () => this.openModal(this.about.overlay, this.about.panel),
       hasContinue: () => this.host.hasContinue(),
       coverUrl: (id) => this.host.getCoverUrl(id),
+      backdropUrl: (id) => this.host.getBackdropUrl(id),
     });
 
     this.backlog = new Backlog(this.modalLayer, () => this.closeTop());
@@ -164,8 +166,11 @@ export class UILayer implements IUILayer {
         this.clearWait();
         this.clearAuto();
         this.closeChoiceUI();
-        this.dialogue.show(p.speaker, p.text, { speed: this.settingsState.textSpeed }, (natural) =>
-          this.onLineComplete(natural, p.auto),
+        this.dialogue.show(
+          p.speaker,
+          p.text,
+          { speed: this.settingsState.textSpeed, narrator: this.narratorLabel },
+          (natural) => this.onLineComplete(natural, p.auto),
         );
         this.backlog.push({ name: p.speaker?.name ?? null, color: p.speaker?.color, text: p.text });
         this.announce(p.speaker ? `${p.speaker.name}. ${p.text}` : p.text);
@@ -199,7 +204,10 @@ export class UILayer implements IUILayer {
     this.unsubs.push(
       this.bus.on('wait:begin', (p) => {
         this.waitActive = true;
-        this.waitEl.hidden = false;
+        // Only surface the ellipsis when there is nothing else holding the
+        // frame. With a line on screen the dialogue bar already says "wait" —
+        // a second, unexplained affordance in the corner is just noise.
+        this.waitEl.hidden = this.dialogue.isVisible();
         this.updateInputMode();
         // Safety: hide the affordance around the natural end of the wait.
         window.setTimeout(() => {
@@ -212,6 +220,7 @@ export class UILayer implements IUILayer {
       this.bus.on('runtime:ready', (p) => {
         this.backlog.reset();
         this.chapter.reset();
+        this.narratorLabel = p.story.narrator;
         this.applyTheme(p.story.theme);
       }),
     );
@@ -344,6 +353,9 @@ export class UILayer implements IUILayer {
     }
     if (this.chapter.isOpen()) {
       this.chapter.hide();
+      // Hand the frame straight back to the reading surface — the incoming line
+      // then fades in under the card's own fade-out instead of after it.
+      this.updateInputMode();
       this.bus.emit('input:advance', {});
       return;
     }
@@ -374,6 +386,13 @@ export class UILayer implements IUILayer {
     this.advanceEl.setAttribute('aria-hidden', armed ? 'false' : 'true');
     this.topbar.hidden = this.title.isVisible() || this.creditsActive;
     this.pq.classList.toggle('is-choice', this.choiceActive);
+    // A modal owns the frame. The dialogue bar steps out rather than sitting
+    // under the backdrop blur as an illegible ghost of type competing with the
+    // panel's own column — and stepping out gives the room back its bottom third.
+    this.pq.classList.toggle('is-modal', this.modalStack.length > 0);
+    // A chapter card owns the whole frame: the dialogue bar and the wait
+    // ellipsis step out rather than leaving stale marks under the lockup.
+    this.pq.classList.toggle('is-chapter', this.chapter.isOpen());
   }
 
   private clearWait(): void {
@@ -479,6 +498,11 @@ export class UILayer implements IUILayer {
 
   private openModal(overlay: HTMLElement, panel: HTMLElement): void {
     const prevFocus = (document.activeElement as HTMLElement | null) ?? null;
+    // Retire the panel underneath. Two live overlays means two stacked backdrop
+    // blurs and two stacked scrims — the room behind collapses into grey mush and
+    // the lower panel's type smears through the upper one. Only the top pane of
+    // glass is ever lit.
+    this.setUnder(this.modalStack[this.modalStack.length - 1], true);
     this.modalStack.push({ overlay, panel, prevFocus });
     // Promote to the end of the layer so it paints above any modal beneath it
     // (all overlays share one stacking context — paint order is DOM order).
@@ -498,6 +522,7 @@ export class UILayer implements IUILayer {
     }, 220);
 
     const under = this.modalStack[this.modalStack.length - 1];
+    this.setUnder(under, false);
     if (top.prevFocus && document.contains(top.prevFocus)) top.prevFocus.focus();
     else if (under) this.focusInto(under.panel);
     this.updateInputMode();
@@ -507,17 +532,26 @@ export class UILayer implements IUILayer {
     while (this.modalStack.length) {
       const m = this.modalStack.pop();
       if (m) {
-        m.overlay.classList.remove('is-open');
+        m.overlay.classList.remove('is-open', 'is-under');
         m.overlay.hidden = true;
       }
     }
     this.updateInputMode();
   }
 
+  /** Dim/disarm a modal that another modal has been opened on top of. */
+  private setUnder(entry: ModalEntry | undefined, under: boolean): void {
+    if (entry) entry.overlay.classList.toggle('is-under', under);
+  }
+
   private focusInto(panel: HTMLElement): void {
+    // Focus the panel itself rather than its first control. Programmatic focus
+    // inherits the session's focus-visible state, so focusing the close button
+    // painted a keyboard ring around it on open — a default-HTML tell that the
+    // rubric hard-fails. Tab still walks the controls; the trap is unchanged.
     requestAnimationFrame(() => {
-      const f = focusables(panel);
-      (f[0] ?? panel).focus();
+      if (panel.hasAttribute('tabindex')) panel.focus();
+      else (focusables(panel)[0] ?? panel).focus();
     });
   }
 
@@ -585,6 +619,11 @@ export class UILayer implements IUILayer {
           el('span', { text: '1 – 3 — choose a response' }),
           el('span', { text: 'Esc — menu' }),
         ]),
+        // Engine credit lives here, not on the title screen.
+        el('p', {
+          class: 'pq-about__credit',
+          text: 'Built with Three.js · original work in the spirit of Eliza',
+        }),
       ]),
     );
     return shell;
