@@ -1,9 +1,11 @@
 /**
  * ChapterCard — full-bleed typographic interstitial with a light-bleed reveal.
  *
- * A hush between scenes: a small tracked overline, a 24px hairline, the chapter
- * title in Fraunces at display size, an optional subtitle, and exactly ONE
- * continue chevron — all rising through a warm light-bleed wash. While the card
+ * A hush between scenes: a small tracked overline, a 40px hairline, the chapter
+ * title in Fraunces at display size struck onto a second hairline, an optional
+ * subtitle, and exactly ONE continue chevron parked at the bottom of the frame
+ * rather than inside the lockup — all rising through a warm light-bleed wash
+ * that leaves the plate's own practicals lit. While the card
  * is up it owns the frame (UILayer parks the dialogue bar and the wait ellipsis
  * behind `.pq.is-chapter`), so the shot never carries a second, unexplained
  * affordance. Dismissed by the next advance.
@@ -43,12 +45,16 @@ export class ChapterCard {
           this.overline,
           el('div', { class: 'pq-chapter__rule', aria: { hidden: true } }),
           this.titleEl,
+          // The title's floor. Without a stroke under it the display line hangs
+          // in the middle of the plate with nothing to sit on; with one it reads
+          // as a struck lockup that belongs to the frame.
+          el('div', { class: 'pq-chapter__rule pq-chapter__rule--under', aria: { hidden: true } }),
           this.subEl,
-          el('div', { class: 'pq-chapter__more', aria: { hidden: true } }, [
-            el('i'),
-            el('i'),
-          ]),
         ]),
+        // Outside the lockup on purpose: a continue affordance is chrome, not
+        // typography. It lives at the bottom of the FRAME (y≈92%), which is
+        // where every shipped VN puts it, instead of orphaned under the title.
+        el('div', { class: 'pq-chapter__more', aria: { hidden: true } }, [el('i'), el('i')]),
       ],
     );
     parent.appendChild(this.root);

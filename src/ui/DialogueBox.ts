@@ -2,9 +2,9 @@
  * DialogueBox — the reading surface.
  *
  * Filmic dialogue bar in the Eliza idiom: a CAPS nameplate at far left of a
- * two-column set, body in a transitional serif with generous leading, resting
- * over a soft bottom-fade gradient (never a hard opaque box). The continue
- * chevron is *inline* — it flows on the last line's baseline right after the
+ * two-column set, body in a transitional serif on a fixed 1050px measure,
+ * resting over a soft bottom-fade gradient (never a hard opaque box). The
+ * continue ▼ is *inline* — it flows on the last line's baseline right after the
  * final glyph, so it can never orphan itself below the block.
  * Owns a time-based typewriter with punctuation-aware cadence, skippable instantly.
  */
@@ -40,11 +40,9 @@ export class DialogueBox {
   constructor(parent: HTMLElement) {
     this.nameEl = el('div', { class: 'pq-dialogue__name', aria: { hidden: true } });
     this.bodyEl = el('p', { class: 'pq-dialogue__body' });
-    this.continueEl = el('span', {
-      class: 'pq-continue',
-      aria: { hidden: true },
-      html: '<i></i><i></i>',
-    });
+    // A single clipped box, not two rotated bars: the glyph is a solid ▼ and
+    // carries no interior detail. See .pq-continue.
+    this.continueEl = el('span', { class: 'pq-continue', aria: { hidden: true } });
 
     this.root = el(
       'div',

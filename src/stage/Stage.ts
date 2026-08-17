@@ -108,6 +108,25 @@ const PRESENCE = {
   vignetteGamma: 1.2,
 } as const;
 
+/**
+ * Framing. A plate is painted, not shot, so its motivated practical lands
+ * wherever the painting put it — for the ops room, hard against the left edge
+ * and low enough that the dialogue bar sat on top of it. The frame then has no
+ * power point at all and the eye settles on the emptiest thing in it, which
+ * here was bare carpet.
+ *
+ * So the stage frames the plate rather than accepting it: the scene's own warm,
+ * bright mass (the same reduction the rain and glass are lit from) is measured
+ * in screen space, and if it is outside the rule-of-thirds band the plate is
+ * slid until it isn't. Deliberately a ONE-WAY pull — a practical already inside
+ * the band is left exactly where the painter put it, so a well-composed plate
+ * is never "corrected" — and clamped well inside the overscan margin, so no
+ * amount of camera drift can walk an edge into shot.
+ */
+const FRAME_BAND = { left: 0.34, right: 0.66, top: 0.34, bottom: 0.6 } as const;
+/** Maximum slide, as a fraction of the frame. Overscan affords 0.15 either way. */
+const FRAME_LIMIT = { x: 0.12, y: 0.1 } as const;
+
 export class Stage implements IStage {
   private readonly bus: IEmitter;
   private readonly canvas: HTMLCanvasElement;
@@ -145,6 +164,9 @@ export class Stage implements IStage {
   private focusZ = CHAR_Z;
   private currentParallax = 0.05;
   private depthHidden: [boolean, boolean] = [true, true];
+  /** Framing bias for the current plate, in frame fractions (+x right, +y up). */
+  private framingX = 0;
+  private framingY = 0;
 
   private readonly unsub: Array<() => void> = [];
 
@@ -175,6 +197,10 @@ export class Stage implements IStage {
     this.camera = new KenBurns(this.width / this.height);
 
     this.weather = new Weather(WEATHER_Z);
+    this.weather.setResolution(
+      this.width * this.renderer.getPixelRatio(),
+      this.height * this.renderer.getPixelRatio(),
+    );
     this.scene.add(this.weather.group);
 
     // BokehPass builds its depth buffer by rendering the scene a SECOND time
@@ -341,13 +367,12 @@ export class Stage implements IStage {
     // Freeze the current look before swapping (fades from clear color first time).
     this.transitions.snapshot(this.scene, this.camera.camera);
 
-    if (textures.length === 0) {
-      this.applyLayers([this.gradientOrMake()], parallax);
-      this.updateLightField(this.gradientOrMake());
-    } else {
-      this.applyLayers(textures, parallax);
-      this.updateLightField(textures[0]);
-    }
+    const plate = textures.length === 0 ? this.gradientOrMake() : textures[0];
+    // Framing first: both the layer placement and the light field are expressed
+    // in the FRAMED screen, so the bias has to be known before either is built.
+    this.computeFraming(plate);
+    this.applyLayers(textures.length === 0 ? [plate] : textures, parallax);
+    this.updateLightField(plate);
 
     this.refreshFocus();
     void this.transitions.play(transition ?? (this.hasBackground ? 'dissolve' : 'crossfade'));
@@ -385,6 +410,8 @@ export class Stage implements IStage {
           depth: depthNorm,
           parallax,
           phase: i * 1.73 + 0.4,
+          offsetX: this.framingX * f.w,
+          offsetY: this.framingY * f.h,
         });
       } else {
         layer.setTexture(null);
@@ -397,33 +424,95 @@ export class Stage implements IStage {
   private static readonly LIGHT_H = 36;
 
   /**
-   * Reduce the incoming background to a 64×36 colour map and hand it to the
-   * weather so rain and glass are lit by the art instead of by a constant.
+   * Reduce the plate to a 64×36 colour map of the FRAMED SCREEN.
    *
-   * The same pass finds the frame's dominant *warm* practical and mirrors it
-   * across the frame as a reflection target — which is why the glass reflection
-   * always lands on a real light source in the painting rather than somewhere
-   * an artist would have to hand-place.
+   * The plate is drawn at `OVERSCAN` and slid by the framing bias, so a naive
+   * reduction of the raw image is registered to nothing that is actually on
+   * screen — up to 15% out at the edges before the bias is even counted, which
+   * is enough to light a rain streak from a practical two desks away. Sampling
+   * the same crop the camera sees keeps every consumer honest.
+   *
+   * Returns null (rather than throwing) for a tainted or undecodable source.
    */
-  private updateLightField(texture: THREE.Texture | null): void {
+  private samplePlate(
+    texture: THREE.Texture | null,
+    biasX: number,
+    biasY: number,
+  ): ImageData | null {
     const W = Stage.LIGHT_W;
     const H = Stage.LIGHT_H;
     const src = texture?.image as CanvasImageSource | undefined;
-    if (!src) {
-      this.weather.setLightField(null, null);
-      return;
-    }
-
-    let pixels: ImageData;
+    if (!src) return null;
     try {
       const cv = document.createElement('canvas');
       cv.width = W;
       cv.height = H;
       const ctx = cv.getContext('2d', { willReadFrequently: true });
-      if (!ctx) throw new Error('no 2d context');
-      ctx.drawImage(src, 0, 0, W, H);
-      pixels = ctx.getImageData(0, 0, W, H);
+      if (!ctx) return null;
+      const dw = W * OVERSCAN;
+      const dh = H * OVERSCAN;
+      // Canvas y runs down; the bias is y-up, hence the sign flip.
+      ctx.drawImage(src, (W - dw) * 0.5 + biasX * W, (H - dh) * 0.5 - biasY * H, dw, dh);
+      return ctx.getImageData(0, 0, W, H);
     } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Slide the plate so its warm, bright mass lands on a rule-of-thirds power
+   * point. See the FRAME_BAND note: the pull is one-way and clamped, so a plate
+   * that already composes well is left untouched.
+   */
+  private computeFraming(texture: THREE.Texture | null): void {
+    this.framingX = 0;
+    this.framingY = 0;
+    const px = this.samplePlate(texture, 0, 0);
+    if (!px) return;
+
+    const W = Stage.LIGHT_W;
+    const H = Stage.LIGHT_H;
+    let mass = 0;
+    let mx = 0;
+    let my = 0;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const s = (y * W + x) * 4;
+        const r = px.data[s];
+        const g = px.data[s + 1];
+        const b = px.data[s + 2];
+        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        const warmth = Math.max(0, (r - b) / 255) + 0.22;
+        // The same score the reflection uses, floored so the ambient wash of a
+        // dark plate cannot drag the centroid back to the middle of the frame.
+        const w = Math.max(0, lum * lum * warmth - 0.02);
+        mass += w;
+        mx += w * ((x + 0.5) / W);
+        my += w * ((y + 0.5) / H);
+      }
+    }
+    if (mass <= 1e-4) return;
+
+    const pull = (v: number, lo: number, hi: number, limit: number): number =>
+      v < lo ? Math.min(lo - v, limit) : v > hi ? Math.max(hi - v, -limit) : 0;
+
+    this.framingX = pull(mx / mass, FRAME_BAND.left, FRAME_BAND.right, FRAME_LIMIT.x);
+    // The centroid is measured downward; lifting the plate is +y.
+    this.framingY = -pull(my / mass, FRAME_BAND.top, FRAME_BAND.bottom, FRAME_LIMIT.y);
+  }
+
+  /**
+   * Publish the framed reduction to the weather so rain and glass are lit by the
+   * art instead of by a constant, and find the frame's dominant *warm* practical
+   * to mirror across the glass as a reflection target — which is why the glass
+   * reflection always lands on a real light source in the painting rather than
+   * somewhere an artist would have to hand-place.
+   */
+  private updateLightField(texture: THREE.Texture | null): void {
+    const W = Stage.LIGHT_W;
+    const H = Stage.LIGHT_H;
+    const pixels = this.samplePlate(texture, this.framingX, this.framingY);
+    if (!pixels) {
       // Tainted or undecodable source — fall back to uncoupled weather.
       this.weather.setLightField(null, null);
       return;
@@ -476,9 +565,15 @@ export class Stage implements IStage {
       // Mirror the practical across frame centre and pull it back in a little,
       // so it counterweights the source instead of pinning to the far edge.
       x: THREE.MathUtils.clamp(0.5 + (0.5 - bx) * 0.78, 0.1, 0.9),
-      y: THREE.MathUtils.clamp(by, 0.12, 0.88),
+      // Held ABOVE the sill line. A reflection is a property of a surface, and
+      // the only reflective surface in shot is the pane — free to sit anywhere,
+      // it landed on the carpet, where nothing could have cast it. The shader
+      // fences the same band a second time (`reflBand`); this keeps the centre
+      // itself out of the floor so the lobe is never merely half-cut.
+      y: THREE.MathUtils.clamp(by, 0.55, 0.88),
       color: bc,
-      amount: best > 0.02 ? 0.09 : 0,
+      // Halved along with the radius: a tight specular, not a lens smudge.
+      amount: best > 0.02 ? 0.05 : 0,
     });
   }
 
@@ -695,6 +790,7 @@ export class Stage implements IStage {
     this.camera.setAspect(this.width / this.height);
     this.postfx.resize(this.width, this.height);
     this.transitions.resize(this.width * pr, this.height * pr);
+    this.weather.setResolution(this.width * pr, this.height * pr);
 
     // Re-fit layers and characters to the new frustum.
     this.refitLayers();
@@ -720,6 +816,8 @@ export class Stage implements IStage {
         depth: depthNorm,
         parallax: this.currentParallax,
         phase: i * 1.73 + 0.4,
+        offsetX: this.framingX * fr.w,
+        offsetY: this.framingY * fr.h,
       });
     }
   }

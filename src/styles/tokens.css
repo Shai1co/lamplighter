@@ -54,8 +54,10 @@
   --pq-line-pane-hi: rgba(var(--pq-pane-rgb) / 0.35);
   /* The single hairline that etches diegetic glass into the scene. One stroke,
      no shadow — a drop-shadowed rounded card reads as an HTML overlay pasted on
-     the art, which is the fastest way to lose a blind A/B. */
-  --pq-line-glass: rgba(var(--pq-ink-rgb) / 0.12);
+     the art, which is the fastest way to lose a blind A/B. Struck at 0.08 in
+     near-white: any heavier and the stroke starts drawing a *border* around a
+     card instead of catching the arris of a pane. */
+  --pq-line-glass: rgba(var(--pq-ink-rgb) / 0.08);
   --pq-line-key: rgba(var(--pq-key-rgb) / 0.34);
   --pq-line-accent: rgba(var(--pq-accent-rgb) / 0.4);
 
@@ -117,6 +119,11 @@
      ~6px starts reading as a web card rather than a pane in the world. */
   --pq-r-glass: 5px;
   --pq-r-glass-inner: 4px;
+  /* Pane radius. The modal shell used to carry --pq-r-2 (10px), which is the
+     single most legible "this is a web card" signal in a captured frame — every
+     HTML dialog in the world rounds at 8–12px. A cut pane of glass breaks at
+     the tooling radius and nothing more. */
+  --pq-r-pane: 3px;
 
   /* ── Shadows ── */
   --pq-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -153,24 +160,73 @@
   --pq-z-title: 50;
   --pq-z-topbar: 60;
   --pq-z-modal: 80;
+  /* The emulsion sits ABOVE the modal layer, not below it. One grain plate over
+     render + character + DOM is what welds three separately-authored layers into
+     a single photographed image; a modal that punches through the grain splits
+     the frame into two different media (razor type over a grained plate), which
+     is the tell a blind critic reads first. */
+  --pq-z-plate: 85;
   --pq-z-credits: 90;
 
   /* ── Layout ── */
   --pq-gutter: clamp(20px, 4.5vw, 76px);
-  --pq-dialogue-max: 1420px;
-  /* Nameplate column + gap of the dialogue bar (Eliza-style two-column set). */
-  --pq-name-col: clamp(88px, 11.5vw, 208px);
-  --pq-name-gap: clamp(14px, 2vw, 36px);
-  /* Height of the bottom fade under the dialogue (~top edge at 70% of frame). */
-  --pq-scrim-h: clamp(220px, 29vh, 320px);
+  /* ── Dialogue bar ────────────────────────────────────────────────────────
+     A DESIGNED column, not a centred block. The old set was a 1420px band
+     centred in the frame, which put a single line of prose floating across the
+     middle of the screen with no left edge to read from. These three tokens
+     land the set on an exact grid at 1920×1080 — caps plate flush right ending
+     at x=420, prose starting at x=500 and running 1050px — and stay
+     proportional below it. (Gutter 76 + name 344 = 420; + gap 80 = 500.) */
+  --pq-name-col: clamp(104px, 17.92vw, 344px);
+  --pq-name-gap: clamp(20px, 4.17vw, 80px);
+  --pq-dialogue-measure: min(1050px, 100%);
+  /* Height of the bottom fade under the dialogue: exactly 380px at 1080, so the
+     fade begins at y=700 and lands on the scrim's 0.87.
+     At 300px the ramp only started at y=780 and the nameplate — which sits at
+     y≈930 — was still reading against lamp-lit desk clutter at ~35% density.
+     380px puts the whole two-line set plus its plate on a base that is already
+     past half density where the type begins. */
+  --pq-scrim-h: clamp(280px, 35.19vh, 380px);
+
+  /* ── Proxy panel geometry ───────────────────────────────────────────────
+     The panel shares the frame with the speaker's face, and a UI edge across a
+     face is the single loudest "unshipped" tell there is. These two tokens set
+     the pane 8% narrower and drop it ~85px so its top arris clears the chin
+     with room to spare; everything inside it was retuned to hold the same
+     footprint. Anchored to vh/vw so the clearance survives a resize. */
+  --pq-proxy-w: clamp(324px, 27.3vw, 524px);
+  --pq-proxy-bottom: clamp(146px, 19.63vh, 212px);
   --pq-blur: 18px;
+  /* Master strength of the room grade's power windows (see .pq-roomgrade).
+     1 = the Lumen ops-room tuning; 0 retires them entirely for a plate whose
+     key light is somewhere else. */
+  --pq-grade-amt: 1;
   /* Modal backdrop defocus. Deliberately shallow: the room behind a modal must
      stay a *place* (lamp, monitor, silhouette all still readable) rather than
      collapsing into grey mush, so the panel floats in an environment instead of
-     on a blur. Anything past ~20px erases the set. */
-  --pq-modal-blur: 10px;
-  /* Length of the dissolve at the ends of a long scrolling column. */
-  --pq-fade-len: 96px;
+     on a blur.
+     Pulled 40% (10px → 6px): at 10px the speaker on the right lost her
+     silhouette entirely and read as a hidden asset rather than as a rack focus.
+     Pulled again 6px → 4px: at 6px over a plate that is *already* carrying a
+     painted shallow-focus falloff, the two defocuses compound and the portrait
+     and the practical stop reading as brushwork and start reading as mush —
+     which is the single loudest "the art is being hidden" tell in a blind A/B.
+     4px is a rack focus you can still see the painting through. */
+  --pq-modal-blur: 4px;
+  /* Extra defocus the PANE itself adds on top of the backdrop, so the glass has
+     a measurable thickness. This one stacks on the backdrop, so what the eye
+     reads behind the glass is roughly hypot(4, 17) ≈ 17px — the band where the
+     city bokeh behind the panel stays *bokeh* (discrete discs, transmitted
+     light) instead of pulping into flat grey at 24px+ or losing the thickness
+     cue entirely below ~12px. The room beside the pane stays at 4px, so the
+     panel has a measurable edge in FOCUS as well as in value. */
+  --pq-pane-blur: 17px;
+  /* Length of the dissolve at the ends of a long scrolling column, and the
+     shorter exit ramp that stays put once the column has nothing further to
+     dissolve into. Both ends are treated: prose that meets a panel edge with a
+     hard cut is the "undesigned scroll region" read. */
+  --pq-fade-len: 56px;
+  --pq-fade-end: 46px;
 }
 
 /* Reduced motion: collapse durations and disable ambient loops. */

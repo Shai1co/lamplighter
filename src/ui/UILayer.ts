@@ -23,6 +23,7 @@ import type {
   StoryTheme,
 } from '../core/types';
 import { clear, el, focusables, Icons, overlayShell, rgbTriplet, systemMotionOK } from './dom';
+import { CallStrip } from './CallStrip';
 import { DialogueBox } from './DialogueBox';
 import { ProxyPanel } from './ProxyPanel';
 import { ChoiceMenu } from './ChoiceMenu';
@@ -50,8 +51,11 @@ export class UILayer implements IUILayer {
   private readonly topbar: HTMLElement;
   private readonly liveEl: HTMLElement;
   private readonly creditsEl: HTMLElement;
+  private readonly gradeEl: HTMLElement;
+  private readonly plateEl: HTMLElement;
 
   private readonly dialogue: DialogueBox;
+  private readonly callstrip: CallStrip;
   private readonly proxy: ProxyPanel;
   private readonly choices: ChoiceMenu;
   private readonly chapter: ChapterCard;
@@ -115,11 +119,31 @@ export class UILayer implements IUILayer {
     });
     this.liveEl = el('div', { class: 'pq-sr', aria: { live: 'polite', atomic: 'true' } });
 
-    this.pq = el('div', { class: 'pq' }, [this.stage, this.topbar, this.modalLayer, this.creditsEl, this.liveEl]);
+    // Frame-wide grade + emulsion. The power windows go UNDER everything (they
+    // are part of the photograph); the grain goes over the render, the
+    // composited character and the DOM UI alike, which is what marries three
+    // separately-authored layers into one plate. Neither is ever interactive
+    // and neither belongs to the reading layer, so they hang off .pq directly
+    // and survive a modal taking the frame.
+    this.gradeEl = el('div', { class: 'pq-roomgrade', aria: { hidden: true } });
+    this.plateEl = el('div', { class: 'pq-plate', aria: { hidden: true } });
+
+    this.pq = el('div', { class: 'pq' }, [
+      this.gradeEl,
+      this.stage,
+      this.topbar,
+      this.modalLayer,
+      this.creditsEl,
+      this.plateEl,
+      this.liveEl,
+    ]);
     root.appendChild(this.pq);
 
     /* ── Components ── */
     this.dialogue = new DialogueBox(this.stage);
+    // Sits on the frame itself, not in the reading layer — a modal pulls the
+    // dialogue bar out of shot, and the relay readout is part of the room.
+    this.callstrip = new CallStrip(this.pq);
     this.proxy = new ProxyPanel(this.stage);
     this.choices = new ChoiceMenu(this.stage);
     this.chapter = new ChapterCard(this.stage);
@@ -172,6 +196,7 @@ export class UILayer implements IUILayer {
           { speed: this.settingsState.textSpeed, narrator: this.narratorLabel },
           (natural) => this.onLineComplete(natural, p.auto),
         );
+        if (p.speaker) this.callstrip.connect(p.speaker.name);
         this.backlog.push({ name: p.speaker?.name ?? null, color: p.speaker?.color, text: p.text });
         this.announce(p.speaker ? `${p.speaker.name}. ${p.text}` : p.text);
         this.updateInputMode();
@@ -220,6 +245,7 @@ export class UILayer implements IUILayer {
       this.bus.on('runtime:ready', (p) => {
         this.backlog.reset();
         this.chapter.reset();
+        this.callstrip.reset();
         this.narratorLabel = p.story.narrator;
         this.applyTheme(p.story.theme);
       }),
@@ -384,7 +410,9 @@ export class UILayer implements IUILayer {
       !this.choiceActive;
     this.advanceEl.classList.toggle('is-armed', armed);
     this.advanceEl.setAttribute('aria-hidden', armed ? 'false' : 'true');
-    this.topbar.hidden = this.title.isVisible() || this.creditsActive;
+    const inStory = !this.title.isVisible() && !this.creditsActive;
+    this.topbar.hidden = !inStory;
+    this.callstrip.setVisible(inStory);
     this.pq.classList.toggle('is-choice', this.choiceActive);
     // A modal owns the frame. The dialogue bar steps out rather than sitting
     // under the backdrop blur as an illegible ghost of type competing with the
@@ -768,6 +796,7 @@ export class UILayer implements IUILayer {
     this.unsubs.length = 0;
     this.clearAuto();
     this.dialogue.destroy();
+    this.callstrip.destroy();
     this.proxy.destroy();
     this.choices.destroy();
     this.chapter.destroy();

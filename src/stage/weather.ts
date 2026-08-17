@@ -24,9 +24,9 @@ import {
   mulberry32,
   STAGE_SEED,
   RAIN_VERTEX_DECL,
-  RAIN_PROJECT_PATCH,
   RAIN_FRAGMENT_DECL,
   RAIN_DIFFUSE_PATCH,
+  RAIN_POINTSIZE_PATCH,
   GLASS_VERTEX,
   GLASS_FRAGMENT,
 } from './shaders';
@@ -50,7 +50,16 @@ export interface ReflectionSpec {
  *                come out as a fat hard-edged bar on the 'streak' sprite. This
  *                one is 4% wide with a soft horizontal falloff, so blowing it up
  *                yields a long soft hairline instead of a white plank.
+ *
+ * The hairline is additionally BAKED OUT OF FOCUS. It lives roughly half the
+ * distance to the plate the lens is focused on, so a tack-sharp edge on it is a
+ * lie: the whole field then reads as one flat overlay laid across every depth
+ * at once rather than as weather with a near plane. Blurring the sprite (rather
+ * than the frame) is the only honest option here — the DoF pass's depth buffer
+ * is alpha-blind and cannot be trusted with sprites (see postfx.ts).
  */
+const HAIRLINE_DEFOCUS_PX = 1.6;
+
 function dotTexture(kind: 'dot' | 'streak' | 'hairline'): THREE.Texture {
   const s = 64;
   const cv = document.createElement('canvas');
@@ -75,6 +84,17 @@ function dotTexture(kind: 'dot' | 'streak' | 'hairline'): THREE.Texture {
     g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g;
     ctx.fillRect(kind === 'streak' ? s * 0.44 : 0, 0, kind === 'streak' ? s * 0.12 : s, s);
+    if (kind === 'hairline') {
+      const soft = document.createElement('canvas');
+      soft.width = s;
+      soft.height = s;
+      const sctx = soft.getContext('2d')!;
+      sctx.filter = `blur(${HAIRLINE_DEFOCUS_PX}px)`;
+      sctx.drawImage(cv, 0, 0);
+      const tex = new THREE.CanvasTexture(soft);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
   } else {
     const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
     g.addColorStop(0, 'rgba(255,255,255,1)');
@@ -140,6 +160,10 @@ const NEAR_RAIN: Region = { cx: -1.28, cy: 0, cz: 1.9, hx: 0.68, hy: 3.5, hz: 0.
 const NEAR_RAIN_WIND = 1.9;
 const RAIN_WIND = 1.4;
 
+/** Pre-jitter field opacities (see the note at the `buildField` call sites). */
+const RAIN_BASE = 0.9;
+const RAIN_NEAR_BASE = 0.95;
+
 export class Weather {
   readonly group: THREE.Group;
 
@@ -165,6 +189,8 @@ export class Weather {
   private readonly neutralTex: THREE.DataTexture;
   private readonly uLight: THREE.IUniform<THREE.Texture>;
   private readonly uHasLight: THREE.IUniform<number>;
+  /** Render-target size in device pixels — both systems read gl_FragCoord. */
+  private readonly uLightRes: THREE.IUniform<THREE.Vector2>;
 
   private readonly rnd = mulberry32(STAGE_SEED ^ 0x51ed270b);
   private readonly tweens = new Set<gsap.core.Tween>();
@@ -187,13 +213,16 @@ export class Weather {
     this.neutralTex.needsUpdate = true;
     this.uLight = { value: this.neutralTex };
     this.uHasLight = { value: 0 };
+    this.uLightRes = { value: new THREE.Vector2(1920, 1080) };
 
+    // Field opacities are the PRE-jitter base: each drop then keeps 30–80% of it
+    // (RAIN_DIFFUSE_PATCH), mean 0.55, so these carry the old effective density.
     this.rain = this.buildField(360, this.streakTex, {
-      size: 0.5, color: 0xbcd2dc, opacity: 0.5, additive: false, velMin: 9, velMax: 13,
+      size: 0.5, color: 0xbcd2dc, opacity: RAIN_BASE, additive: false, velMin: 9, velMax: 13,
     }, FIELD);
     this.patchRainMaterial(this.rain.material);
     this.rainNear = this.buildField(9, this.hairlineTex, {
-      size: 0.92, color: 0xcfd9de, opacity: 0.62, additive: false, velMin: 10, velMax: 13.5,
+      size: 0.92, color: 0xcfd9de, opacity: RAIN_NEAR_BASE, additive: false, velMin: 10, velMax: 13.5,
     }, NEAR_RAIN);
     this.patchRainMaterial(this.rainNear.material);
     this.snow = this.buildField(240, this.dotTex, {
@@ -255,6 +284,7 @@ export class Weather {
         uReflAmt: { value: 0 },
         uLight: this.uLight,
         uHasLight: this.uHasLight,
+        uLightRes: this.uLightRes,
       },
       vertexShader: GLASS_VERTEX,
       fragmentShader: GLASS_FRAGMENT,
@@ -281,15 +311,20 @@ export class Weather {
     const positions = new Float32Array(count * 3);
     const velY = new Float32Array(count);
     const swayPhase = new Float32Array(count);
+    // Per-drop variation seed: drives length/width via gl_PointSize and exposure
+    // via alpha, so no two streaks in a field are the same drop twice.
+    const streak = new Float32Array(count);
     for (let i = 0; i < count; i++) {
       positions[i * 3] = region.cx + (this.rnd() * 2 - 1) * region.hx;
       positions[i * 3 + 1] = region.cy + (this.rnd() * 2 - 1) * region.hy;
       positions[i * 3 + 2] = region.cz + (this.rnd() * 2 - 1) * region.hz;
       velY[i] = o.velMin + this.rnd() * (o.velMax - o.velMin);
       swayPhase[i] = this.rnd() * Math.PI * 2;
+      streak[i] = this.rnd();
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('aStreak', new THREE.BufferAttribute(streak, 1));
     const material = new THREE.PointsMaterial({
       map,
       size: o.size,
@@ -316,8 +351,9 @@ export class Weather {
     material.onBeforeCompile = (shader) => {
       shader.uniforms.uLight = this.uLight;
       shader.uniforms.uHasLight = this.uHasLight;
+      shader.uniforms.uLightRes = this.uLightRes;
       shader.vertexShader =
-        RAIN_VERTEX_DECL + shader.vertexShader.replace('#include <project_vertex>', RAIN_PROJECT_PATCH);
+        RAIN_VERTEX_DECL + shader.vertexShader.replace('gl_PointSize = size;', RAIN_POINTSIZE_PATCH);
       shader.fragmentShader =
         RAIN_FRAGMENT_DECL + shader.fragmentShader.replace('outgoingLight = diffuseColor.rgb;', RAIN_DIFFUSE_PATCH);
     };
@@ -329,6 +365,11 @@ export class Weather {
    * of the background (screen-space, y-up); `refl` places the reflected
    * practical on the glass. Pass nulls to decouple (rain falls back to uniform).
    */
+  /** Render-target size in device pixels (Stage owns the sizing). */
+  setResolution(width: number, height: number): void {
+    this.uLightRes.value.set(Math.max(1, width), Math.max(1, height));
+  }
+
   setLightField(map: THREE.Texture | null, refl: ReflectionSpec | null): void {
     this.uLight.value = map ?? this.neutralTex;
     this.uHasLight.value = map ? 1 : 0;
@@ -343,8 +384,8 @@ export class Weather {
   }
 
   private baseOpacity(field: ParticleField): number {
-    if (field === this.rain) return 0.5;
-    if (field === this.rainNear) return 0.62;
+    if (field === this.rain) return RAIN_BASE;
+    if (field === this.rainNear) return RAIN_NEAR_BASE;
     if (field === this.snow) return 0.9;
     return 0.6;
   }

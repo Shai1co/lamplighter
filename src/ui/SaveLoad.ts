@@ -19,7 +19,10 @@ const SLOT_COUNT = 6;
 const BLANK = '—';
 
 /** Hairline plus — the write affordance on an empty plate. Thinner stroke than
- *  the icon set so it sits at watermark weight rather than reading as a button. */
+ *  the icon set so it sits at watermark weight rather than reading as a button.
+ *  Drawn at 20px (see `.pq-slot__plus`): at 17px with a 9.5px caption under it
+ *  the whole stack read as a caption with a tick above it rather than as the
+ *  one thing on the plate you are meant to press. */
 const PLUS_GLYPH =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.15"' +
   ' stroke-linecap="round" aria-hidden="true"><path d="M12 5.6v12.8"/><path d="M5.6 12h12.8"/></svg>';
@@ -44,8 +47,9 @@ export class SaveLoad {
     this.panel = shell.panel;
     this.body = shell.body;
     this.setTitle = shell.setTitle;
-    // Tightens the header-to-grid gap; the etched rule under the title already
-    // does the separating, so a full 22px of air under it just floats the grid.
+    // Scopes the slot-screen header treatment: a full-width rule under the
+    // title block and the extra air the serif display needs above the grid.
+    this.panel.classList.add('pq-modal__panel--slots');
     this.body.classList.add('pq-modal__body--slots');
 
     this.hintAction = SaveLoad.hintLabel('Save');
@@ -64,7 +68,9 @@ export class SaveLoad {
     parent.appendChild(this.overlay);
   }
 
-  /** `[Key] Label` — bracketed mono, the same tracked face as the SLOTS eyebrow. */
+  /** `⟨key⟩ Label` — a drawn keycap chip plus a tracked mono label. The cap is
+   *  styled in CSS (`.pq-hint__k`); bracketing it in the string would print the
+   *  brackets *and* the chip. */
   private static hint(key: string, label: HTMLElement): HTMLElement {
     return el('span', { class: 'pq-hint' }, [
       el('span', { class: 'pq-hint__k', text: key, aria: { hidden: true } }),
@@ -129,7 +135,12 @@ export class SaveLoad {
           this.mode === 'save'
             ? el('span', { class: 'pq-slot__plus', html: PLUS_GLYPH, aria: { hidden: true } })
             : null,
-          el('span', { class: 'pq-slot__phtext', text: 'Empty' }),
+          // A writable blank is an invitation ("New save"); a blank you cannot
+          // write to is just a state ("Empty"). One word each, never both.
+          el('span', {
+            class: 'pq-slot__phtext',
+            text: this.mode === 'save' ? 'New save' : 'Empty',
+          }),
         ]),
       );
     }

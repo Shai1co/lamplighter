@@ -62,10 +62,19 @@ export class TitleScreen {
         el('div', { class: 'pq-title__bg', aria: { hidden: true } }, [
           this.plateEl,
           this.bokehEl,
+          // Authored bokeh: three discrete depth layers of city lights sitting on a
+          // horizon that rises out of the bottom edge, so the base of the frame is
+          // a distance rather than a void.
+          el('div', { class: 'pq-title__lights pq-title__lights--far' }),
+          el('div', { class: 'pq-title__lights pq-title__lights--mid' }),
+          el('div', { class: 'pq-title__lights pq-title__lights--near' }),
           el('div', { class: 'pq-title__rain' }),
+          // The one sharp plane in the shot: rain actually running on the pane.
+          el('div', { class: 'pq-title__glass' }),
           el('div', { class: 'pq-title__lamp' }),
           el('div', { class: 'pq-title__scrim' }),
-          el('div', { class: 'pq-title__grain' }),
+          // Foreground: the near edge of the desk, lit from the practical at left.
+          el('div', { class: 'pq-title__sill' }),
           el('div', { class: 'pq-title__vignette' }),
         ]),
         el('div', { class: 'pq-title__inner' }, [
@@ -88,6 +97,10 @@ export class TitleScreen {
             this.railEl,
           ]),
         ]),
+        // One grain pass over the whole frame — background *and* type — so the
+        // photographic plate and the HTML layer share a single emulsion. It also
+        // dithers the long dark falloffs that would otherwise band.
+        el('div', { class: 'pq-title__grain', aria: { hidden: true } }),
       ],
     );
     parent.appendChild(this.root);
@@ -181,10 +194,19 @@ export class TitleScreen {
     }
   }
 
+  /**
+   * An empty shelf row. It must read as a *state*, not as a rendering fault: a
+   * legible label, a hairline edge and a drawn padlock, rather than a ghost.
+   */
   private buildLockedSlot(index: number): HTMLElement {
     return el('div', { class: 'pq-lockslot', aria: { hidden: true } }, [
       el('span', { class: 'pq-lockslot__idx', text: `Slot ${String(index).padStart(2, '0')}` }),
-      el('span', { class: 'pq-lockslot__state', text: 'Locked' }),
+      el('span', { class: 'pq-lockslot__state' }, [
+        // Drawn from two boxes rather than an icon font, so it stays a hairline
+        // at any size and inherits the row's own ink.
+        el('span', { class: 'pq-lockslot__lock', aria: { hidden: true } }),
+        el('span', { class: 'pq-lockslot__word', text: 'Locked' }),
+      ]),
     ]);
   }
 
@@ -203,7 +225,15 @@ export class TitleScreen {
     const art = el(
       'div',
       { class: 'pq-storycard__art' + (cover ? ' has-cover' : ''), aria: { hidden: true } },
-      [image, el('div', { class: 'pq-storycard__grain' }), el('div', { class: 'pq-storycard__glow' })],
+      [
+        image,
+        // The key art ships hotter and more saturated than the menu around it. This
+        // pass prints it back down onto the same teal night the backdrop is graded
+        // to, so the card belongs to the frame instead of sitting on top of it.
+        el('div', { class: 'pq-storycard__grade' }),
+        el('div', { class: 'pq-storycard__grain' }),
+        el('div', { class: 'pq-storycard__glow' }),
+      ],
     );
 
     const card = el(

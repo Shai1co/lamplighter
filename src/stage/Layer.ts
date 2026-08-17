@@ -21,6 +21,14 @@ export interface LayerConfig {
   parallax: number;
   /** Deterministic phase so sibling layers drift out of sync. */
   phase: number;
+  /**
+   * Framing bias in WORLD units at this layer's depth (see Stage.computeFraming).
+   * Every layer is handed the same *screen-fraction* shift converted through its
+   * own frustum, so the whole plate slides as one and the parallax set stays
+   * registered. Bounded by the overscan margin, so it can never expose an edge.
+   */
+  offsetX?: number;
+  offsetY?: number;
 }
 
 export class Layer {
@@ -53,7 +61,7 @@ export class Layer {
   }
 
   configure(cfg: LayerConfig): void {
-    this.base.set(0, 0, cfg.z);
+    this.base.set(cfg.offsetX ?? 0, cfg.offsetY ?? 0, cfg.z);
     this.depth = cfg.depth;
     this.parallax = cfg.parallax;
     this.phase = cfg.phase;

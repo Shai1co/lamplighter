@@ -113,6 +113,14 @@ uniform float uGlitch;
 
 ${GLSL_NOISE}
 
+/**
+ * Highlight shoulder. Untouched below SHOULDER_K, asymptotic to SHOULDER_W —
+ * a classic print shoulder rather than a clip. See the call site for why the
+ * desk practical needed one.
+ */
+const float SHOULDER_K = 0.20;
+const float SHOULDER_W = 0.55;
+
 void main() {
   vec2 uv = vUv;
   vec2 centered = uv - 0.5;
@@ -143,6 +151,26 @@ void main() {
   // Contrast about a linear-ish pivot.
   color = (color - 0.18) * uContrast + 0.18;
   color = max(color, 0.0);
+
+  // Highlight shoulder. The desk practical was printing its paper as a flat
+  // near-white slab — a large area pinned near the top of the range with almost
+  // no separation left inside it, which reads as a blown JPEG rather than as
+  // lit paper. This takes roughly a stop off the top and hands the falloff its
+  // gradient back. Two disciplines matter:
+  //   • it is applied as a RATIO across all three channels, never per-channel.
+  //     A per-channel knee compresses whichever channel is highest, so it walks
+  //     a tungsten highlight toward white — precisely the opposite of what a
+  //     warm practical does as it falls off;
+  //   • what it pulls down it also warms, by the amount it pulled, so the paper
+  //     runs amber-into-shadow instead of grey-into-shadow.
+  float sL = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  if (sL > SHOULDER_K) {
+    float rolled = SHOULDER_K + (SHOULDER_W - SHOULDER_K) *
+      (1.0 - exp(-(sL - SHOULDER_K) / (SHOULDER_W - SHOULDER_K)));
+    float k = rolled / max(sL, 1e-4);
+    color *= k;
+    color *= mix(vec3(1.0), vec3(1.05, 0.995, 0.90), clamp(1.0 - k, 0.0, 1.0));
+  }
 
   // Saturation.
   float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -191,22 +219,27 @@ void main() {
   //     near-constant perceived strength. The coefficient is set so the DEFAULT
   //     mix (0.5 setting × 0.5 theme) peaks around 2% and a maxed-out slider
   //     still stays inside ~9% — the old 0.55 reached ±40% and gridded the frame;
-  //   • it is masked OUT of the deepest blacks (below ~8% display luma) and
-  //     rolled off in the highlights, so neither the night sky nor a practical
-  //     picks up crawl.
+  //   • it is rolled off in the highlights so a practical never picks up crawl,
+  //     but it is NOT switched off in the toe. Killing it below ~2% luma left
+  //     the lit desk pool grained and the entire dark two-thirds of the frame
+  //     plastic-clean — two emulsions in one shot, which is exactly the "the
+  //     photographic region and the soft bokeh are different renderers" read
+  //     the grade exists to erase. The blacks keep a third of the field, and a
+  //     small ADDITIVE term carries it where a multiplicative one cannot (near
+  //     zero there is nothing to modulate), doubling as dither in the long
+  //     falloffs.
   float gLum = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float gw = 1.0 - 0.55 * smoothstep(0.25, 1.2, gLum);       // roll off in highlights
-  gw *= smoothstep(0.0035, 0.0210, gLum);                     // and out of the toe
+  gw *= 0.34 + 0.66 * smoothstep(0.0020, 0.0185, gLum);       // and eased into the toe
+  float gToe = 1.0 - smoothstep(0.004, 0.045, gLum);          // 1 in the blacks, 0 by mid
   float gt = floor(uTime * 16.0);
   vec2 gjit = vec2(hash13(vec3(gt, 3.7, 11.3)), hash13(vec3(gt, 91.1, 5.9))) * 512.0;
   vec2 gcell = floor((gl_FragCoord.xy + gjit) / max(uGrainSize, 0.5));
   float gFine = hash13(vec3(gcell, gt));
   float gCoarse = hash13(vec3(floor(gcell * 0.3333), gt + 19.0));
   float g = (gFine - 0.5) - (gCoarse - 0.5) * 0.5;
-  color *= 1.0 + g * uGrain * 0.14 * gw;
-  // A whisper of additive grain so the near-blacks are not plastic-clean —
-  // deliberately an order of magnitude below the multiplicative term.
-  color += g * uGrain * 0.0005 * gw;
+  color *= 1.0 + g * uGrain * 0.185 * gw;
+  color += g * uGrain * (0.0008 + 0.0038 * gToe);
 
   // Glitch scanline darkening.
   if (uGlitch > 0.0001) {
@@ -318,6 +351,22 @@ diffuseColor.rgb = mix(diffuseColor.rgb, uTint, clamp(uTintAmt, 0.0, 1.0));
 export const LIGHTFIELD_GLSL = /* glsl */ `
 uniform sampler2D uLight;
 uniform float uHasLight;
+uniform vec2 uLightRes;
+/**
+ * Where this fragment is on screen, 0..1, y up.
+ *
+ * Straight off gl_FragCoord, NEVER off an interpolated gl_Position.xy/w. Both
+ * consumers here live on planes the camera looks at from an angle (the camera
+ * tracks the origin, so nothing is exactly parallel to the image plane), and a
+ * varying is resolved with perspective correction — which for a quantity that
+ * is already divided by w lands somewhere that is neither. The error is not
+ * academic: it put the glass reflection a couple of hundred pixels below where
+ * the stage placed it, i.e. off the pane and onto the carpet, which is exactly
+ * the unmotivated smear the frame was failing on.
+ */
+vec2 pqScreenUv() {
+  return clamp(gl_FragCoord.xy / max(uLightRes, vec2(1.0)), 0.0, 1.0);
+}
 /** Peak-normalized hue of the light behind a screen-space point. */
 vec3 lightHue(vec3 c) {
   float m = max(c.r, max(c.g, c.b));
@@ -326,25 +375,38 @@ vec3 lightHue(vec3 c) {
 `;
 
 export const RAIN_VERTEX_DECL = /* glsl */ `
-varying vec2 vScreenUv;
+varying float vStreak;
+attribute float aStreak;
 `;
 
-export const RAIN_PROJECT_PATCH = /* glsl */ `
-#include <project_vertex>
-vScreenUv = gl_Position.xy / max(gl_Position.w, 0.0001) * 0.5 + 0.5;
-`;
+/**
+ * Per-drop size jitter, patched over three's `gl_PointSize = size;`.
+ *
+ * A point sprite is square, so one multiplier varies a streak's LENGTH and its
+ * WIDTH together — which is the whole complaint: every drop was drawn at the
+ * identical width and the identical length, at every depth, and a field of
+ * identical ticks reads as an overlay stamped on the plate rather than as rain
+ * falling through it. 0.55…1.45 about the mean, deterministic per particle.
+ */
+export const RAIN_POINTSIZE_PATCH = /* glsl */ `
+vStreak = aStreak;
+gl_PointSize = size * (0.55 + 0.90 * aStreak);`;
 
 export const RAIN_FRAGMENT_DECL = /* glsl */ `
-varying vec2 vScreenUv;
+varying float vStreak;
 ${LIGHTFIELD_GLSL}
 `;
 
 export const RAIN_DIFFUSE_PATCH = /* glsl */ `
-vec3 _behind = texture2D(uLight, clamp(vScreenUv, 0.0, 1.0)).rgb;
+vec3 _behind = texture2D(uLight, pqScreenUv()).rgb;
 float _behindLum = dot(_behind, vec3(0.2126, 0.7152, 0.0722));
 float _lit = mix(1.0, smoothstep(0.03, 0.30, _behindLum), uHasLight);
 // Over dead blacks a streak keeps only a whisper; in a practical it flares.
 diffuseColor.a *= mix(0.15, 1.0, _lit);
+// Per-drop exposure, 30–80%. Uniform opacity across a field is the other half
+// of the "identical ticks" tell; the field base is scaled up to compensate so
+// the overall density is unchanged.
+diffuseColor.a *= mix(0.30, 0.80, vStreak);
 diffuseColor.rgb = mix(diffuseColor.rgb, lightHue(_behind), 0.62 * _lit);
 diffuseColor.rgb *= 0.8 + 1.15 * _lit;
 outgoingLight = diffuseColor.rgb;
@@ -360,16 +422,12 @@ outgoingLight = diffuseColor.rgb;
  * Everything is gated by `uOpacity`, which follows the rain amount.
  */
 export const GLASS_VERTEX = /* glsl */ `
-varying vec2 vScreenUv;
 void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_Position = projectionMatrix * mv;
-  vScreenUv = gl_Position.xy / max(gl_Position.w, 0.0001) * 0.5 + 0.5;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
 
 export const GLASS_FRAGMENT = /* glsl */ `
-varying vec2 vScreenUv;
 uniform float uTime;
 uniform float uOpacity;
 uniform vec2  uRefl;       // screen-space position of the reflected practical
@@ -393,27 +451,66 @@ float rivulet(vec2 uv, float x0, float speed, float phase, float width) {
   return core + bead * 0.55;
 }
 
+/**
+ * The whole pane's worth of water, as one field.
+ *
+ * Four rivulets at four genuinely different gauges and speeds. They used to run
+ * 0.0011 / 0.0009 / 0.0010 wide at near-identical speeds — three copies of one
+ * line, which is what makes water on glass read as a repeated texture. Sampled
+ * as a field (rather than summed inline) so the refraction below can take its
+ * horizontal derivative with a central difference.
+ */
+float rivuletField(vec2 uv) {
+  return rivulet(uv, 0.585, 0.055, 0.0, 0.0024) * 0.85
+       + rivulet(uv, 0.668, 0.039, 5.7, 0.0014) * 0.60
+       + rivulet(uv, 0.742, 0.031, 2.1, 0.0012) * 0.55
+       + rivulet(uv, 0.906, 0.047, 4.4, 0.0018) * 0.70;
+}
+
 void main() {
-  vec2 uv = clamp(vScreenUv, 0.0, 1.0);
+  vec2 uv = pqScreenUv();
   vec3 behind = texture2D(uLight, uv).rgb;
   float behindLum = dot(behind, vec3(0.2126, 0.7152, 0.0722));
   float lit = mix(1.0, smoothstep(0.03, 0.30, behindLum), uHasLight);
 
-  float riv =
-      rivulet(uv, 0.585, 0.055, 0.0, 0.0011)
-    + rivulet(uv, 0.742, 0.038, 2.1, 0.0009)
-    + rivulet(uv, 0.906, 0.047, 4.4, 0.0010);
-  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.05, 0.32, lit);
+  float riv = rivuletField(uv);
+  // Density lifted (0.24 → 0.34 at full light): the pane's copy literally says
+  // "Rain on the glass", and at the old strength — under a modal's backdrop
+  // blur especially — the frame simply did not show it. A line the picture does
+  // not earn is worse than no line.
+  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.12, 0.42, lit);
+
+  // Refraction. A bead of water is a cylindrical lens: the city behind it does
+  // not merely brighten, it SHIFTS. The field's own horizontal derivative gives
+  // the lens power, so the light field is resampled displaced by it (and pushed
+  // a touch down-frame, the way a drop drags what it carries). Blending that
+  // displaced sample into the streak colour is what separates water on a pane
+  // from white ticks drawn over a photograph. Two extra field evaluations —
+  // the pass is gated by uOpacity and discards on empty glass.
+  float e = 1.6 / max(uLightRes.x, 1.0);
+  float gx = rivuletField(uv + vec2(e, 0.0)) - rivuletField(uv - vec2(e, 0.0));
+  vec3 refr = texture2D(uLight, clamp(uv + vec2(gx * 0.09, 0.010), 0.0, 1.0)).rgb;
+
   vec3 cRiv = mix(vec3(0.72, 0.80, 0.86), lightHue(behind), 0.7 * lit) * (0.75 + 0.8 * lit);
+  // Gated on lit: lightHue() peak-normalises, so over dead black it would
+  // amplify sensor noise into a confetti of saturated hues.
+  cRiv = mix(cRiv, lightHue(refr) * (0.55 + 1.35 * lit), 0.45 * uHasLight * lit);
 
   // Reflected practical: a small soft lobe plus the vertical drag wet glass
-  // gives it. Deliberately faint — the bloom pass downstream does the rest, and
-  // anything stronger reads as a lens smudge instead of a reflection.
-  vec2 rp = vScreenUv - uRefl;
-  float lobe = exp(-dot(rp / vec2(0.085, 0.042), rp / vec2(0.085, 0.042)));
-  float drag = exp(-pow(rp.x / 0.026, 2.0)) * exp(-pow(max(-rp.y, 0.0) / 0.14, 1.7))
+  // gives it.
+  //
+  // HALF the radius it used to carry, and fenced to the pane. At the old size
+  // — and free to land wherever the light field pointed, including the carpet —
+  // it painted a ~400px amber bloom across the middle of the floor with nothing
+  // in frame to cast it. That is not a reflection, it is a compositing seam,
+  // and a seam is a hard fail. reflBand now kills it below the sill line, so
+  // the only surface it can appear on is the glass the camera is behind.
+  vec2 rp = uv - uRefl;
+  float lobe = exp(-dot(rp / vec2(0.042, 0.021), rp / vec2(0.042, 0.021)));
+  float drag = exp(-pow(rp.x / 0.013, 2.0)) * exp(-pow(max(-rp.y, 0.0) / 0.07, 1.7))
              * step(rp.y, 0.0);
-  float aRefl = clamp(lobe * 0.8 + drag * 0.3, 0.0, 1.0) * uReflAmt * uOpacity;
+  float reflBand = smoothstep(0.40, 0.54, uv.y);
+  float aRefl = clamp(lobe * 0.8 + drag * 0.3, 0.0, 1.0) * uReflAmt * uOpacity * reflBand;
 
   float a = clamp(aRiv + aRefl, 0.0, 1.0);
   if (a < 0.002) discard;

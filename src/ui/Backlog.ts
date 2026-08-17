@@ -102,6 +102,10 @@ export class Backlog {
     this.scroll.dataset.top = top ? '1' : '0';
     this.scroll.dataset.end = end ? '1' : '0';
     this.cue.dataset.end = end ? '1' : '0';
+    // A column that fits has no scroll region, so it gets no terminator at all;
+    // one that scrolls keeps the mark even at its end (dimmed, see CSS) so both
+    // ends of the region read as designed.
+    this.cue.dataset.overflow = overflow ? '1' : '0';
   }
 
   private appendRow(e: BacklogEntry, autoscroll: boolean): void {

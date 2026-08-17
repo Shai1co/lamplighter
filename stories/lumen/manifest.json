@@ -24,9 +24,21 @@
     "ink": "#e8eef2",
     "paper": "#0b1116",
     "grade": {
-      "lift": [-0.012, 0.008, 0.03],
-      "gamma": [1.0, 0.98, 0.95],
-      "gain": [1.03, 1.0, 0.93],
+      "lift": [
+        -0.012,
+        0.008,
+        0.03
+      ],
+      "gamma": [
+        1,
+        0.98,
+        0.95
+      ],
+      "gain": [
+        1.03,
+        1,
+        0.93
+      ],
       "splitTone": 0.36,
       "contrast": 1.08,
       "saturation": 0.9
@@ -42,7 +54,7 @@
       "description": "A woman in her early forties, South Asian, warm brown skin with fine lines at the eyes; dark shoulder-length hair loosely tied back with a few threads of early silver; wearing a soft charcoal wool cardigan over a slate-blue blouse. An architect's quiet precision in how she holds herself. Lit by a single warm amber desk lamp against a cool blue-black night; shallow depth of field, painterly portrait framing from the chest up, facing slightly off-camera to the left.",
       "defaultPose": "tired",
       "home": "right",
-      "scale": 1.0,
+      "scale": 1,
       "poses": {
         "neutral": {
           "prompt": "Portrait of Noor, a South Asian woman in her early forties, dark hair loosely tied back with a few silver threads, charcoal wool cardigan over a slate-blue blouse. Composed and guarded, jaw faintly set, looking slightly off-camera to the left. Single warm amber desk lamp against a cool blue-black night; soft volumetric haze; shallow depth of field; painterly semi-realistic, filmic grain. Chest-up portrait framing, no text, no UI, no border."
@@ -61,7 +73,7 @@
   },
   "backgrounds": {
     "ops_room": {
-      "prompt": "A dim overnight operations booth for an AI companion service, deep night. One occupied desk washed in warm amber monitor glow; a translucent glass partition catching soft reflections; beyond it a wall of floor-to-ceiling windows with city rain streaking the glass and blurred teal-and-amber lights bleeding through. Rows of empty chairs receding into blue-black darkness; volumetric haze; a single practical light source; cinematic, painterly semi-realistic, shallow depth of field, filmic grain. Landscape composition, no people, no text, no UI, no border.",
+      "prompt": "A dim overnight operations booth for an AI companion service, deep night. Left third: one tidy desk with a crisp modern task lamp (defined metal shade, warm amber pool of light) and a single slim monitor whose screen shows only a soft dim teal glow — screen mostly dark, faint and unreadable, nothing bright white anywhere; no loose paper, no blank sheets, clean desk surface with a mug and a headset. A translucent glass partition catching soft reflections; beyond it a wall of floor-to-ceiling windows with rain streaking the glass and the city blurred into teal-and-amber bokeh. A few empty chairs receding into blue-black darkness; volumetric haze. Hand-painted texture with visible brushwork in the shadows, painterly semi-realistic, shallow depth of field, filmic grain. Every object crisply drawn where lit, dissolving softly into darkness where not. Landscape composition, no people, no text, no UI, no border.",
       "parallax": 0.05,
       "focus": 0.5
     },
@@ -83,19 +95,37 @@
   },
   "cg": {
     "title_key": {
-      "prompt": "Cinematic cover key art: a lone figure in silhouette seated at a glowing amber console, seen from behind, before a towering wall of rain-streaked night windows that scatter the city into teal-and-amber bokeh. At the figure's left hand, a faint translucent panel of soft light hovers — the suggestion of a voice that is not their own. Vast, quiet, melancholy, painterly semi-realistic; deep blue-black shadows, warm practical glow, volumetric haze, gentle bloom, filmic grain. Room left in the composition for a title, but no text, no lettering, no UI, no border, no watermark."
+      "prompt": "Hand-painted cinematic cover key art with visible confident brushwork, like a matte painting or gouache film still — NOT photographic, NOT glossy. A lone figure in silhouette seated at a glowing amber console desk, seen from behind and slightly off-center left, before a towering wall of rain-streaked night windows scattering the city into rough teal-and-amber bokeh dabs of paint. At the figure left hand a faint translucent panel of soft light hovers. Asymmetric composition, imperfect edges, paint texture in the sky and blacks, deep blue-black shadows, one warm practical glow, volumetric haze, restrained and melancholy. No text, no lettering, no UI, no border, no watermark."
     }
   },
   "music": {
-    "night_theme": { "synth": "pad", "loop": true, "volume": 0.5 }
+    "night_theme": {
+      "synth": "pad",
+      "loop": true,
+      "volume": 0.5
+    }
   },
   "ambience": {
-    "room_hum": { "synth": "hum", "loop": true, "volume": 0.35 },
-    "rain": { "synth": "rain", "loop": true, "volume": 0.45 }
+    "room_hum": {
+      "synth": "hum",
+      "loop": true,
+      "volume": 0.35
+    },
+    "rain": {
+      "synth": "rain",
+      "loop": true,
+      "volume": 0.45
+    }
   },
   "sfx": {
-    "chime": { "synth": "chime", "volume": 0.6 },
-    "click": { "synth": "click", "volume": 0.5 }
+    "chime": {
+      "synth": "chime",
+      "volume": 0.6
+    },
+    "click": {
+      "synth": "click",
+      "volume": 0.5
+    }
   },
   "vars": {
     "trust": 0,

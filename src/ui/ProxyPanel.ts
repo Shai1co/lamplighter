@@ -33,6 +33,9 @@ export class ProxyPanel {
       },
       [
         el('div', { class: 'pq-proxy__glow', aria: { hidden: true } }),
+        // The pane's front surface: its inner hairline and the window's rain
+        // caught on the glass. Purely optical, never in the a11y tree.
+        el('div', { class: 'pq-proxy__glass', aria: { hidden: true } }),
         el('header', { class: 'pq-proxy__head' }, [
           el('div', { class: 'pq-proxy__brand' }, [
             el('span', { class: 'pq-proxy__mark', html: Icons.spark }),
@@ -45,11 +48,20 @@ export class ProxyPanel {
           ]),
         ]),
         el('div', { class: 'pq-proxy__telemetry', aria: { hidden: true } }, [
-          el('div', { class: 'pq-proxy__wave' }, buildWave(28)),
+          el('div', { class: 'pq-proxy__vocal' }, [
+            el('div', { class: 'pq-proxy__wave' }, buildWave(28)),
+            el('div', { class: 'pq-proxy__vocalfoot' }, [
+              el('span', { text: 'VOCAL' }),
+              el('span', { class: 'pq-proxy__vocalval', text: '0.2' }),
+            ]),
+          ]),
+          // Every trace terminates in its own readout. AFFECT is a signed
+          // deflection about a midpoint (hence the sign and the centred bar);
+          // the other two are plain 0–1 levels, so bar and number always agree.
           el('div', { class: 'pq-proxy__meters' }, [
-            meter('AFFECT', 0.62),
-            meter('RECEPTIVITY', 0.44),
-            meter('COHERENCE', 0.78),
+            meter('AFFECT', 0.6, '+0.1'),
+            meter('RECEPTIVITY', 0.8, '0.8'),
+            meter('COHERENCE', 0.5, '0.5'),
           ]),
         ]),
         el('div', { class: 'pq-proxy__label', text: 'PROXY RESPONSE' }),
@@ -146,12 +158,13 @@ export class ProxyPanel {
   }
 }
 
-function meter(label: string, value: number): HTMLElement {
+function meter(label: string, value: number, readout: string): HTMLElement {
   return el('div', { class: 'pq-meter' }, [
     el('span', { class: 'pq-meter__label', text: label }),
     el('span', { class: 'pq-meter__track' }, [
       el('span', { class: 'pq-meter__fill', style: `--v:${Math.round(value * 100)}%` }),
     ]),
+    el('span', { class: 'pq-meter__val', text: readout }),
   ]);
 }
 
