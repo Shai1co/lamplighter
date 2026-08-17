@@ -2764,8 +2764,13 @@
   font-feature-settings: 'kern' 1, 'liga' 1;
   color: var(--pq-ink);
   text-shadow: 0 6px 60px rgba(0, 0, 0, 0.6);
+  /* One-line compound lockup: roman "Lamp" + italic accent "lighter" sharing a
+     baseline. Sized a notch under the stacked hero so the full name holds one
+     line inside the lead column. */
+  font-size: clamp(2.6rem, 1.2rem + 5.6vw, 5.9rem);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: baseline;
 }
 /* Hand-kerned pairs. Tracking is a property of a RUN; kerning is a property of
    a PAIR, so these are set on the left glyph of each pair only and the rest of
@@ -2789,15 +2794,19 @@
    italic Q's bowl and its slant both push the perceived stem right, so it is
    pulled back until its left extreme sits on the P's flat stem. */
 .pq-title__word-b {
-  font-size: 0.52em;
+  /* Same optical size as the roman half so the compound reads as ONE word on
+     one line; the italic + key color carry the two-voice distinction alone. */
+  font-size: 0.96em;
   font-style: italic;
-  font-weight: 420;
-  line-height: 1.14;
-  letter-spacing: -0.012em;
+  font-weight: 400;
+  line-height: inherit;
+  letter-spacing: -0.018em;
   color: var(--pq-key);
   padding-left: 0;
-  margin-left: -0.028em;
-  margin-top: 0.06em;
+  /* Tuck the italic l under the roman p's shoulder — closes the seam without
+     tracking the whole word. */
+  margin-left: -0.012em;
+  margin-top: 0;
 }
 .pq-title__tag {
   position: relative;
