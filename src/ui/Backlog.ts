@@ -20,9 +20,11 @@
  * named voice gets 8px of extra air above it, so the column chunks into events
  * and scans as a log rather than as an essay.
  *
- * The column is the panel's only scroller. It reserves a full panel-dissolve of
- * bottom padding so its last line always sits ABOVE the ramp rather than being
- * guillotined at the pane's edge, and a drawn 2px rail (not a UA scrollbar)
+ * The column is the panel's only scroller, and the pane it sits in has a DRAWN
+ * bottom edge rather than a dissolve into the crop: equal insets top and
+ * bottom, an 80px content fade, a footer rail carrying the log's extent (entry
+ * count and shift span, both derived from the record's own length), and a
+ * closing hairline. A drawn 2px track with a drawn thumb — not a UA scrollbar —
  * carries the position.
  */
 import type { ChoiceKind } from '../core/types';
@@ -80,6 +82,8 @@ export class Backlog {
   private readonly cue: HTMLElement;
   private readonly rail: HTMLElement;
   private readonly thumb: HTMLElement;
+  private readonly count: HTMLElement;
+  private readonly span: HTMLElement;
   private entries: BacklogEntry[] = [];
 
   constructor(parent: HTMLElement, onClose: () => void) {
@@ -105,22 +109,51 @@ export class Backlog {
     this.body.appendChild(this.rail);
     this.cue = icon(Icons.chevron, 'pq-backlog__cue');
     this.panel.appendChild(this.cue);
+    // ── The panel's bottom edge ────────────────────────────────────────────
+    // A footer rail rather than a dissolve into the crop: how many entries the
+    // log holds, and the span of shift it covers. Both are UI metadata derived
+    // from the record's own length — nothing here reads or prints story text —
+    // and between them they give the column a reason to stop where it stops.
+    this.count = el('span', { class: 'pq-backlog__count' });
+    this.span = el('span', { class: 'pq-backlog__span' });
+    this.panel.appendChild(
+      el('footer', { class: 'pq-backlog__foot', aria: { hidden: true } }, [this.count, this.span]),
+    );
+    // Weather on the far plane. A dedicated plate because it needs its own mask
+    // (the window wall only) and its own blend (screen), and because the
+    // overlay's blur layers are backdrop roots that would swallow it. Inserted
+    // ahead of the panel so it sits behind the glass, above the rack focus.
+    this.overlay.insertBefore(
+      el('div', { class: 'pq-modal__rain', aria: { hidden: true } }),
+      this.panel,
+    );
+    this.syncFoot();
     parent.appendChild(this.overlay);
+  }
+
+  /** Entry count and shift span on the footer rail — the log's own extent. */
+  private syncFoot(): void {
+    const n = this.entries.length;
+    this.count.textContent = n === 1 ? '1 entry' : `${n} entries`;
+    this.span.textContent = n === 0 ? '—' : `${stampFor(0)}–${stampFor(n - 1)}`;
   }
 
   push(entry: BacklogEntry): void {
     this.entries.push(entry);
+    this.syncFoot();
     if (!this.overlay.hidden) this.appendRow(entry, this.entries.length - 1, true);
   }
 
   reset(): void {
     this.entries = [];
     clear(this.scroll);
+    this.syncFoot();
     this.syncFades();
   }
 
   render(): void {
     clear(this.scroll);
+    this.syncFoot();
     if (this.entries.length === 0) {
       this.scroll.appendChild(
         el('p', { class: 'pq-backlog__empty', text: 'The night is still ahead of you.' }),
@@ -144,6 +177,7 @@ export class Backlog {
    */
   private syncFades(): void {
     const overflow = this.scroll.scrollHeight > this.scroll.clientHeight + 2;
+    this.scroll.dataset.empty = this.entries.length === 0 ? '1' : '0';
     const top = this.scroll.scrollTop > 6;
     const end =
       !overflow || this.scroll.scrollTop + this.scroll.clientHeight >= this.scroll.scrollHeight - 6;
@@ -161,7 +195,13 @@ export class Backlog {
     // the column, offset is how far through the remainder we have travelled.
     const view = this.scroll.clientHeight;
     const total = Math.max(this.scroll.scrollHeight, 1);
-    const share = Math.min(1, view / total);
+    // Capped at 86% of the track. A column that only just overflows produces a
+    // thumb the full length of its own track, and a thumb that exactly covers
+    // its track is indistinguishable from a stray 2px rule down the panel —
+    // which is precisely how the previous build's scrollbar read. Holding back
+    // a seventh guarantees visible track at one end or the other in every
+    // state, so the mark is always legibly a thumb IN something.
+    const share = Math.min(0.86, view / total);
     const travel = total > view ? this.scroll.scrollTop / (total - view) : 0;
     this.thumb.style.height = `${(share * 100).toFixed(2)}%`;
     this.thumb.style.top = `${(travel * (1 - share) * 100).toFixed(2)}%`;

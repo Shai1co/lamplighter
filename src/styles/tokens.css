@@ -471,19 +471,36 @@
      the treatment was an accident. 34px is a short exit ramp — about half a
      line of the reading serif — so the foot of the column mirrors its head
      without ever eating a whole line. */
-  --pq-fade-len: 56px;
+  --pq-fade-len: 80px;
   --pq-fade-end: 34px;
-  /* Depth of the panel's own bottom dissolve. Eliza's dialogue bar has no
-     bottom edge at all — the plate simply carries the prose and the darkening
-     runs off the frame. A transcript column that terminates in a ruled
-     rectangle is the single most "HTML dialog" silhouette we can draw, so the
-     pane's lower edge fades out fill, hairline and all.
-     48 → 104: at 48 the ramp was shorter than a line of the prose it was meant
-     to dissolve, so the last paragraph still met a legible edge and the panel
-     still terminated mid-canvas. A ramp about six lines deep — with the pane
-     now running off the bottom of the FRAME rather than stopping in the middle
-     of it — is the length at which the glass stops having a bottom. */
-  --pq-panel-fade: 104px;
+  /* ── The panel's bottom terminus ────────────────────────────────────────────
+     This used to be the depth of a mask that dissolved the pane's own fill,
+     frost and hairline so the glass "ran off the bottom of the frame". In a
+     captured still that reads as exactly one thing: a cropped div. There is no
+     terminus, the composition has no lower edge to close on, and the eye keeps
+     hunting for the border it can feel is missing.
+     The pane now has a DESIGNED bottom — an inset that mirrors its top margin,
+     a footer row carrying the log's extent, and a bottom hairline — and this
+     token stops being a mask depth and becomes the length of the soft dissolve
+     that hides OVERFLOWING ENTRIES above that footer. 80px is about four lines
+     of the reading serif: long enough that a paragraph scrolling out never
+     meets a hard cut, short enough that it never eats a whole entry. */
+  --pq-panel-fade: 80px;
+  /* ── Frame inset ────────────────────────────────────────────────────────────
+     The one number the transcript pane's top AND bottom margins are struck
+     from. The panel used to be bottom-anchored at 88vh with the lower gutter
+     given back entirely, so it sat 130px off the top and 0 off the bottom: an
+     object with one designed edge and one accident. Equal margins turn it into
+     a deliberate full-height column standing in the room, which is the only
+     other honest answer. 48 at 1080 — the same corner margin the chrome and
+     Eliza's own frame use. */
+  --pq-pane-inset: clamp(24px, 4.45vh, 48px);
+  /* Gutter between the prose measure and the right-hand shift stamps. It was
+     --pq-4 (16px), and at that distance a ragged line ending long runs into the
+     stamp's airspace — the two columns stop being a tab stop and start being a
+     collision. 36px is wider than the stamp itself, so the log column is
+     unambiguously a separate field however the prose happens to break. */
+  --pq-time-gutter: 36px;
   /* ── Settings column: the machined grid ──────────────────────────────────
      The panel was hand-placed — the value column drifted a few pixels row to
      row, the tracks stopped wherever the widest readout happened to leave them,

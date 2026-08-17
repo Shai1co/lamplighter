@@ -312,9 +312,10 @@ export class TitleScreen {
             story.author ? el('span', { class: 'pq-storycard__author', text: story.author }) : null,
             // The one control on this screen, and it is a CONTROL, not a link:
             // an underline plus an arrow is default-web vocabulary and reads as
-            // an <a> pasted onto a game. It is now a hairline capsule with
-            // drawn corner brackets — a diegetic instrument that lights up in
-            // the room's own cool signal when it is live.
+            // an <a> pasted onto a game. It is a quiet bordered rectangle in
+            // the same hairline language as the pane's own arris — no terminal
+            // brackets, which belong to a HUD this frame is not — and it lights
+            // up in the room's own cool signal when it is live.
             el('span', { class: 'pq-storycard__cta' }, [
               el('span', { class: 'pq-storycard__ctalabel', text: 'Begin' }),
             ]),
