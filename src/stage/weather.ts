@@ -1,5 +1,5 @@
 /**
- * Picture Quest — weather & atmosphere.
+ * Lamplighter — weather & atmosphere.
  *
  * Six cheap, GPU-friendly systems living on a near plane in front of the cast:
  *   • rain  — streaked point sprites falling with a slight wind,
@@ -132,8 +132,10 @@ const HALF_W = 9;
 const HALF_H = 6;
 const HALF_D = 2.2;
 
-/** The full weather volume — everything but the foreground rain lives here. */
+/** The general atmosphere volume (snow/dust retain their depth spread). */
 const FIELD: Region = { cx: 0, cy: 0, cz: 0, hx: HALF_W, hy: HALF_H, hz: HALF_D };
+/** Rain is a thin plane behind the character, never a volume through her. */
+const RAIN_FIELD: Region = { cx: 0, cy: 0, cz: 0, hx: HALF_W, hy: HALF_H, hz: 0.18 };
 
 /**
  * Foreground rain. A handful of fat, fast streaks parked a metre and a half in
@@ -155,14 +157,14 @@ const FIELD: Region = { cx: 0, cy: 0, cz: 0, hx: HALF_W, hy: HALF_H, hz: HALF_D 
  * ~0.6s period, which leaves two or three streaks in frame at any instant —
  * enough to read as foreground, too few to read as a curtain.
  */
-const NEAR_RAIN: Region = { cx: -1.28, cy: 0, cz: 1.9, hx: 0.68, hy: 3.5, hz: 0.3 };
+const NEAR_RAIN: Region = { cx: -1.28, cy: 0, cz: 0.28, hx: 0.68, hy: 3.5, hz: 0.12 };
 /* Slightly steeper slant than the main field: closer rain shears more. */
 const NEAR_RAIN_WIND = 1.9;
 const RAIN_WIND = 1.4;
 
 /** Pre-jitter field opacities (see the note at the `buildField` call sites). */
 const RAIN_BASE = 0.9;
-const RAIN_NEAR_BASE = 0.95;
+const RAIN_NEAR_BASE = 0.285;
 
 export class Weather {
   readonly group: THREE.Group;
@@ -204,7 +206,7 @@ export class Weather {
   constructor(worldZ: number) {
     this.group = new THREE.Group();
     this.group.position.z = worldZ;
-    this.group.renderOrder = 40;
+    this.group.renderOrder = 10;
 
     this.streakTex = dotTexture('streak');
     this.hairlineTex = dotTexture('hairline');
@@ -224,7 +226,7 @@ export class Weather {
     // (RAIN_DIFFUSE_PATCH), mean 0.55, so these carry the old effective density.
     this.rain = this.buildField(360, this.streakTex, {
       size: 0.5, color: 0xbcd2dc, opacity: RAIN_BASE, additive: false, velMin: 9, velMax: 13,
-    }, FIELD);
+    }, RAIN_FIELD);
     this.patchRainMaterial(this.rain.material);
     this.rainNear = this.buildField(9, this.hairlineTex, {
       size: 0.92, color: 0xcfd9de, opacity: RAIN_NEAR_BASE, additive: false, velMin: 10, velMax: 13.5,
@@ -271,7 +273,7 @@ export class Weather {
     });
     this.fog = new THREE.Mesh(new THREE.PlaneGeometry(HALF_W * 2.4, HALF_H * 2.4), this.fogMat);
     this.fog.position.z = -0.6;
-    this.fog.renderOrder = 39;
+    this.fog.renderOrder = 9;
     this.fog.frustumCulled = false;
     this.group.add(this.fog);
 
@@ -298,7 +300,7 @@ export class Weather {
     });
     this.glass = new THREE.Mesh(new THREE.PlaneGeometry(HALF_W * 2.4, HALF_H * 2.4), this.glassMat);
     this.glass.position.z = 0.2;
-    this.glass.renderOrder = 41;
+    this.glass.renderOrder = 12;
     this.glass.frustumCulled = false;
     this.glass.visible = false;
     this.group.add(this.glass);
@@ -344,6 +346,7 @@ export class Weather {
       blending: o.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
     const points = new THREE.Points(geo, material);
+    points.renderOrder = 10;
     points.frustumCulled = false;
     points.visible = false;
     return { points, material, positions, velY, swayPhase, count, region };

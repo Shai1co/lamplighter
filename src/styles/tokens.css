@@ -1,4 +1,4 @@
-/* Picture Quest — design tokens.
+/* Lamplighter — design tokens.
  *
  * The four theme roots (--pq-key/accent/ink/paper and their -rgb triplets) are
  * overwritten at runtime by UILayer.applyTheme() from the story manifest. Every
@@ -36,8 +36,17 @@
      theme-driven: prose keeps one warm, filmic white across every story so the
      reading surface never picks up a cast from a story's key color. */
   --pq-warm-rgb: 232 226 214;
-  /* Bottom-fade behind the dialogue: a near-black that is never pure #000. */
-  --pq-scrim-rgb: 5 8 10;
+  /* Bottom-fade behind the dialogue: a near-black that is never pure #000 —
+     and, since it is a DOM layer laid OVER the render, the one black in the game
+     the grade shader's own floor cannot reach. At 5/8/10 composited to 0.85 the
+     bottom of the frame measured a mean luminance of 14 with minima of 8, i.e.
+     the lower band was the most crushed region in the picture despite the shader
+     lifting everything beneath it, and the deepest 400px gradient in the frame
+     was running through a range too narrow to dither. Lifted to 11/15/17 — about
+     +2.5% at the composite, still a warm-neutral near-black, still nowhere near
+     a visible grey — so the ramp has somewhere to go and the corner has a value
+     in it. Paired with the extra emulsion on .pq-plate::after. */
+  --pq-scrim-rgb: 11 15 17;
 
   /* ── Derived surfaces (glass) ── */
   --pq-glass: rgba(var(--pq-paper-rgb) / 0.52);
@@ -193,24 +202,25 @@
   /* ── Layout ── */
   --pq-gutter: clamp(20px, 4.5vw, 76px);
   /* ── Dialogue bar ────────────────────────────────────────────────────────
-     A DESIGNED column, not a centred block. The old set was a 1420px band
-     centred in the frame, which put a single line of prose floating across the
-     middle of the screen with no left edge to read from. These three tokens
-     land the set on an exact grid at 1920×1080 — caps plate flush right ending
-     at x=420, prose starting at x=470 and running 1100px — and stay
-     proportional below it. (Gutter 76 + name 344 = 420; + gap 50 = 470.)
-     The gap was 80px, which opened a visible trench between the plate and the
-     prose and let the two columns read as two unrelated objects; at 50px they
-     read as one set with a label, which is the Eliza relationship. */
-  --pq-name-col: clamp(104px, 17.92vw, 344px);
-  --pq-name-gap: clamp(16px, 2.6vw, 50px);
-  /* 1150px at 1920 — the prose column runs x=470→1620 and still leaves a 300px
-     right margin. Widened from 1100: at the old measure a 70-character line
-     came within 20px of the wrap point, so the smallest change in a sentence
-     tipped its last two words onto a second line and left one of them stranded
-     there. Headroom in the measure is the cheapest orphan insurance there is
-     (the no-wrap tail in DialogueBox is the guarantee behind it). */
-  --pq-dialogue-measure: min(1150px, 100%);
+     A DESIGNED column, not a centred block, struck on Eliza's own grid at
+     1920×1080: speaker plate flush left on x=90, prose column starting on a
+     FIXED x=470 and running a 1050px measure (ragged right, ending x=1520 with
+     a 400px right margin). Every token below is a vw ratio of those numbers so
+     the set stays on the same proportional grid at any width.
+
+     The measure holds at 1050 and the prose column stays on x=470 for one
+     reason: a single-line speech must keep an obvious left edge, not happen to
+     centre itself by arithmetic accident. The fixed column breaks that
+     symmetry, so the left edge is the thing the eye finds first.
+
+     The bar gets its OWN left gutter (90, against the frame's 76) because that
+     is where Eliza sets its nameplate: a hair outboard of the chrome margin, so
+     the reading surface is the widest thing in the frame and reads as the
+     bottom of the picture rather than as a box inset into it. */
+  --pq-dialogue-gutter: clamp(24px, 4.6875vw, 90px);
+  --pq-name-col: clamp(96px, 16.40625vw, 315px);
+  --pq-name-gap: clamp(18px, 3.385vw, 65px);
+  --pq-dialogue-measure: min(1050px, 100%);
   /* Height of the veil that LEADS INTO the fade: 42vh = 454px at 1080, so the
      first trace of darkening begins at y=626 and the ramp is approached through
      130px of almost nothing. On a bright plate (the atrium) a fade that starts
@@ -245,6 +255,14 @@
      being abbreviated, and the panel collapses into the badge it stopped
      being. Content width at 330 is 290 — label 84 + scale 148 + value 38. */
   --pq-relay-w: clamp(292px, 17.2vw, 330px);
+  /* The relay's numeric column, and the reason it is a token: every number on
+     the panel — the shift clock, the vocal level, all three telemetry values —
+     is right-aligned into a box of exactly this width hung off the content's
+     right edge. That makes the numeric tab stop STRUCTURAL rather than a
+     coincidence of three different layout modes agreeing, and it is what lets
+     the three scale tracks terminate on one shared vertical. 40px holds four
+     glyphs of 11.5px mono ("+0.1", "0.75", "00:18") with a hair to spare. */
+  --pq-relay-val: 40px;
   --pq-proxy-w: clamp(324px, 27.3vw, 524px);
   --pq-proxy-bottom: clamp(146px, 19.63vh, 212px);
   --pq-blur: 18px;

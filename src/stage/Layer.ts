@@ -1,5 +1,5 @@
 /**
- * Picture Quest — a single parallax background plane.
+ * Lamplighter — a single parallax background plane.
  *
  * Layers sit at distinct Z (far → near). Perspective already parallaxes them as
  * the camera drifts; each layer adds a subtle extra offset (scaled by depth and

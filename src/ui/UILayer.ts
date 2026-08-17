@@ -54,6 +54,7 @@ export class UILayer implements IUILayer {
   private readonly gradeEl: HTMLElement;
   private readonly atmosEl: HTMLElement;
   private readonly plateEl: HTMLElement;
+  private readonly cornerPlateEl: HTMLElement;
 
   private readonly dialogue: DialogueBox;
   private readonly callstrip: CallStrip;
@@ -140,10 +141,23 @@ export class UILayer implements IUILayer {
       // just cleared, and the cool wash grades the shadows both of them leave.
       el('span', { class: 'pq-atmos__focus' }),
       el('span', { class: 'pq-atmos__local' }),
+      // …then the midground is LIT (the chair back catching the window, the wet
+      // floor carrying the city) and the glass behind it is given its bokeh
+      // density, because a frame whose middle third has no light in it has no
+      // midground at all — just two assets either side of a hole.
+      el('span', { class: 'pq-atmos__midlight' }),
+      el('span', { class: 'pq-atmos__bokeh' }),
       el('span', { class: 'pq-atmos__shafts' }),
       el('span', { class: 'pq-atmos__cool' }),
     ]);
     this.plateEl = el('div', { class: 'pq-plate', aria: { hidden: true } });
+    // The corner emulsion is a SIBLING of the plate, never a child: opacity on
+    // the plate establishes a compositing group, so a nested field would come
+    // out at 3.4% of its own alpha. See .pq-plate--corner.
+    this.cornerPlateEl = el('div', {
+      class: 'pq-plate pq-plate--corner',
+      aria: { hidden: true },
+    });
 
     this.pq = el('div', { class: 'pq' }, [
       this.gradeEl,
@@ -153,6 +167,7 @@ export class UILayer implements IUILayer {
       this.modalLayer,
       this.creditsEl,
       this.plateEl,
+      this.cornerPlateEl,
       this.liveEl,
     ]);
     root.appendChild(this.pq);

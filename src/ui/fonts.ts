@@ -1,5 +1,5 @@
 /**
- * Picture Quest — vendored variable fonts (no external CDN).
+ * Lamplighter — vendored variable fonts (no external CDN).
  *
  * Fraunces  → expressive transitional serif for the wordmark, chapter cards and
  *             narration/dialogue body. We import the `opsz` axis build so optical

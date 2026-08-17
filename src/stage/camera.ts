@@ -1,5 +1,5 @@
 /**
- * Picture Quest — cinematic camera (Ken Burns).
+ * Lamplighter — cinematic camera (Ken Burns).
  *
  * A PerspectiveCamera driven with a slow, continuous idle drift (dolly + float)
  * plus gsap-tweened directive moves (push / pull / pan / still) and a decaying

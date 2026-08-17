@@ -205,19 +205,19 @@ export class TitleScreen {
     this.stories.forEach((story, i) => {
       this.railEl.appendChild(this.buildCard(story, i));
     });
-    // Empty shelf space, stated rather than implied — the rail keeps its mass.
-    for (let i = this.stories.length; i < RAIL_SLOTS; i++) {
-      this.railEl.appendChild(this.buildLockedSlot(i + 1));
-    }
+    // Empty shelf space is summarized in one quiet ledger row so the rail
+    // terminates on the menu baseline instead of repeating disabled chrome.
+    const locked = Math.max(0, RAIL_SLOTS - this.stories.length);
+    if (locked > 0) this.railEl.appendChild(this.buildLockedSlot(locked));
   }
 
   /**
    * An empty shelf row. It must read as a *state*, not as a rendering fault: a
    * legible label, a hairline edge and a drawn padlock, rather than a ghost.
    */
-  private buildLockedSlot(index: number): HTMLElement {
+  private buildLockedSlot(count: number): HTMLElement {
     return el('div', { class: 'pq-lockslot', aria: { hidden: true } }, [
-      el('span', { class: 'pq-lockslot__idx', text: `Slot ${String(index).padStart(2, '0')}` }),
+      el('span', { class: 'pq-lockslot__idx', text: `${count} ${count === 1 ? 'slot' : 'slots'}` }),
       el('span', { class: 'pq-lockslot__state' }, [
         // Drawn from two boxes rather than an icon font, so it stays a hairline
         // at any size and inherits the row's own ink.

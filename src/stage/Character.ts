@@ -1,5 +1,5 @@
 /**
- * Picture Quest — a character sprite.
+ * Lamplighter — a character sprite.
  *
  * An alpha plane between the mid and near background layers. Supports:
  *   • enter from a side with an eased overshoot + fade,

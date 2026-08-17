@@ -1,5 +1,5 @@
 /**
- * Picture Quest — post-processing stack.
+ * Lamplighter — post-processing stack.
  *
  * EffectComposer pipeline (all intermediate targets stay linear; OutputPass does
  * the final ACES tone-map + sRGB encode):

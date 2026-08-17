@@ -1,5 +1,5 @@
 /**
- * Picture Quest — Stage GLSL primitives + tiny deterministic helpers.
+ * Lamplighter — Stage GLSL primitives + tiny deterministic helpers.
  *
  * All shaders are authored as exported template-literal strings (no `.glsl`
  * files). They operate in LINEAR color space: the EffectComposer renders the
@@ -193,13 +193,21 @@ void main() {
   color *= 1.0 - vAmt * (1.0 - vig);
 
   // Black floor. Crushing to pure 0 turns whole regions into a void that reads
-  // as "missing render" rather than "night". Lift the toe onto a near-black
-  // that survives the transfer curve — these values land around #09 0a 09 once
-  // three's ACES fit and the sRGB encode are through with them, and the paper
-  // scrims layered over the canvas carry the composite to roughly #0a0d0c.
+  // as "missing render" rather than "night", and — worse in a STILL — a region
+  // pinned within two code values of zero has no room left for the dither that
+  // stops a 400px gradient banding across it.
+  //
+  // Lifted ~40% (0.0105 → 0.0148 linear), which is about +3.5% at the output
+  // after three's ACES fit and the sRGB encode: the deepest black in frame now
+  // lands near #12 rather than near #0a. That figure is chosen against the
+  // vignette, which is applied immediately above this line and takes ~28% out
+  // of the bottom corners — so the corners were reaching the floor and staying
+  // there, and the floor is the only thing that can give them back a value.
+  // Applied AFTER the vignette on purpose, for exactly that reason.
+  //
   // Deliberately NEUTRAL: the previous floor was blue enough that anywhere the
   // vignette bit went cyan-muddy rather than simply dark. White is untouched.
-  const vec3 BLACK_FLOOR = vec3(0.0105, 0.0106, 0.0098);
+  const vec3 BLACK_FLOOR = vec3(0.0148, 0.0150, 0.0139);
   color = BLACK_FLOOR + color * (1.0 - BLACK_FLOOR);
 
   // Film grain. Six disciplines keep it emulsion and not a screen door:
@@ -232,14 +240,26 @@ void main() {
   float gw = 1.0 - 0.55 * smoothstep(0.25, 1.2, gLum);       // roll off in highlights
   gw *= 0.34 + 0.66 * smoothstep(0.0020, 0.0185, gLum);       // and eased into the toe
   float gToe = 1.0 - smoothstep(0.004, 0.045, gLum);          // 1 in the blacks, 0 by mid
+  // Bottom-right weighting. Not a second emulsion and not a quadrant with an
+  // edge: one very long, very soft ramp over the corner where BOTH deep-shadow
+  // problems live at once — the vignette is deepest there and the dialogue
+  // scrim's 400px ramp lands on top of it, which is precisely the surface an
+  // 8-bit display bands on. Grain is the dither that kills that, so it is
+  // strongest exactly where the gradient is longest and the values are lowest.
+  // The ramps are half a frame wide, so there is no boundary anywhere for the
+  // eye to find; vUv.y is 0 at the bottom of the frame.
+  float gCorner = smoothstep(0.40, 0.95, vUv.x) * (1.0 - smoothstep(0.06, 0.56, vUv.y));
+  float gq = uGrain * (1.0 + 0.8 * gCorner);
   float gt = floor(uTime * 16.0);
   vec2 gjit = vec2(hash13(vec3(gt, 3.7, 11.3)), hash13(vec3(gt, 91.1, 5.9))) * 512.0;
   vec2 gcell = floor((gl_FragCoord.xy + gjit) / max(uGrainSize, 0.5));
   float gFine = hash13(vec3(gcell, gt));
   float gCoarse = hash13(vec3(floor(gcell * 0.3333), gt + 19.0));
   float g = (gFine - 0.5) - (gCoarse - 0.5) * 0.5;
-  color *= 1.0 + g * uGrain * 0.185 * gw;
-  color += g * uGrain * (0.0008 + 0.0038 * gToe);
+  color *= 1.0 + g * gq * 0.185 * gw;
+  // The additive term is the one that actually dithers near zero (there is
+  // nothing to modulate down there), so it carries the corner weighting hardest.
+  color += g * gq * (0.0008 + 0.0038 * gToe) * (1.0 + 0.5 * gCorner);
 
   // Glitch scanline darkening.
   if (uGlitch > 0.0001) {

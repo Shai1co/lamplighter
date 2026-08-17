@@ -1,4 +1,4 @@
-/* Picture Quest — component styling + boot splash.
+/* Lamplighter — component styling + boot splash.
  * Judged blind against Eliza: glass, hairlines, soft glow, filmic restraint. */
 
 /* ══════════════════════════════  Boot splash  ══════════════════════════════ */
@@ -426,6 +426,118 @@
   display: none;
 }
 
+/* 0b — the MIDGROUND, lit. ─────────────────────────────────────────────────
+   The ops frame has three planes and, until this pass, light on two of them: a
+   lamp-lit desk vignette in the left third and a wall of city glass in the
+   centre-right. Between them sat a chair back and a run of wet floor that the
+   grade had crushed to within two values of pure black — roughly a fifth of the
+   canvas holding nothing the eye can resolve, which is the "flat undesigned
+   background" hard-fail read however good the two lit thirds are. `::before` on
+   the room grade already bridges that gap with warm veiling glare at 2–9%; what
+   it cannot do is give the chair an EDGE, and an object with no edge is not a
+   midground layer, it is a smudge.
+
+   So the chair is rim-lit from the source that is demonstrably behind it. Four
+   terms, none of them inventing a light:
+     • the window-facing arris — a 29px-wide vertical band of cool transmitted
+       light down the chair's right shoulder at 13.5%, which is the whole of
+       what makes the silhouette readable;
+     • the crown, catching the same source across the top of the seat back;
+     • a wide, very low cool ambient over the chair's mass, so what the rim
+       describes has a VALUE inside it rather than a void;
+     • the wet floor beyond it, carrying two smeared reflections (one teal
+       signage, one amber street practical) of lights that are already in shot.
+   Everything cool here is struck from --pq-pane-rgb's family — the same teal the
+   glass, the rain and the split-tone are — so the pass is the grade arriving in
+   the middle third, not a second palette. */
+.pq-atmos__midlight {
+  opacity: 0;
+  transition: opacity var(--pq-dur-5) var(--pq-ease);
+  background-image:
+    /* 1 — the arris. Narrow and tall: a rim is a line, and the moment it has
+       width it becomes a glow around a shape nobody can name. */
+    radial-gradient(
+      19px 205px at 51.4% 66%,
+      rgba(150, 208, 222, 0.19),
+      rgba(150, 208, 222, 0.055) 46%,
+      transparent 76%
+    ),
+    /* 1b — the same edge lower down, where the seat back turns away and the
+       band has to weaken rather than stop. */
+      radial-gradient(13px 96px at 49.8% 80%, rgba(146, 204, 218, 0.125), transparent 74%),
+    /* 2 — the crown of the seat back: a horizontal catch, because the top edge
+       of a chair faces up into the room's ambient as well as across at the
+       glass. */
+      radial-gradient(92px 16px at 47.5% 48.5%, rgba(150, 208, 222, 0.13), transparent 78%),
+    /* 3 — the mass. 8%, i.e. barely: enough that the chair is dark rather than
+       absent, not enough to lift it off the wall behind it. */
+      radial-gradient(
+        9% 19.5% at 44.5% 70%,
+        rgba(104, 158, 174, 0.08),
+        rgba(104, 158, 174, 0.024) 54%,
+        transparent 80%
+      ),
+    /* 4 — the wet floor, bottom right. The plate paints reflections down there
+       and the vignette had taken every one of them; these put back the two the
+       eye can trace to a source. */
+      radial-gradient(30% 12% at 82% 82%, rgba(96, 156, 172, 0.05), transparent 80%),
+    radial-gradient(15px 96px at 74% 84%, rgba(150, 200, 214, 0.055), transparent 74%),
+    radial-gradient(12px 74px at 90.5% 80%, rgba(226, 168, 104, 0.042), transparent 76%);
+}
+.pq[data-pq-bg='ops_room'] .pq-atmos__midlight {
+  opacity: 1;
+}
+
+/* 0c — bokeh density on the glass. ────────────────────────────────────────────
+   The plate paints a whole city behind that window and the grade prints perhaps
+   a dozen of its lights; the centre-right therefore reads as a dark rectangle
+   with a few dots in it rather than as a wall of rain-lit glass. This is the one
+   place in the frame where MORE light is the answer, and it is free: every disc
+   below is a transmitted point source, and a night city has thousands.
+
+   Discs are specified in absolute px, never in percentages, so they stay round
+   at every aspect ratio — an ellipse reads as a gradient, only a circle reads as
+   an out-of-focus point. Sixteen of them on two incommensurate horizontal
+   rhythms, teal for signage and window light, amber for the street, none above
+   17%, plus one very low wash so the glass itself is a value. Masked to die well
+   inside the partition on the left and above the floor at the bottom, so the
+   field never acquires an edge of its own. */
+.pq-atmos__bokeh {
+  opacity: 0;
+  transition: opacity var(--pq-dur-5) var(--pq-ease);
+  background-image:
+    /* signage / window light */
+    radial-gradient(11px 11px at 62.5% 24%, rgba(152, 222, 236, 0.16), rgba(152, 222, 236, 0.05) 55%, transparent 78%),
+    radial-gradient(8px 8px at 66% 31.5%, rgba(152, 222, 236, 0.13), transparent 76%),
+    radial-gradient(13px 13px at 69.5% 21.5%, rgba(146, 216, 232, 0.115), rgba(146, 216, 232, 0.035) 58%, transparent 80%),
+    radial-gradient(9px 9px at 71.5% 36%, rgba(152, 222, 236, 0.145), transparent 76%),
+    radial-gradient(10px 10px at 75% 27%, rgba(146, 216, 232, 0.105), transparent 78%),
+    radial-gradient(12px 12px at 78.5% 33.5%, rgba(152, 222, 236, 0.125), rgba(152, 222, 236, 0.038) 56%, transparent 79%),
+    radial-gradient(8px 8px at 82% 22.5%, rgba(146, 216, 232, 0.1), transparent 76%),
+    radial-gradient(11px 11px at 85.5% 30%, rgba(152, 222, 236, 0.115), transparent 78%),
+    radial-gradient(9px 9px at 89% 38%, rgba(146, 216, 232, 0.105), transparent 77%),
+    radial-gradient(12px 12px at 93% 26.5%, rgba(152, 222, 236, 0.095), transparent 79%),
+    radial-gradient(8px 8px at 96.5% 34%, rgba(146, 216, 232, 0.085), transparent 76%),
+    /* street practicals — the warm half of the split-tone, on the lower band
+       where a road would be */
+      radial-gradient(9px 9px at 64.5% 38.5%, rgba(236, 176, 112, 0.125), transparent 77%),
+    radial-gradient(11px 11px at 73% 44%, rgba(232, 168, 104, 0.105), rgba(232, 168, 104, 0.03) 58%, transparent 80%),
+    radial-gradient(8px 8px at 80.5% 42.5%, rgba(236, 176, 112, 0.115), transparent 76%),
+    radial-gradient(10px 10px at 88.5% 47%, rgba(232, 168, 104, 0.085), transparent 78%),
+    radial-gradient(8px 8px at 95% 43%, rgba(236, 176, 112, 0.075), transparent 76%),
+    /* and the glass itself, so the discs sit in something */
+      radial-gradient(26% 22% at 80% 32%, rgba(88, 150, 168, 0.048), transparent 82%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 53%, #000 63%, #000 100%),
+    linear-gradient(180deg, transparent 7%, #000 17%, #000 50%, transparent 62%);
+  mask-image: linear-gradient(90deg, transparent 53%, #000 63%, #000 100%),
+    linear-gradient(180deg, transparent 7%, #000 17%, #000 50%, transparent 62%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+.pq[data-pq-bg='ops_room'] .pq-atmos__bokeh {
+  opacity: 1;
+}
+
 /* 1 — the veil, tamed. A real local-contrast restore rather than a dark wash
    over the top: a wash *lowers* contrast (it compresses everything toward one
    colour), which is the direction the frame was already failing in. Filtering
@@ -596,6 +708,32 @@
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='384' height='384'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='384' height='384' filter='url(%23g)'/></svg>");
   background-size: 384px 384px;
 }
+/* …and ~2% more of that same emulsion over the bottom-right quadrant. Not a
+   second film stock: the identical monochrome tile, offset so the two fields
+   decorrelate rather than simply doubling in amplitude, on one ramp half a frame
+   wide so it has no boundary anywhere.
+   The reason it is needed ON TOP of the plate rather than in the grade shader is
+   z-order: the bottom of the frame is dominated by the dialogue scrim, a DOM
+   layer at 0.85, which attenuates the shader's own corner-weighted grain to
+   about a seventh of its strength exactly where the longest gradient in the game
+   lands. This is the dither for that gradient, and it is over everything.
+
+   It is a SIBLING carrying `.pq-plate` as well as the modifier, not a child and
+   not a pseudo-element, and that is structural rather than stylistic: `opacity`
+   on the base establishes a compositing group, so a second field nested inside
+   the 0.034 plate would render at 0.034 × its own alpha — i.e. at nothing.
+   Inheriting the base rule is also what keeps the tile written exactly once;
+   hoisting it into a custom property does not survive the CSS pipeline. */
+.pq-plate--corner {
+  opacity: 0.021;
+  background-position: 137px 89px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 34%, #000 92%),
+    linear-gradient(0deg, #000 4%, rgba(0, 0, 0, 0.55) 44%, transparent 74%);
+  mask-image: linear-gradient(90deg, transparent 34%, #000 92%),
+    linear-gradient(0deg, #000 4%, rgba(0, 0, 0, 0.55) 44%, transparent 74%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
 
 /* Full-screen advance catcher (armed only while reading). */
 .pq-advance {
@@ -737,7 +875,11 @@
   position: absolute;
   inset: auto 0 0 0;
   z-index: var(--pq-z-dialogue);
-  padding: var(--pq-9) var(--pq-gutter) clamp(44px, 7vh, 78px);
+  /* Left inset is the bar's OWN gutter, not the frame's: the reading surface is
+     the widest element in shot and its nameplate sits a hair outboard of the
+     chrome margin, which is what makes it read as the bottom of the picture
+     rather than as a panel inset into it. */
+  padding: var(--pq-9) var(--pq-gutter) clamp(84px, 11vh, 118px) var(--pq-dialogue-gutter);
   pointer-events: none;
   /* Declared here (not only in the .pq.is-chapter rule) so the bar fades back
      in as smoothly as it fades out when a chapter card takes the frame. */
@@ -750,7 +892,7 @@
 .pq-dialogue__scrim {
   position: absolute;
   inset: auto 0 0 0;
-  height: var(--pq-scrim-h);
+  height: clamp(260px, 27.8vh, 300px);
   background-repeat: no-repeat;
   background-position: bottom center, bottom center;
   /* Two layers, deliberately:
@@ -772,39 +914,21 @@
         which the type reads as sitting IN atmosphere rather than on top of a
         haze. The band is 28vh; the tail above it is still 42vh, so all of that
         depth is approached through 130px of almost nothing. */
-  background-size: 100% var(--pq-scrim-band), 100% 100%;
+  background-size: 100% 100%;
   /* Both ramps are sampled off a smoothstep rather than off a straight line:
      twelve stops on an S-curve, flat at the top, steepest through the middle
      third, flattening again into the bottom edge. A linear ramp has a
      discontinuity in its first derivative at BOTH ends, and on a bright plate
      the eye finds the upper one and calls it the top of a box. */
   background-image: linear-gradient(
-      180deg,
-      rgba(var(--pq-scrim-rgb) / 0) 0%,
-      rgba(var(--pq-scrim-rgb) / 0.012) 8%,
-      rgba(var(--pq-scrim-rgb) / 0.045) 16%,
-      rgba(var(--pq-scrim-rgb) / 0.095) 24%,
-      rgba(var(--pq-scrim-rgb) / 0.178) 32%,
-      rgba(var(--pq-scrim-rgb) / 0.262) 40%,
-      rgba(var(--pq-scrim-rgb) / 0.35) 48%,
-      rgba(var(--pq-scrim-rgb) / 0.44) 56%,
-      rgba(var(--pq-scrim-rgb) / 0.524) 64%,
-      rgba(var(--pq-scrim-rgb) / 0.64) 72%,
-      rgba(var(--pq-scrim-rgb) / 0.706) 80%,
-      rgba(var(--pq-scrim-rgb) / 0.762) 88%,
-      rgba(var(--pq-scrim-rgb) / 0.8) 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(var(--pq-scrim-rgb) / 0) 0%,
-      rgba(var(--pq-scrim-rgb) / 0.007) 14%,
-      rgba(var(--pq-scrim-rgb) / 0.024) 28%,
-      rgba(var(--pq-scrim-rgb) / 0.055) 42%,
-      rgba(var(--pq-scrim-rgb) / 0.095) 56%,
-      rgba(var(--pq-scrim-rgb) / 0.143) 70%,
-      rgba(var(--pq-scrim-rgb) / 0.195) 84%,
-      rgba(var(--pq-scrim-rgb) / 0.26) 100%
-    );
+    180deg,
+    rgba(5, 8, 9, 0) 0%,
+    rgba(5, 8, 9, 0.035) 12%,
+    rgba(5, 8, 9, 0.14) 32%,
+    rgba(5, 8, 9, 0.36) 58%,
+    rgba(5, 8, 9, 0.58) 82%,
+    rgba(5, 8, 9, 0.7) 100%
+  );
 }
 .pq-dialogue__scrim::after {
   content: '';
@@ -819,7 +943,7 @@
   mask-image: linear-gradient(180deg, transparent, #000 40%);
 }
 
-/* Two-column set on a FIXED grid: CAPS plate flush right against the gutter of
+/* Two-column set on a FIXED grid: CAPS plate flush left against the gutter of
    the prose column, prose left-aligned from a constant x, both sharing the
    first-line baseline. Anchored left, never centred — a centred block gives a
    one-line speech no left edge to read from and reads as a caption floated over
@@ -852,9 +976,9 @@
   letter-spacing: 0.2em;
   text-indent: 0;
   text-transform: uppercase;
-  /* Flush LEFT, on the page gutter — x=76 at 1920, the same vertical the
-     hamburger and every other margin in the frame are struck from.
-     It used to be flush right against the prose (ending at x=420), which keeps
+  /* Flush LEFT, on the bar's own gutter — x=90 at 1920, one step outboard of
+     the frame's chrome margin, which is where Eliza sets its speaker column.
+     It used to be flush left against the prose (ending at x=420), which keeps
      the name→prose gap constant but costs the thing that actually matters: the
      plate then has no fixed home. A four-letter name and a nine-letter name
      start at two different places, both of them somewhere out in the middle of
@@ -889,15 +1013,15 @@
   grid-column: 2;
   font-family: var(--pq-serif);
   /* Reading type, sized to be read across a room: ~+9% over the previous set,
-     on a 1050px measure — about 60 characters of this serif. */
+     on a 1050px measure — about 55 characters of this serif. */
   font-size: clamp(1.3rem, 0.94rem + 1.1vw, 2.13rem);
   /* 1.5 is the two-line rhythm this face wants at this measure: at 1.7 a wrap
      opened a gap wide enough to read as two separate lines rather than as one
      spoken sentence. */
   line-height: 1.5;
   letter-spacing: -0.004em;
-  /* Declared, never inherited. The column starts at a fixed x (gutter 76 +
-     name 344 + gap 50 = 470 at 1920, i.e. 24.5% of frame) and every line in it
+  /* Declared, never inherited. The column starts at a fixed x (gutter 90 +
+     name 315 + gap 65 = 470 at 1920, i.e. 24.5% of frame) and every line in it
      is ragged-right from that same vertical. A centred body next to a nameplate
      pinned on the far-left gutter reads as two systems that happen to share a
      baseline — the name has a home and the prose floats — and one inherited
@@ -908,6 +1032,12 @@
      bar jump as the story advances. */
   min-height: 3em;
   text-wrap: pretty;
+}
+/* While the proxy panel is on stage its left hairline sits at ~x1352 (1920):
+   cap the measure so a full line can never run underneath the glass. The proxy
+   beat always carries short narration, so the tighter measure costs nothing. */
+.pq:has(.pq-proxy:not([hidden])) .pq-dialogue__text {
+  max-width: min(var(--pq-dialogue-measure), 840px);
 }
 /* Inline so the continue glyph flows on the last line's baseline. The tail is
    the same ink — it is the same sentence — and differs only in that nothing
@@ -942,24 +1072,23 @@
    white, 12px after the text, its tip on the baseline, breathing at 2s. */
 .pq-continue {
   display: inline-block;
-  /* Measured off the reference frame, not off a rule of thumb: Eliza's mark is
-     ~22 × 12 px against a ~34px body, i.e. 0.65em × 0.35em. The previous set
-     here (0.31 × 0.22em ≈ 10 × 7px) was less than half that area, and at 55%
-     opacity in the reading white it fell below the threshold where a blind
-     critic registers it at all — the note came back as "missing continue
-     glyph", which is the same fail as not drawing one. 0.44 × 0.29em (≈15 × 10
-     at the reading size) splits the difference: unmistakably present, still
-     visibly smaller than the full stop it follows. */
-  width: 0.44em;
-  height: 0.29em;
+  /* Bounded by the reading face's X-HEIGHT, which is the only measurement that
+     keeps the mark subordinate to the sentence at every size. Fraunces sets an
+     x-height of ≈0.47em, so a 0.40 × 0.25em triangle (≈14 × 8.5px at the 34px
+     reading size) sits entirely inside the band of lowercase it follows: it
+     trails the full stop rather than punctuating it. The previous 0.44 × 0.29em
+     was drawn to match Eliza's absolute pixel size and overshot — Eliza's mark
+     is measured against a bar with no other affordance in it, ours shares the
+     frame with a lit relay panel, and at that size the triangle was reading as
+     the second brightest object in the lower third. */
+  width: 0.6em;
+  height: 0.36em;
   /* 0.4em after the final glyph — scaled with the type rather than pinned in
      px, so the mark keeps the same optical distance at every reading size. */
-  margin-left: 0.4em;
-  /* Optically centred on the x-height, not parked on the baseline. Fraunces'
-     x-height is ≈0.47em, so its middle is 0.235em up; a 0.29em mark centred
-     there has its bottom edge at 0.09em. Sitting on the baseline the triangle
-     hung visibly below the line of lowercase it follows. */
-  vertical-align: 0.09em;
+  margin-left: 12px;
+  /* The inline-block baseline is its bottom edge, putting the triangle's point
+     on the same baseline as the final visible glyph. */
+  vertical-align: baseline;
   background: rgb(var(--pq-warm-rgb));
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
@@ -967,19 +1096,23 @@
   transition: opacity var(--pq-dur-3) var(--pq-ease);
 }
 /* 70% of the reading white — a step under the prose (0.92) so the hierarchy is
-   intact, a clear step over the old 55% so the mark actually prints. It
-   breathes about that figure rather than above it. */
+   intact, a clear step over the old 55% so the mark actually prints. */
 .pq-continue.is-shown {
   opacity: 0.7;
-  animation: pq-breathe 2s var(--pq-ease-in-out) infinite;
+  animation: pq-breathe 1.2s var(--pq-ease-in-out) infinite;
 }
+/* The breath is a NARROW band about 0.70, not a swing through it. At 0.58→0.82
+   the mark spent half its cycle brighter than the 70% it is nominally set at,
+   and any frame grabbed in that half shows an affordance out-printing the
+   sentence it belongs to. 0.62→0.76 still reads as alive in motion and never
+   leaves the step below the prose in a still. */
 @keyframes pq-breathe {
   0%,
   100% {
-    opacity: 0.58;
+    opacity: 0.62;
   }
   50% {
-    opacity: 0.82;
+    opacity: 0.76;
   }
 }
 
@@ -1043,10 +1176,14 @@
        • an 8px key-coloured bloom — tight, faint, the light IN the pane
          spilling into the room. The old 26px halo was a soft-box behind a
          readout, i.e. a glow with no source;
-       • a 1px INNER hairline at 9% white, inset from the border — the bevel;
+       • a 1px INNER hairline at 12% white, inset from the border — the bevel.
+         9% was below the threshold at which the second arris survives the
+         pane's own backdrop blur, so the glass had exactly one edge and read as
+         a stroked div with a soft fill; 12% is the density at which the bevel
+         prints and the panel reads as ETCHED rather than drawn;
        • the top inner highlight, which is the thickness of the sheet. */
   box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.18),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
   /* Frost, not gain. A plain brightness() multiply is the obvious way to stop a
      6% white fill compositing to near-black over the dark corner of a plate —
@@ -1057,8 +1194,8 @@
      physically does, and it cannot blow out at either end. Saturation is put
      back afterwards because compressing toward grey costs chroma, and a pane
      that greys the room behind it stops belonging to the grade. */
-  backdrop-filter: blur(12px) contrast(0.68) brightness(1.18) saturate(1.6);
-  -webkit-backdrop-filter: blur(12px) contrast(0.68) brightness(1.18) saturate(1.6);
+  backdrop-filter: blur(14px) contrast(0.68) brightness(1.18) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) contrast(0.68) brightness(1.18) saturate(1.6);
   opacity: 0;
   transform: translateY(-6px);
   transition: opacity var(--pq-dur-4) var(--pq-ease), transform var(--pq-dur-4) var(--pq-ease);
@@ -1073,8 +1210,8 @@
   pointer-events: none;
   background: linear-gradient(
     128deg,
-    rgba(255, 255, 255, 0.055) 0%,
-    rgba(255, 255, 255, 0.018) 22%,
+    rgba(var(--pq-lamp-rgb) / 0.09) 0%,
+    rgba(255, 255, 255, 0.026) 22%,
     transparent 44%
   );
 }
@@ -1106,21 +1243,30 @@
    nothing else about the layout changes. */
 .pq-callstrip__label {
   font-family: var(--pq-mono);
-  font-size: 11.5px;
-  letter-spacing: 0.195em;
+  font-size: 12px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(var(--pq-ink-rgb) / 0.6);
 }
 .pq-callstrip.is-live .pq-callstrip__label {
-  color: rgba(var(--pq-ink-rgb) / 0.86);
+  color: rgba(var(--pq-ink-rgb) / 0.6);
 }
+/* Every number on this panel lands in the SAME box: --pq-relay-val wide, hung
+   off the content's right edge, right-aligned inside it. That is the tab stop —
+   see the token. The clock, the vocal level and the three telemetry values were
+   previously laid out by three different mechanisms (flex auto-margin, flex
+   space-between, a grid column) that agreed on a right edge by arithmetic
+   coincidence; one shared width makes the column real, and is what lets the
+   three scale tracks terminate on one shared vertical. */
 .pq-callstrip__timer {
   margin-left: auto;
+  min-width: var(--pq-relay-val);
+  text-align: right;
   font-family: var(--pq-mono);
   font-size: 12.5px;
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
-  color: rgba(var(--pq-key-rgb) / 0.88);
+  color: rgba(var(--pq-ink-rgb) / 0.9);
 }
 .pq-callstrip__rule {
   position: relative;
@@ -1159,6 +1305,7 @@
     rgba(var(--pq-key-rgb) / 0.95) 50%,
     rgba(var(--pq-key-rgb) / 0.35)
   );
+  box-shadow: inset 0 0 0 1px rgba(var(--pq-key-rgb) / 0.82), 0 0 4px rgba(var(--pq-key-rgb) / 0.38);
   opacity: 0.5;
 }
 .pq-callstrip.is-live .pq-callstrip__wave i {
@@ -1185,19 +1332,25 @@
   align-items: baseline;
   margin-top: 6px;
   font-family: var(--pq-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.162em;
+  font-size: 12px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--pq-ink-rgb) / 0.34);
-}
-.pq-callstrip__vocalval {
-  font-size: 11.5px;
-  letter-spacing: 0.04em;
-  font-variant-numeric: tabular-nums;
+  /* 0.34 → 0.52. Nothing on a piece of diegetic glass may sit under half the
+     ink of the type beside it: below that the label stops being read and starts
+     being *inferred*, and an instrument whose captions have to be guessed at is
+     decoration. See the panel-wide legibility floor on .pq-callstrip__foot. */
   color: rgba(var(--pq-ink-rgb) / 0.6);
 }
+.pq-callstrip__vocalval {
+  min-width: var(--pq-relay-val);
+  text-align: right;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(var(--pq-ink-rgb) / 0.9);
+}
 .pq-callstrip.is-live .pq-callstrip__vocalval {
-  color: rgba(var(--pq-key-rgb) / 0.8);
+  color: rgba(var(--pq-key-rgb) / 0.9);
 }
 
 /* Telemetry rows — an instrument, not an infographic. Label / full-width 1px
@@ -1213,16 +1366,20 @@
   /* Label and value columns widened with the type — "RECEPTIVITY" at 10px with
      0.14em tracking needs 84px, and a readout that ellipsises its own row label
      is worse than one set a point smaller. */
-  grid-template-columns: 84px minmax(0, 1fr) 38px;
+  /* Third column is the shared numeric tab stop (see --pq-relay-val), so every
+     scale track ends on one vertical and every value right-aligns on another. */
+  grid-template-columns: 96px minmax(0, 1fr) var(--pq-relay-val);
   align-items: center;
   column-gap: 10px;
 }
 .pq-callstrip__rowlabel {
   font-family: var(--pq-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 12px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--pq-ink-rgb) / 0.4);
+  /* 0.40 → 0.56, one step under its own value (0.66). Same floor as every other
+     caption on the pane. */
+  color: rgba(var(--pq-ink-rgb) / 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1237,7 +1394,7 @@
 .pq-callstrip__track {
   position: relative;
   height: 1px;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
   /* The index mark stands proud of the rule; clipping it back would make the
      tick the same 1px height as the scale and lose it entirely. */
   overflow: visible;
@@ -1262,9 +1419,9 @@
   position: absolute;
   top: 50%;
   left: var(--v, 0%);
-  width: 1px;
+  width: 2px;
   height: 7px;
-  margin-left: -0.5px;
+  margin-left: -1px;
   transform: translateY(-50%);
   background: rgba(var(--pq-key-rgb) / 0.95);
   box-shadow: 0 0 4px rgba(var(--pq-key-rgb) / 0.55);
@@ -1282,36 +1439,51 @@
 }
 .pq-callstrip__val {
   font-family: var(--pq-mono);
-  font-size: 11.5px;
+  font-size: 12.5px;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
   text-align: right;
-  color: rgba(var(--pq-ink-rgb) / 0.58);
+  color: rgba(var(--pq-ink-rgb) / 0.9);
 }
 .pq-callstrip.is-live .pq-callstrip__val {
-  color: rgba(var(--pq-ink-rgb) / 0.82);
+  color: rgba(var(--pq-ink-rgb) / 0.9);
 }
 
+/* ── The panel's legibility floor ────────────────────────────────────────────
+   The footer carries the relay's identity — the one row that says what this
+   piece of software IS — and it was set at 30% ink over a 12px-blurred pane
+   whose own fill is 6% white. Over the dark top-right corner of the ops plate
+   that composites to roughly two values off the glass, and the note that came
+   back was that "LUMEN RELAY 04" and "BOARD CLEAR" were not readable at all.
+   A caption that cannot be read is worse than no caption: it is a smudge with
+   the silhouette of type, which is the single fastest way to make a rendered
+   panel look like a placeholder.
+
+   0.30 → 0.62 (and the callsign 0.45 → 0.64 in the warm accent). That is a
+   deliberate near-inversion of the old hierarchy: the identity row is now the
+   equal of the telemetry captions rather than a whisper beneath them, because on
+   a real instrument the nameplate is etched deepest. Nothing on the pane now
+   sits under ~0.52. */
 .pq-callstrip__foot {
   position: relative;
   display: flex;
   justify-content: space-between;
   gap: var(--pq-3);
   font-family: var(--pq-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.162em;
+  font-size: 12px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--pq-ink-rgb) / 0.3);
+  color: rgba(var(--pq-ink-rgb) / 0.6);
 }
 .pq-callstrip__caller {
-  color: rgba(var(--pq-accent-rgb) / 0.45);
+  color: rgba(var(--pq-accent-rgb) / 0.64);
   transition: color var(--pq-dur-3) var(--pq-ease);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .pq-callstrip.is-live .pq-callstrip__caller {
-  color: rgba(var(--pq-accent-rgb) / 0.72);
+  color: rgba(var(--pq-accent-rgb) / 0.82);
 }
 /* A modal or a chapter card owns the frame; the readout steps out with the
    rest of the in-world chrome rather than floating over a backdrop blur. */
@@ -1324,11 +1496,11 @@
 
 .pq-proxy {
   position: absolute;
-  right: var(--pq-gutter);
+  right: max(12px, calc(var(--pq-gutter) - 32px));
   /* Geometry lives in tokens: the pane has to clear the speaker's chin by a
      clear margin at every viewport, so its width and its floor are one tuned
      pair rather than two independent clamps. */
-  bottom: var(--pq-proxy-bottom);
+  bottom: max(114px, calc(var(--pq-proxy-bottom) - 32px));
   z-index: var(--pq-z-choice);
   width: var(--pq-proxy-w);
   padding: 13px 16px 11px;
@@ -1348,12 +1520,12 @@
       rgba(var(--pq-paper-rgb) / 0.02)
     ),
     rgba(var(--pq-paper-rgb) / 0.58);
-  border: 1px solid var(--pq-line-glass);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   /* No cast shadow — a hairline ring plus a 14px bloom in the pane steel, so
      the glass is lit by the room instead of floating over a print of it. */
   box-shadow: 0 0 0 1px rgba(var(--pq-pane-rgb) / 0.07), 0 0 14px rgba(var(--pq-pane-rgb) / 0.06);
-  backdrop-filter: blur(16px) saturate(1.18);
-  -webkit-backdrop-filter: blur(16px) saturate(1.18);
+  backdrop-filter: blur(14px) saturate(1.18);
+  -webkit-backdrop-filter: blur(14px) saturate(1.18);
   opacity: 0;
   transform: translateY(14px) scale(0.99);
   transition: opacity var(--pq-dur-3) var(--pq-ease), transform var(--pq-dur-3) var(--pq-ease);
@@ -1462,7 +1634,7 @@
 }
 .pq-proxy__name {
   font-family: var(--pq-mono);
-  font-size: var(--pq-fs-sm);
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: var(--pq-tr-wider);
   color: var(--pq-ink-90);
@@ -1550,9 +1722,10 @@
 .pq-wave__bar {
   flex: 1;
   min-width: 0;
-  height: 30%;
+  height: var(--i, 24%);
   border-radius: var(--pq-r-pill);
   background: linear-gradient(180deg, var(--pq-key), rgba(var(--pq-key-rgb) / 0.4));
+  box-shadow: inset 0 0 0 1px rgba(var(--pq-key-rgb) / 0.82), 0 0 4px rgba(var(--pq-key-rgb) / 0.36);
   opacity: 0.8;
   animation: pq-wave 1.5s var(--pq-ease-in-out) infinite;
   animation-delay: var(--d, 0ms);
@@ -1560,11 +1733,11 @@
 @keyframes pq-wave {
   0%,
   100% {
-    height: 22%;
+    height: var(--i, 22%);
     opacity: 0.5;
   }
   50% {
-    height: 92%;
+    height: var(--h, 92%);
     opacity: 0.95;
   }
 }
@@ -1609,7 +1782,7 @@
 .pq-meter__track {
   position: relative;
   height: 1px;
-  background: rgba(var(--pq-ink-rgb) / 0.3);
+  background: rgba(var(--pq-ink-rgb) / 0.25);
 }
 .pq-meter__fill {
   position: relative;
@@ -1623,7 +1796,7 @@
   position: absolute;
   right: 0;
   top: 50%;
-  width: 1px;
+  width: 2px;
   height: 7px;
   transform: translateY(-50%);
   background: rgba(var(--pq-key-rgb) / 0.95);
@@ -2401,8 +2574,12 @@
      reach full until 60%, which put the warm bounce only where the frame was
      already lit. It now carries a third of its density over the desk quadrant
      so the two warm notes are actually connected by something. */
-  -webkit-mask-image: linear-gradient(101deg, rgba(0, 0, 0, 0.18) 2%, rgba(0, 0, 0, 0.55) 30%, #000 62%);
-  mask-image: linear-gradient(101deg, rgba(0, 0, 0, 0.18) 2%, rgba(0, 0, 0, 0.55) 30%, #000 62%);
+  -webkit-mask-image: linear-gradient(101deg, rgba(0, 0, 0, 0.18) 2%, rgba(0, 0, 0, 0.55) 30%, #000 62%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 44%, #000 48% 54%, rgba(0, 0, 0, 0.3) 58% 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(101deg, rgba(0, 0, 0, 0.18) 2%, rgba(0, 0, 0, 0.55) 30%, #000 62%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 44%, #000 48% 54%, rgba(0, 0, 0, 0.3) 58% 100%);
+  mask-composite: intersect;
   animation: pq-title-rain 38s var(--pq-ease-in-out) infinite alternate;
 }
 @keyframes pq-title-rain {
@@ -2455,8 +2632,12 @@
     );
   /* Held to the window quadrant — about a quarter of the frame, feathered out
      at every edge so it never announces a rectangle. */
-  -webkit-mask-image: radial-gradient(46% 58% at 71% 30%, #000 24%, rgba(0, 0, 0, 0.5) 62%, transparent 92%);
-  mask-image: radial-gradient(46% 58% at 71% 30%, #000 24%, rgba(0, 0, 0, 0.5) 62%, transparent 92%);
+  -webkit-mask-image: radial-gradient(46% 58% at 71% 30%, #000 24%, rgba(0, 0, 0, 0.5) 62%, transparent 92%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 44%, #000 48% 54%, rgba(0, 0, 0, 0.3) 58% 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: radial-gradient(46% 58% at 71% 30%, #000 24%, rgba(0, 0, 0, 0.5) 62%, transparent 92%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 44%, #000 48% 54%, rgba(0, 0, 0, 0.3) 58% 100%);
+  mask-composite: intersect;
 }
 
 /* The one motivated source: lamp light bleeding out of the right third, so the
@@ -2741,13 +2922,13 @@
 .pq-title__inner {
   position: relative;
   height: 100%;
-  max-width: 1360px;
+  max-width: 1400px;
   margin-inline: auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 500px);
-  align-items: center;
-  gap: clamp(40px, 4.4vw, 84px);
-  padding: var(--pq-gutter);
+  grid-template-columns: minmax(0, 568px) minmax(380px, 500px);
+  align-items: start;
+  gap: clamp(64px, 9.375vw, 180px);
+  padding: clamp(150px, 18vh, 194px) var(--pq-gutter) var(--pq-gutter);
 }
 .pq-title__lead {
   max-width: 30em;
@@ -2964,7 +3145,8 @@
 
 /* ── Story rail ── */
 .pq-title__stories {
-  align-self: center;
+  position: relative;
+  align-self: start;
   justify-self: end;
   width: 100%;
   transform: translateY(20px);
@@ -2976,10 +3158,14 @@
   opacity: 1;
 }
 .pq-title__storieshead {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 14px);
+  left: 0;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: var(--pq-4);
+  margin-bottom: 0;
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(var(--pq-ink-rgb) / 0.1);
 }
@@ -3043,13 +3229,11 @@
      only thing in the stack that states there is AIR between the glass and the
      window wall behind it. The previous set was an opaque 0.58→0.84 paper
      gradient with two hairlines — i.e. a plain HTML rectangle. */
-  background: linear-gradient(180deg, rgba(255 255 255 / 0.06) 0%, rgba(255 255 255 / 0.03) 100%),
-    linear-gradient(180deg, rgba(var(--p) / 0.4) 0%, rgba(var(--p) / 0.64) 100%);
-  backdrop-filter: blur(12px) saturate(0.94);
-  -webkit-backdrop-filter: blur(12px) saturate(0.94);
-  border: 1px solid rgba(160 200 220 / 0.12);
-  border-top-color: rgba(160 200 220 / 0.35);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.26);
+  background: rgba(10, 14, 16, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0, 0, 0, 0.5);
   transition: transform var(--pq-dur-3) var(--pq-ease), border-color var(--pq-dur-3) var(--pq-ease),
     box-shadow var(--pq-dur-3) var(--pq-ease);
 }
@@ -3147,7 +3331,11 @@
    different inset again, so the "Lumen" set and the SLOT rows below it started
    at two different left edges and terminated at two different bottom margins. */
 .pq-storycard__body {
-  padding: var(--pq-card-pad, 24px);
+  position: relative;
+  z-index: 1;
+  margin-top: -64px;
+  padding: 82px var(--pq-card-pad, 24px) calc(var(--pq-card-pad, 24px) + 8px);
+  background: linear-gradient(180deg, rgba(10, 14, 16, 0), rgba(10, 14, 16, 0.62) 58px, rgba(10, 14, 16, 0.74));
 }
 .pq-storycard__title {
   font-family: var(--pq-serif);
@@ -3196,7 +3384,7 @@
   gap: 0.55em;
   margin-left: auto;
   font-size: var(--pq-fs-xs);
-  letter-spacing: 0.22em;
+  letter-spacing: var(--pq-tr-wider);
   color: rgb(var(--k));
   opacity: 0.72;
   transition: opacity var(--pq-dur-2) var(--pq-ease);
@@ -3205,7 +3393,7 @@
   content: '';
   position: absolute;
   right: 0;
-  bottom: -7px;
+  bottom: -5px;
   left: 0;
   height: 1px;
   background: rgba(var(--k) / 0.4);
@@ -3213,15 +3401,17 @@
 /* The arrow is a glyph in the same run of type, not a mark hung off the end —
    same weight, same baseline, same ink. */
 .pq-storycard__arrow {
+  position: relative;
+  top: -1px;
+  letter-spacing: var(--pq-tr-wider);
   opacity: 1;
   transition: transform var(--pq-dur-2) var(--pq-ease);
 }
 .pq-storycard:hover,
 .pq-storycard.is-featured,
 .pq-storycard:focus-visible {
-  border-color: rgba(var(--k) / 0.2);
-  border-top-color: rgba(var(--k) / 0.5);
-  box-shadow: 0 26px 54px rgba(0, 0, 0, 0.44), 0 2px 8px rgba(0, 0, 0, 0.28),
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 24px 60px rgba(0, 0, 0, 0.5),
     0 0 34px rgba(var(--pq-lamp-rgb) / 0.1);
 }
 /* Only the pointer gets the lift — a card that floats on load reads as a web
@@ -3252,7 +3442,8 @@
   /* Same inner gutter as the card above it, and the same 1px box, so the two
      row types share one left edge instead of missing it by the width of a
      border. */
-  padding: 15px var(--pq-card-pad, 24px);
+  height: 44px;
+  padding: 0 var(--pq-card-pad, 24px);
   border: 1px solid rgba(160 200 220 / 0.07);
   border-top-color: rgba(160 200 220 / 0.18);
   border-radius: 3px;
@@ -3268,6 +3459,7 @@
   line-height: 1;
   letter-spacing: var(--pq-tr-wider);
   text-transform: uppercase;
+  opacity: 0.4;
 }
 .pq-lockslot__idx {
   color: rgba(var(--pq-ink-rgb) / 0.32);
@@ -3282,9 +3474,9 @@
    the row's ink exactly, and stays a true 1px stroke at any scale. */
 .pq-lockslot__lock {
   position: relative;
-  width: 7px;
-  height: 6px;
-  margin-top: 2px;
+  width: 8px;
+  height: 7px;
+  margin-top: 0;
   border: 1px solid currentColor;
   border-radius: 1px;
 }
@@ -4551,7 +4743,7 @@
   font-family: var(--pq-mono);
   font-size: 10px;
   letter-spacing: 0.3em;
-  /* Cancels the trailing letter-space so the mark optically hangs flush right. */
+  /* Cancels the trailing letter-space so the mark optically hangs flush left. */
   margin-right: -0.3em;
   text-transform: uppercase;
   color: rgba(255 255 255 / 0.34);

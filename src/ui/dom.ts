@@ -1,5 +1,5 @@
 /**
- * Picture Quest — tiny DOM toolkit.
+ * Lamplighter — tiny DOM toolkit.
  *
  * A dependency-free `el(tag, props, children)` builder plus a handful of helpers
  * the UI layer leans on. No framework, no virtual DOM — just crisp, explicit

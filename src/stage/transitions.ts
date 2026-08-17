@@ -1,5 +1,5 @@
 /**
- * Picture Quest — background transitions.
+ * Lamplighter — background transitions.
  *
  * A single ShaderPass inserted right after the RenderPass. When a background
  * changes we (1) freeze the OUTGOING scene into a render target, (2) let the

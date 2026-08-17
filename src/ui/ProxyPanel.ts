@@ -171,7 +171,17 @@ function meter(label: string, value: number, readout: string): HTMLElement {
 function buildWave(bars: number): HTMLElement[] {
   const out: HTMLElement[] = [];
   for (let i = 0; i < bars; i++) {
-    out.push(el('span', { class: 'pq-wave__bar', style: `--d:${(i % 7) * 90}ms` }));
+    const t = i / Math.max(1, bars - 1);
+    const envelope = Math.sin(Math.PI * t) ** 0.72;
+    const syllable = 0.28 + 0.72 * Math.abs(Math.sin(i * 0.71 + 0.42));
+    const grain = 0.52 + 0.48 * Math.abs(Math.sin(i * 2.17 + 1.3) * Math.cos(i * 1.09 + 0.6));
+    const amplitude = Math.min(1, Math.max(0.08, envelope * syllable * grain));
+    out.push(el('span', {
+      class: 'pq-wave__bar',
+      style:
+        `--d:${(i % 7) * 90 + (i % 3) * 41}ms;` +
+        `--h:${Math.round(24 + amplitude * 72)}%;--i:${Math.round(10 + amplitude * 24)}%`,
+    }));
   }
   return out;
 }

@@ -1,5 +1,5 @@
 /**
- * Picture Quest — Stage lane public surface.
+ * Lamplighter — Stage lane public surface.
  *
  * The cinematic Three.js renderer. `Stage` is the only export integration needs
  * (it implements IStage from core/types); the rest are exposed for reuse and
