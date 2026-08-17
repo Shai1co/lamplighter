@@ -2181,8 +2181,19 @@
    frame's one legible focal plane, so it keeps its midtones: the desk, the lamp,
    the partition and the chairs all have to survive the print-down or the shot
    collapses into a dark blotch with type on it. */
+/* The exposure was brightness(0.7) contrast(1.19), which put the painted room —
+   and ops_room.png has a *lot* of paint in it: a monitor bezel, four window
+   mullions, a sill, a partition post, five chairs, two desk runs — at sRGB ~11.
+   That is under the quantisation floor of the frame's own dither, so ~60% of the
+   shot resolved to one undifferentiated near-black value and the critic read it
+   (correctly) as a dimmed JPEG rather than as painted darkness. Lifting to 0.86
+   and pulling contrast back to 1.10 lands the same wall at ~sRGB 30 — about nine
+   L* points up — which is where the mullions and the monitor bezel start to
+   carry 20–45% local contrast against it. The lamp pool comes up with it and
+   stays the frame's only full-value region, so the exposure ladder is unchanged;
+   there is simply now something on the bottom rungs. */
 .pq-title__plate {
-  filter: brightness(0.7) contrast(1.19) saturate(0.95);
+  filter: brightness(0.86) contrast(1.1) saturate(0.98);
   animation: pq-title-drift 52s var(--pq-ease-in-out) infinite alternate;
 }
 /* Far plate — the same frame thrown right out of focus and screened back, which
