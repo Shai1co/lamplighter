@@ -3,8 +3,9 @@
  *
  * A darkened scrim (never opaque — the animated canvas breathes behind it), the
  * wordmark in Fraunces with refined tracking, a tagline, a restrained primary
- * menu, and a rail of story cards. Each card is a themed 16:9 frame built from the
- * story's own palette, designed to hold cover art the moment it exists.
+ * menu, and a rail of story cards. Each card is a 16:9 art frame: the story's own
+ * cover key art when it exists, otherwise a gradient built from its palette —
+ * either way under the same grain / scrim / emblem overlays.
  */
 import type { StoryManifest } from '../core/types';
 import { clear, el, Icons, rgbTriplet } from './dom';
@@ -16,6 +17,8 @@ export interface TitleHandlers {
   onSettings: () => void;
   onAbout: () => void;
   hasContinue: () => boolean;
+  /** Resolved cover-art URL for a story, or undefined ⇒ themed gradient. */
+  coverUrl: (storyId: string) => string | undefined;
 }
 
 export class TitleScreen {
@@ -135,11 +138,26 @@ export class TitleScreen {
 
   private buildCard(story: StoryManifest, index: number): HTMLElement {
     const t = story.theme;
-    const art = el('div', { class: 'pq-storycard__art', aria: { hidden: true } }, [
-      el('div', { class: 'pq-storycard__grain' }),
-      el('div', { class: 'pq-storycard__emblem', html: Icons.spark }),
-      el('div', { class: 'pq-storycard__glow' }),
-    ]);
+    const cover = this.h.coverUrl(story.id);
+    // Real key art when it exists; the themed gradient underneath is the fallback.
+    // A load failure drops the <img> so the gradient shows through untouched.
+    const image = cover
+      ? el('img', {
+          class: 'pq-storycard__img',
+          attrs: { src: cover, alt: '', decoding: 'async', loading: 'lazy' },
+          on: { error: (e: Event) => (e.currentTarget as HTMLElement).remove() },
+        })
+      : null;
+    const art = el(
+      'div',
+      { class: 'pq-storycard__art' + (cover ? ' has-cover' : ''), aria: { hidden: true } },
+      [
+        image,
+        el('div', { class: 'pq-storycard__grain' }),
+        el('div', { class: 'pq-storycard__emblem', html: Icons.spark }),
+        el('div', { class: 'pq-storycard__glow' }),
+      ],
+    );
 
     const card = el(
       'button',

@@ -129,6 +129,7 @@ export class UILayer implements IUILayer {
       onSettings: () => this.openSettings(),
       onAbout: () => this.openModal(this.about.overlay, this.about.panel),
       hasContinue: () => this.host.hasContinue(),
+      coverUrl: (id) => this.host.getCoverUrl(id),
     });
 
     this.backlog = new Backlog(this.modalLayer, () => this.closeTop());

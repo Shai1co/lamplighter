@@ -61,6 +61,53 @@ function mixRgb(a: RGB, b: RGB, t: number): RGB {
 
 const css = (c: RGB, a = 1): string => `rgba(${c.r},${c.g},${c.b},${a})`;
 
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Tuning for the character "presence" treatment (see `toPresenceTexture`).
+ * All coordinates are normalized image space, origin top-left.
+ *
+ * The mask is the product of three falloffs, each of which independently reaches
+ * 0 before its own frame edge — so no straight edge of the source art can ever
+ * survive, whatever the portrait's proportions:
+ *   1. a superellipse that owns left/right (and rounds the corners),
+ *   2. a short ramp that dissolves the crown of the head into the scene,
+ *   3. a long ramp that trails the torso away below the chest.
+ */
+const PRESENCE = {
+  /** Mask centre — sits on the face / upper chest of a 3:4 portrait crop. */
+  cx: 0.45,
+  cy: 0.43,
+  /** Superellipse half-extents; alpha reaches 0 at exactly ±r from the centre. */
+  rLeft: 0.43,
+  rRight: 0.47,
+  /** Vertical extents are deliberately generous — the two ramps below own
+   *  top and bottom, so the superellipse only rounds the shape there. */
+  rTop: 0.58,
+  rBottom: 0.95,
+  /** Superellipse exponent; slightly over 2 keeps the core a touch squarer. */
+  power: 2.1,
+  /** Mask radius inside which alpha is a flat 1 (face + near shoulder). */
+  core: 0.48,
+  /** Gamma on the core→edge ramp; >1 sheds the painted backdrop sooner while
+   *  still landing softly, which keeps the feather from reading as an aura. */
+  rampGamma: 1.8,
+  /** Crown dissolve: alpha 0 at the very top, full by `headStart`. */
+  headStart: 0.15,
+  headEnd: 0.0,
+  /** Torso dissolve: full until `tailStart`, gone by `tailEnd`. */
+  tailStart: 0.55,
+  tailEnd: 0.95,
+  /** Edge darkening, applied as rgb *= 1 - v·(1-a)^g, so the feather sinks into
+   *  the scene's depth instead of hazing over it. Kept light on purpose: too
+   *  much and the falloff becomes a dark smear over bright backgrounds. */
+  vignette: 0.3,
+  vignetteGamma: 1.2,
+} as const;
+
 export class Stage implements IStage {
   private readonly bus: IEmitter;
   private readonly canvas: HTMLCanvasElement;
@@ -179,13 +226,19 @@ export class Stage implements IStage {
     this.postfx.setGrain(this.settings.grain);
     this.transitions.setKeyColor(new THREE.Color(theme.key || '#7db4c8'));
 
-    // Collect every asset URL and warm the texture cache in parallel.
+    // Collect every asset URL and warm the texture cache in parallel. Character
+    // portraits are additionally re-baked once, here, through the presence mask.
     const urls = new Set<string>();
+    const portraits = new Set<string>();
     for (const bg of Object.values(bundle.assets.backgrounds)) {
       for (const url of bg.layers) if (url) urls.add(url);
     }
     for (const poses of Object.values(bundle.assets.characters)) {
-      for (const url of Object.values(poses)) if (url) urls.add(url);
+      for (const url of Object.values(poses)) {
+        if (!url) continue;
+        urls.add(url);
+        portraits.add(url);
+      }
     }
 
     const loader = new THREE.TextureLoader();
@@ -193,13 +246,20 @@ export class Stage implements IStage {
       [...urls].map(
         (url) =>
           new Promise<void>((resolve) => {
+            // Already warmed (a restart of the same story) — never re-bake.
+            if (this.textureCache.has(url)) {
+              resolve();
+              return;
+            }
             loader.load(
               url,
-              (tex) => {
+              (loaded) => {
+                const tex = portraits.has(url) ? this.toPresenceTexture(loaded) : loaded;
                 tex.colorSpace = THREE.SRGBColorSpace;
                 tex.anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
                 tex.generateMipmaps = true;
                 tex.minFilter = THREE.LinearMipmapLinearFilter;
+                tex.needsUpdate = true;
                 this.textureCache.set(url, tex);
                 resolve();
               },
@@ -541,6 +601,81 @@ export class Stage implements IStage {
     } catch {
       return '';
     }
+  }
+
+  /* ───────────────────────────  presence treatment  ─────────────────────────── */
+
+  /**
+   * Re-bake a character portrait as an *apparition* rather than a card.
+   *
+   * Portraits ship with an opaque painted backdrop, so composited raw they read
+   * as pasted rectangles floating in front of the scene. Once, at load, each is
+   * drawn into an offscreen canvas and given:
+   *   • a superellipse alpha falloff — a wide, soft feather left and right so no
+   *     straight edge ever survives, around a core that holds the face and near
+   *     shoulder at a flat alpha 1;
+   *   • a short dissolve off the crown of the head and a long one below the
+   *     chest, so she trails off like a memory instead of stopping at a frame
+   *     line;
+   *   • a light edge vignette on the same falloff, so the fading backdrop sinks
+   *     into the scene's depth rather than hazing over it.
+   *
+   * Returns the source texture untouched if the pixels can't be read (a tainted
+   * cross-origin canvas, or no 2D context) — the stage must never fail to draw.
+   */
+  private toPresenceTexture(src: THREE.Texture): THREE.Texture {
+    const img = src.image as (CanvasImageSource & { width?: number; height?: number }) | undefined;
+    const w = Math.floor(img?.width ?? 0);
+    const h = Math.floor(img?.height ?? 0);
+    if (!img || w < 2 || h < 2) return src;
+
+    const cv = document.createElement('canvas');
+    cv.width = w;
+    cv.height = h;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return src;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    let frame: ImageData;
+    try {
+      frame = ctx.getImageData(0, 0, w, h);
+    } catch {
+      return src;
+    }
+
+    const px = frame.data;
+    const invPower = 1 / PRESENCE.power;
+    for (let y = 0; y < h; y++) {
+      const v = (y + 0.5) / h;
+      const dy = v - PRESENCE.cy;
+      const ny = Math.abs(dy / (dy < 0 ? PRESENCE.rTop : PRESENCE.rBottom)) ** PRESENCE.power;
+      // Crown dissolve × torso dissolve — constant across the row.
+      const vertical =
+        smoothstep(PRESENCE.headEnd, PRESENCE.headStart, v) *
+        (1 - smoothstep(PRESENCE.tailStart, PRESENCE.tailEnd, v));
+      const row = y * w * 4;
+      for (let x = 0; x < w; x++) {
+        const u = (x + 0.5) / w;
+        const dx = u - PRESENCE.cx;
+        const nx = Math.abs(dx / (dx < 0 ? PRESENCE.rLeft : PRESENCE.rRight)) ** PRESENCE.power;
+        const d = (nx + ny) ** invPower;
+        const a = (1 - smoothstep(PRESENCE.core, 1, d)) ** PRESENCE.rampGamma * vertical;
+        if (a >= 1) continue;
+        const i = row + x * 4;
+        const shade = 1 - PRESENCE.vignette * (1 - a) ** PRESENCE.vignetteGamma;
+        px[i] *= shade;
+        px[i + 1] *= shade;
+        px[i + 2] *= shade;
+        px[i + 3] *= a;
+      }
+    }
+    ctx.putImageData(frame, 0, 0);
+
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    src.dispose();
+    return tex;
   }
 
   /* ───────────────────────────  procedural placeholders  ─────────────────────────── */

@@ -148,6 +148,12 @@ async function boot(): Promise<void> {
     stories() {
       return manifests;
     },
+    getCoverUrl(storyId: string) {
+      const bundle = bundleById.get(storyId);
+      const key = bundle?.manifest.cover;
+      if (!bundle || !key) return undefined;
+      return bundle.assets.cg[key];
+    },
     startStory(storyId: string) {
       const bundle = bundleById.get(storyId);
       if (!bundle) {

@@ -472,6 +472,12 @@ export interface IRuntime {
 export interface AppHost {
   /** All discovered stories, for the title/story-picker. */
   stories(): StoryManifest[];
+  /**
+   * Resolved URL of a story's cover art (`manifest.cover` → `AssetTable.cg`), or
+   * undefined when the story has no cover key or the art has not been generated
+   * yet — callers fall back to a themed placeholder.
+   */
+  getCoverUrl(storyId: string): string | undefined;
   startStory(storyId: string): void;
   /** Resume the rolling autosave, if any. */
   continueGame(): void;
