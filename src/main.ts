@@ -157,8 +157,14 @@ async function boot(): Promise<void> {
     getBackdropUrl(storyId: string) {
       const bundle = bundleById.get(storyId);
       if (!bundle) return undefined;
-      // First declared background = the story's establishing shot; its near-most
-      // layer is the sharpest plate we have of the place.
+      // A story may ship a plate authored FOR the title: the same room, composed
+      // for type — the subject held in the right two thirds, the left third left
+      // as wall for the wordmark to sit on. When it exists it always wins; a
+      // gameplay background is a background, and it is only ever a stand-in here.
+      const titlePlate = bundle.assets.cg['title_backdrop'];
+      if (titlePlate) return titlePlate;
+      // Otherwise the first declared background = the story's establishing shot;
+      // its near-most layer is the sharpest plate we have of the place.
       for (const bg of Object.values(bundle.assets.backgrounds)) {
         const near = bg.layers[bg.layers.length - 1];
         if (near) return near;

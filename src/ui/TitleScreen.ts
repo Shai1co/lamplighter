@@ -1,21 +1,26 @@
 /**
  * TitleScreen — cinematic entry over the live Three stage.
  *
- * The menu sits over a *place*, never over a hex value: the featured story's own
- * key art runs full-bleed at roughly −2EV, doubled by a heavily defocused copy of
- * itself screened back over the top so every practical blooms into city bokeh.
- * Over that: rain on the glass, one warm motivated light from the right third, a
- * directional scrim that buys the type its legibility, film grain and a soft
- * vignette. Both plates drift on long, offset cycles for real parallax.
+ * The composition is now TWO things and nothing else: a full-bleed backdrop
+ * plate carrying the right two thirds, and a left type stack (wordmark, tagline,
+ * menu). The story card that used to hang in the right column is gone — a card
+ * is a *picker*, and a picker on a title composition is chrome sitting on a
+ * photograph. Story selection moved behind NEW STORY: one story starts
+ * immediately, several open the picker on the shared modal layer, where the same
+ * card and rail markup is exactly the right UI.
  *
- * The chrome itself is deliberately bare — no boxes, no icon set, no rounded
- * rects. One serif family in letterspaced caps for the menu, the mono reserved
- * for data eyebrows, and a single story card carrying the art.
+ * The plate itself is rendered NEAR-CRISP. Every hand-drawn compensation the old
+ * ops_room backdrop needed — the power windows, the authored bokeh discs, the
+ * floor reflections, the rain rakes, the drawn monitor and practicals — has been
+ * deleted, because the dedicated title plate paints all of it, in paint, at the
+ * right exposure. What is left is the photographic finish that belongs to the
+ * FRAME rather than to any one plate: a directional scrim that buys the type its
+ * legibility, a matte-box vignette, film grain, shadow dither, and a slow drift.
  */
 import type { StoryManifest } from '../core/types';
-import { clear, el, rgbTriplet, smartQuotes } from './dom';
+import { clear, el, overlayShell, rgbTriplet, smartQuotes } from './dom';
 
-/** Slots the rail always shows — real stories first, the remainder dimmed. */
+/** Slots the picker's rail always shows — real stories first, the remainder dimmed. */
 const RAIL_SLOTS = 3;
 
 export interface TitleHandlers {
@@ -27,8 +32,12 @@ export interface TitleHandlers {
   hasContinue: () => boolean;
   /** Resolved cover-art URL for a story, or undefined ⇒ themed gradient. */
   coverUrl: (storyId: string) => string | undefined;
-  /** Resolved full-bleed backdrop URL (the story's first environment plate). */
+  /** Resolved full-bleed backdrop URL (the story's dedicated title plate). */
   backdropUrl: (storyId: string) => string | undefined;
+  /** Push a title-owned overlay onto the shared modal layer (the story picker). */
+  openModal: (overlay: HTMLElement, panel: HTMLElement) => void;
+  /** Pop the top modal — the picker's close button, backdrop click and Esc. */
+  closeModal: () => void;
 }
 
 export class TitleScreen {
@@ -36,14 +45,14 @@ export class TitleScreen {
   private readonly railEl: HTMLElement;
   private readonly menuEl: HTMLElement;
   private readonly plateEl: HTMLImageElement;
-  private readonly liftEl: HTMLImageElement;
-  private readonly clarityEl: HTMLImageElement;
-  private readonly bokehEl: HTMLImageElement;
+  private readonly haloEl: HTMLImageElement;
+  private readonly picker: ReturnType<typeof overlayShell>;
+  private readonly pickerCount: HTMLElement;
   private readonly h: TitleHandlers;
   private stories: StoryManifest[] = [];
   private featured = 0;
 
-  constructor(parent: HTMLElement, handlers: TitleHandlers) {
+  constructor(parent: HTMLElement, modalLayer: HTMLElement, handlers: TitleHandlers) {
     this.h = handlers;
     this.railEl = el('div', { class: 'pq-rail', role: 'list', aria: { label: 'Stories' } });
     this.menuEl = el('nav', { class: 'pq-title__menu', aria: { label: 'Main menu' } });
@@ -55,14 +64,12 @@ export class TitleScreen {
         on: { error: (e: Event) => ((e.currentTarget as HTMLElement).hidden = true) },
       });
     this.plateEl = plate('pq-title__plate');
-    // Two colourist's power windows, both cut from the SAME plate and driven by
-    // the same drift keyframes so they stay in perfect register with it: one
-    // opens the exposure over the right/lower-right so the chairs, desks and wet
-    // floor that are painted there stop being one black value; the other adds
-    // local contrast over the desk still-life so the frame has a sharp plane.
-    this.liftEl = plate('pq-title__lift');
-    this.clarityEl = plate('pq-title__clarity');
-    this.bokehEl = plate('pq-title__bokeh');
+    // The ONE remaining copy of the plate, and it is not a defocus pass: at 2.5px
+    // it is halation — the veiling a bright practical throws into the emulsion
+    // around itself — screened back over the window third at a whisper. Anything
+    // deeper than this is the "concept painting behind frosted glass" treatment
+    // the plate was generated specifically to retire.
+    this.haloEl = plate('pq-title__halo');
 
     this.root = el(
       'div',
@@ -70,44 +77,12 @@ export class TitleScreen {
       [
         el('div', { class: 'pq-title__bg', aria: { hidden: true } }, [
           this.plateEl,
-          this.liftEl,
-          this.clarityEl,
-          this.bokehEl,
-          // Authored bokeh: three discrete depth layers of city lights sitting on a
-          // horizon that rises out of the bottom edge, so the base of the frame is
-          // a distance rather than a void.
-          el('div', { class: 'pq-title__lights pq-title__lights--far' }),
-          el('div', { class: 'pq-title__lights pq-title__lights--mid' }),
-          el('div', { class: 'pq-title__lights pq-title__lights--near' }),
-          // The window wall's own bokeh, hand-placed rather than blurred: discs
-          // from 4px to 24px so the right third has structure instead of smear.
-          el('div', { class: 'pq-title__lights pq-title__lights--city' }),
-          el('div', { class: 'pq-title__rain' }),
-          // The one sharp plane in the shot: rain actually running on the pane.
-          el('div', { class: 'pq-title__glass' }),
-          // The near partition post the story card is hung on, so the card has a
-          // piece of architecture to align to instead of floating on the plate.
-          el('div', { class: 'pq-title__mullion' }),
-          el('div', { class: 'pq-title__lamp' }),
+          this.haloEl,
           el('div', { class: 'pq-title__scrim' }),
-          // The desk practicals, re-lit ABOVE the scrim so the lamp, the monitor
-          // and the mug survive the print-down and the lower-left reads as a room
-          // rather than as a black corner.
-          el('div', { class: 'pq-title__practicals' }),
-          // The monitor, drawn as an actual panel rather than as a glow: a lit
-          // rectangle on the plate's own screen coordinates plus the short throw
-          // it lays on the desk. A cool hotspot with no visible source is the
-          // one accent in the left half nothing in the room explains.
-          el('div', { class: 'pq-title__screen' }),
-          // The dead middle of the frame, given something to be: reflected rain
-          // on the glass plus dust drifting through the lamp's throw.
-          el('div', { class: 'pq-title__motes' }),
-          // Foreground: the near edge of the desk, lit from the practical at left.
-          el('div', { class: 'pq-title__sill' }),
           el('div', { class: 'pq-title__vignette' }),
           // Shadow dither. The overlay grain plate above cannot move a near-black
           // value at all (overlay is a no-op on 0), so the long falloffs in the
-          // upper-left sky band. This one screens fine noise into the blacks only.
+          // upper-left wall band. This one screens fine noise into the blacks only.
           el('div', { class: 'pq-title__dither' }),
         ]),
         el('div', { class: 'pq-title__inner' }, [
@@ -125,17 +100,10 @@ export class TitleScreen {
             }),
             this.menuEl,
           ]),
-          el('div', { class: 'pq-title__stories' }, [
-            el('div', { class: 'pq-title__storieshead' }, [
-              el('span', { class: 'pq-title__eyebrow', text: 'Choose a story' }),
-              el('span', { class: 'pq-title__count' }),
-            ]),
-            this.railEl,
-          ]),
         ]),
         // The frame's counterweight. Everything with mass — the wordmark, the
-        // menu, the lamp, the story pane — sits in the upper two thirds and the
-        // lower right was an unoccupied crop. One line of mono at 25% is the
+        // menu and the lamp — sits left and centre, and the lower right is the
+        // far end of the window wall. One line of the mono micro system is the
         // cheapest honest object that can hang there: it terminates on the same
         // chrome margin every other edge does, and it is the kind of mark a
         // shipped build carries in the corner of its title screen.
@@ -147,6 +115,30 @@ export class TitleScreen {
       ],
     );
     parent.appendChild(this.root);
+
+    /* ── The story picker ────────────────────────────────────────────────────
+       Built on the shared modal shell, so it inherits the glass, the rack
+       focus, the focus trap, the backdrop click and Esc for free. The rail and
+       the cards are the SAME markup the title used to carry: they were never
+       bad UI, they were bad UI *on a title composition*. In a picker they are
+       exactly right — cover art is the only thing that distinguishes one story
+       from another. */
+    this.picker = overlayShell('Choose a story', {
+      onClose: () => this.h.closeModal(),
+      kicker: 'Library',
+    });
+    this.picker.overlay.classList.add('pq-modal--picker');
+    this.pickerCount = el('span', { class: 'pq-picker__count' });
+    this.picker.body.appendChild(
+      el('div', { class: 'pq-picker' }, [
+        el('div', { class: 'pq-picker__head' }, [
+          el('span', { class: 'pq-picker__eyebrow', text: 'Stories' }),
+          this.pickerCount,
+        ]),
+        this.railEl,
+      ]),
+    );
+    modalLayer.appendChild(this.picker.overlay);
   }
 
   isVisible(): boolean {
@@ -176,14 +168,14 @@ export class TitleScreen {
   }
 
   /**
-   * Point both backdrop plates at the featured story's environment art, falling
-   * back to its cover. Without either, the layered gradient underneath carries
-   * the frame on its own.
+   * Point the backdrop plates at the story's dedicated title art, falling back
+   * through the environment plate to its cover (see AppHost.getBackdropUrl).
+   * Without any of them the layered gradient underneath carries the frame.
    */
   private applyBackdrop(): void {
     const story = this.stories[this.featured];
     const url = story ? (this.h.backdropUrl(story.id) ?? this.h.coverUrl(story.id)) : undefined;
-    for (const img of [this.plateEl, this.liftEl, this.clarityEl, this.bokehEl]) {
+    for (const img of [this.plateEl, this.haloEl]) {
       if (url) {
         if (img.getAttribute('src') !== url) img.setAttribute('src', url);
         img.hidden = false;
@@ -197,10 +189,7 @@ export class TitleScreen {
 
   private renderMenu(): void {
     clear(this.menuEl);
-    const items: HTMLElement[] = [this.menuItem('New Story', () => {
-      const s = this.stories[this.featured];
-      if (s) this.h.onStart(s.id);
-    }, true)];
+    const items: HTMLElement[] = [this.menuItem('New Story', () => this.newStory(), true)];
     // A dimmed, unexplained "Continue" reads as broken — it only exists when it works.
     if (this.h.hasContinue()) items.push(this.menuItem('Continue', () => this.h.onContinue()));
     items.push(
@@ -209,6 +198,20 @@ export class TitleScreen {
       this.menuItem('About', () => this.h.onAbout()),
     );
     for (const it of items) this.menuEl.appendChild(it);
+  }
+
+  /**
+   * One story is not a choice, so it is not presented as one: NEW STORY starts
+   * it. Several stories IS a choice, and a choice needs the art — the picker.
+   */
+  private newStory(): void {
+    if (this.stories.length > 1) {
+      this.renderRail();
+      this.h.openModal(this.picker.overlay, this.picker.panel);
+      return;
+    }
+    const s = this.stories[this.featured] ?? this.stories[0];
+    if (s) this.h.onStart(s.id);
   }
 
   private menuItem(label: string, onClick: () => void, primary = false): HTMLElement {
@@ -225,14 +228,13 @@ export class TitleScreen {
 
   private renderRail(): void {
     clear(this.railEl);
-    const countEl = this.root.querySelector<HTMLElement>('.pq-title__count');
-    if (countEl) countEl.textContent = `${this.stories.length} available`;
+    this.pickerCount.textContent = `${this.stories.length} available`;
 
     this.stories.forEach((story, i) => {
       this.railEl.appendChild(this.buildCard(story, i));
     });
     // Empty shelf space is summarized in one quiet ledger row so the rail
-    // terminates on the menu baseline instead of repeating disabled chrome.
+    // terminates on a designed edge instead of repeating disabled chrome.
     const locked = Math.max(0, RAIL_SLOTS - this.stories.length);
     // The ledger row is a FOOTER of the card above it, not a free-floating bar:
     // the flag lets the rail square off the last card's bottom corners so the
@@ -274,9 +276,9 @@ export class TitleScreen {
       { class: 'pq-storycard__art' + (cover ? ' has-cover' : ''), aria: { hidden: true } },
       [
         image,
-        // The key art ships hotter and more saturated than the menu around it. This
-        // pass prints it back down onto the same teal night the backdrop is graded
-        // to, so the card belongs to the frame instead of sitting on top of it.
+        // The key art ships hotter and more saturated than the panel around it.
+        // This pass prints it back down onto the same teal night the picker is
+        // graded to, so the card belongs to the frame instead of sitting on it.
         el('div', { class: 'pq-storycard__grade' }),
         // The thumbnail's focal logic, drawn rather than downsampled: one warm
         // light cluster with crisp practicals inside it, a stated horizon, the
@@ -298,7 +300,12 @@ export class TitleScreen {
         style: styleVars(t.key, t.accent, t.paper, t.ink),
         aria: { label: `Start ${story.title}${story.subtitle ? ' — ' + story.subtitle : ''}` },
         on: {
-          click: () => this.h.onStart(story.id),
+          click: () => {
+            // Close the picker before the story loads, or the transcript layer
+            // inherits an open dialog with nothing behind it.
+            this.h.closeModal();
+            this.h.onStart(story.id);
+          },
           focus: () => this.setFeatured(index),
           mouseenter: () => this.setFeatured(index),
         },
@@ -310,12 +317,11 @@ export class TitleScreen {
           story.subtitle ? el('p', { class: 'pq-storycard__sub', text: smartQuotes(story.subtitle) }) : null,
           el('div', { class: 'pq-storycard__foot' }, [
             story.author ? el('span', { class: 'pq-storycard__author', text: story.author }) : null,
-            // The one control on this screen, and it is a CONTROL, not a link:
-            // an underline plus an arrow is default-web vocabulary and reads as
-            // an <a> pasted onto a game. It is a quiet bordered rectangle in
-            // the same hairline language as the pane's own arris — no terminal
-            // brackets, which belong to a HUD this frame is not — and it lights
-            // up in the room's own cool signal when it is live.
+            // The one control on the card, and it is a CONTROL, not a link: an
+            // underline plus an arrow is default-web vocabulary and reads as an
+            // <a> pasted onto a game. It is a quiet bordered rectangle in the
+            // same hairline language as the pane's own arris, and it lights up
+            // in the room's own cool signal when it is live.
             el('span', { class: 'pq-storycard__cta' }, [
               el('span', { class: 'pq-storycard__ctalabel', text: 'Begin' }),
             ]),
@@ -341,6 +347,7 @@ export class TitleScreen {
   }
 
   destroy(): void {
+    this.picker.overlay.remove();
     this.root.remove();
   }
 }

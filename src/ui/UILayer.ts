@@ -57,6 +57,7 @@ export class UILayer implements IUILayer {
   private readonly plateEl: HTMLElement;
   private readonly cornerPlateEl: HTMLElement;
   private readonly wallPlateEl: HTMLElement;
+  private readonly vignettePlateEl: HTMLElement;
 
   private readonly dialogue: DialogueBox;
   private readonly callstrip: CallStrip;
@@ -177,6 +178,16 @@ export class UILayer implements IUILayer {
       class: 'pq-plate pq-plate--wall',
       aria: { hidden: true },
     });
+    // …and the LENS, last of the three shared finishing terms (grain, grade,
+    // vignette). It has to live up here with the other two rather than on the
+    // modal backdrop, because a lens artefact that only appears when a panel is
+    // open — and stops at that panel's edge — is not a lens artefact, and the
+    // seam it exists to dissolve runs straight through the frame whether a
+    // panel is up or not. See .pq-plate--vignette.
+    this.vignettePlateEl = el('div', {
+      class: 'pq-plate pq-plate--vignette',
+      aria: { hidden: true },
+    });
 
     this.pq = el('div', { class: 'pq' }, [
       this.gradeEl,
@@ -189,6 +200,7 @@ export class UILayer implements IUILayer {
       this.plateEl,
       this.cornerPlateEl,
       this.wallPlateEl,
+      this.vignettePlateEl,
       this.liveEl,
     ]);
     root.appendChild(this.pq);
@@ -201,7 +213,10 @@ export class UILayer implements IUILayer {
     this.proxy = new ProxyPanel(this.stage);
     this.choices = new ChoiceMenu(this.stage);
     this.chapter = new ChapterCard(this.stage);
-    this.title = new TitleScreen(this.pq, {
+    // The title owns a modal of its own now — the story picker — so it is handed
+    // the shared modal layer and the same open/close entry points every other
+    // panel in the game goes through. One modal stack, one focus trap, one Esc.
+    this.title = new TitleScreen(this.pq, this.modalLayer, {
       onStart: (id) => this.host.startStory(id),
       onContinue: () => this.host.continueGame(),
       onLoad: () => this.openSaveLoad('load'),
@@ -210,6 +225,8 @@ export class UILayer implements IUILayer {
       hasContinue: () => this.host.hasContinue(),
       coverUrl: (id) => this.host.getCoverUrl(id),
       backdropUrl: (id) => this.host.getBackdropUrl(id),
+      openModal: (overlay, panel) => this.openModal(overlay, panel),
+      closeModal: () => this.closeTop(),
     });
 
     this.backlog = new Backlog(this.modalLayer, () => this.closeTop());

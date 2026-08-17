@@ -27,6 +27,8 @@ interface SpriteUniforms {
   uPlateCool: { value: number };
   uEnvTint: { value: number };
   uCanvas: { value: number };
+  uPaint: { value: number };
+  uBrush: { value: number };
 }
 
 /**
@@ -65,7 +67,38 @@ const PLATE_COOL = 0.3;
  * SURFACE and only the plate is missing it.
  */
 const PLATE_ENV = 0.12;
-const PLATE_CANVAS = 0.045;
+/* 0.045 → 0.055. The tooth is the ground UNDER the brush (see PLATE_PAINT), and
+   the two have to be dosed together: the smear takes high-frequency detail out
+   of the plate, so without a matching lift the portrait would end up SMOOTHER
+   than the painted room rather than differently-structured from it. At 0.055 —
+   ±11% after the ×2 in the patch — the plate's surface noise measures in the
+   same band as the desk still-life's, which is the "matched noise structure"
+   half of the note. Deliberately short of the ±12.4% a first pass tried: past
+   about ±11 the mottle stops reading as canvas under a stroke and starts
+   reading as sensor noise on a dirty plate, which trades one artefact for
+   another. */
+const PLATE_CANVAS = 0.055;
+
+/**
+ * The painterly resample. See the head of SPRITE_DIFFUSE_PATCH for what it does
+ * and why colour work alone could not.
+ *
+ * PLATE_PAINT — 0.62. How far the plate is carried from its photographic sample
+ * toward the four-tap brush average. Below ~0.4 the micro-detail survives and
+ * the plate still reads as a photograph with a filter on it; past ~0.8 the form
+ * itself starts to go and skin turns to wax, which trades one AI-artefact read
+ * for a worse one. At 0.62 pores, stray hairs and sensor noise are gone,
+ * cheekbone-to-jaw modelling is intact, and the surface is described in marks.
+ *
+ * PLATE_BRUSH — 0.0026, in the plate's OWN uv rather than in pixels, and that is
+ * deliberate: a brush stroke is a fraction of the FIGURE, not a count of
+ * screen samples, so the mark scales with her instead of changing character
+ * every time the plate is re-exported at a different resolution. On the flagship
+ * portrait (1024 wide) it is a ~2.7px reach, which at the ×4 tap spread reads as
+ * a stroke about five pixels across — a sable at portrait scale.
+ */
+const PLATE_PAINT = 0.62;
+const PLATE_BRUSH = 0.0026;
 
 function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
   material: THREE.MeshBasicMaterial;
@@ -89,6 +122,8 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     uPlateCool: { value: PLATE_COOL },
     uEnvTint: { value: PLATE_ENV },
     uCanvas: { value: PLATE_CANVAS },
+    uPaint: { value: PLATE_PAINT },
+    uBrush: { value: PLATE_BRUSH },
   };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uBright = uniforms.uBright;
@@ -100,6 +135,8 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     shader.uniforms.uPlateCool = uniforms.uPlateCool;
     shader.uniforms.uEnvTint = uniforms.uEnvTint;
     shader.uniforms.uCanvas = uniforms.uCanvas;
+    shader.uniforms.uPaint = uniforms.uPaint;
+    shader.uniforms.uBrush = uniforms.uBrush;
     shader.fragmentShader = SPRITE_UNIFORMS_DECL + shader.fragmentShader.replace(
       '#include <map_fragment>',
       SPRITE_DIFFUSE_PATCH,

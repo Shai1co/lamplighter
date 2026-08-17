@@ -514,6 +514,8 @@ uniform float uPlateSplit;
 uniform float uPlateCool;
 uniform float uEnvTint;
 uniform float uCanvas;
+uniform float uPaint;
+uniform float uBrush;
 
 /** Cheap 2->1 hash + smoothed value noise, local to the sprite program. The
  *  stage's shared GLSL_NOISE is only injected into the post passes; a plate
@@ -567,6 +569,49 @@ float pqPlateNoise(vec2 p) {
  */
 export const SPRITE_DIFFUSE_PATCH = /* glsl */ `
 #include <map_fragment>
+/* ── The brush, and the only note colour could never answer ─────────────────
+ *
+ * Everything below this block is a COLOUR operation: desaturate the plate,
+ * split-tone it, cool its speculars, lay the room's ambient over it. All of it
+ * is correct and none of it touches the actual complaint, which is that the
+ * desk still-life is PAINTED — surfaces described in strokes, detail resolved
+ * only as far as a brush resolves it — and the portrait is PHOTOGRAPHED, with
+ * pore-level micro-detail and a sensor's isotropic noise. Two renderers in one
+ * image. The eye finds the smooth, over-resolved object and files the frame as
+ * two sourced assets composited together, which is exactly the verdict.
+ *
+ * A brush does two things a lens does not: it AVERAGES what is under it, and it
+ * averages DIRECTIONALLY. So the plate is re-sampled along a stroke:
+ *
+ *   • the stroke ANGLE comes from low-frequency value noise in the plate's own
+ *     uv (~26 × 17 cells — a stroke is about a fortieth of a portrait wide), so
+ *     the direction holds over a patch and turns as it crosses the form, the
+ *     way a hand loads and lays down a mark;
+ *   • four taps: two along the stroke and two half a step off it to either
+ *     side, which is a short flat brush rather than a symmetric blur. A
+ *     symmetric blur is soft focus and reads as a mistake; an anisotropic one
+ *     reads as a mark;
+ *   • the mix is capped in the interior only. Both the tap average and the raw
+ *     sample must be fully opaque before any smearing happens, so the plate's
+ *     silhouette — the one edge that must stay cut — never picks up a halo, and
+ *     the feather at her shoulder is left exactly as the matte drew it.
+ *
+ * Applied BEFORE the grade so everything downstream operates on the painted
+ * surface, and read together with the tooth at the end of this patch (which
+ * puts the ground back under the stroke) it is the whole answer to "unify the
+ * rendering language": compressed detail, visible directional structure, and a
+ * noise field at the same scale as the room's.
+ */
+float _brushAng = pqPlateNoise(vMapUv * vec2(26.0, 17.0)) * 6.2831853;
+vec2  _brushDir = vec2(cos(_brushAng), sin(_brushAng)) * uBrush;
+vec2  _brushOrt = vec2(-_brushDir.y, _brushDir.x) * 0.45;
+vec4  _brush = texture2D(map, vMapUv + _brushDir)
+             + texture2D(map, vMapUv - _brushDir)
+             + texture2D(map, vMapUv + _brushDir * 0.45 + _brushOrt)
+             + texture2D(map, vMapUv - _brushDir * 0.45 - _brushOrt);
+_brush *= 0.25;
+float _brushCore = step(0.995, _brush.a) * step(0.995, sampledDiffuseColor.a);
+diffuseColor.rgb = mix(diffuseColor.rgb, _brush.rgb, clamp(uPaint, 0.0, 1.0) * _brushCore);
 diffuseColor.rgb *= uBright;
 float _spriteLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
 diffuseColor.rgb = mix(vec3(_spriteLuma), diffuseColor.rgb, 1.0 - clamp(uDesat, 0.0, 1.0));

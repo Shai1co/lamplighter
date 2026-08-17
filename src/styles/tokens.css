@@ -109,8 +109,43 @@
      off the practical (#c9924a) and struck at 70% — bright enough to be the
      column's only chroma, dim enough never to out-read the label above it.
      Per-speaker identity still lives in the nameplate, which is where a reader
-     actually looks for it. */
-  --pq-rail-lamp: rgba(201 146 74 / 0.7);
+     actually looks for it.
+     ── …and then it has to be FINDABLE ────────────────────────────────────────
+     Struck at #c9924a/70% the rail measured barely two stops above the panel's
+     own hairline family, which at arm's length is not a highlight — it is a
+     slightly darker piece of the same 8% stroke system, and the note that came
+     back was that the active entry has no focal weight at all. The mark is the
+     one thing in the column allowed to be a LIGHT rather than a line, so it is
+     sampled off the practical's hot core (#e0a860) and run at 0.92. The glow
+     that seats it lives on the rail's own box-shadow (see the backlog rules) —
+     a rule this bright with no penumbra would read as a drawn border. */
+  --pq-rail-lamp: rgba(224 168 96 / 0.92);
+  /* ── The transcript's reading levels ───────────────────────────────────────
+     A panel whose entire job is reading was setting its narration at 55% of the
+     warm — ~#807d76 on a near-black sheet, which is below the floor at which a
+     paragraph can be read at a glance and was measured by the critic as "≈40%
+     grey". Atmosphere is not worth the one thing a backlog must have.
+     Three levels, and the hierarchy is kept by putting the STEPS where the eye
+     can resolve them (14 points between narration and speech, 18 between
+     narration and stage direction) rather than by pushing the floor down:
+       • --pq-log-speech   a named voice, near the reading white;
+       • --pq-log-body     narration, ~#ccc7bc — the critic's 65–70% off-white;
+       • --pq-log-stage    a parenthetical beat, one clear rank under it. */
+  /* ── Round 11: the whole ladder moves up a rank ───────────────────────────
+     The transcript stopped being printed on a 78%-opaque sheet of warm black
+     and is now set directly over a lit room, so every level in it is being read
+     against a busier, brighter, more variable ground. The floor therefore rises
+     with it: narration goes 0.86 → 0.90, which composites to ~#d1cbc0 over the
+     scene's darkest regions and clears the ~#cfc4b0 the note sets as the
+     minimum for a PAST entry, and stage directions come up with it so the step
+     between the two survives. Recency is NOT carried on this ladder — the
+     newest entry is lifted to the full warm plus its own bloom (see
+     .pq-backlog__row.is-latest), because a transcript with no box has to say
+     "you are here" with value, and the three levels below still have to mean
+     what they have always meant. */
+  --pq-log-speech: rgba(var(--pq-warm-rgb) / 1);
+  --pq-log-body: rgba(var(--pq-warm-rgb) / 0.9);
+  --pq-log-stage: rgba(var(--pq-warm-rgb) / 0.78);
 
   /* ── Glows ── */
   --pq-glow-key: rgba(var(--pq-key-rgb) / 0.28);
@@ -204,8 +239,12 @@
   /* Pane radius. The modal shell used to carry --pq-r-2 (10px), which is the
      single most legible "this is a web card" signal in a captured frame — every
      HTML dialog in the world rounds at 8–12px. A cut pane of glass breaks at
-     the tooling radius and nothing more. */
-  --pq-r-pane: 3px;
+     the tooling radius and nothing more. 3 → 4px: at three the corner was
+     reading as a RAZOR — a mitre that sharp is a vector artefact, not a ground
+     edge, and it was one of the things holding the pane at "flat alpha
+     rectangle". Four is still half the cheapest web card and it is the radius a
+     real bevelled sheet breaks at. */
+  --pq-r-pane: 4px;
 
   /* ── Shadows ── */
   --pq-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -470,9 +509,14 @@
      simply stops, and a scroll region treated at one end only is the tell that
      the treatment was an accident. 34px is a short exit ramp — about half a
      line of the reading serif — so the foot of the column mirrors its head
-     without ever eating a whole line. */
-  --pq-fade-len: 80px;
-  --pq-fade-end: 34px;
+     without ever eating a whole line.
+     Round 11: the head ramp goes 80 → 92px, because the transcript is no longer
+     dissolving into a sheet of glass — it dissolves into the ROOM. A dissolve
+     that terminates against a fill can be short and still read as a dissolve;
+     one that terminates against a painted scene needs the extra half-line or the
+     eye reads the last legible word as the point where the text was cut off. */
+  --pq-fade-len: 92px;
+  --pq-fade-end: 38px;
   /* ── The panel's bottom terminus ────────────────────────────────────────────
      This used to be the depth of a mask that dissolved the pane's own fill,
      frost and hairline so the glass "ran off the bottom of the frame". In a
@@ -485,7 +529,7 @@
      that hides OVERFLOWING ENTRIES above that footer. 80px is about four lines
      of the reading serif: long enough that a paragraph scrolling out never
      meets a hard cut, short enough that it never eats a whole entry. */
-  --pq-panel-fade: 80px;
+  --pq-panel-fade: 92px;
   /* ── Frame inset ────────────────────────────────────────────────────────────
      The one number the transcript pane's top AND bottom margins are struck
      from. The panel used to be bottom-anchored at 88vh with the lower gutter
