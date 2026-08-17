@@ -2,10 +2,19 @@
  * DialogueBox — the reading surface.
  *
  * Filmic dialogue bar in the Eliza idiom: a CAPS nameplate at far left of a
- * two-column set, body in a transitional serif on a fixed 1050px measure,
- * resting over a soft bottom-fade gradient (never a hard opaque box). The
- * continue ▼ is *inline* — it flows on the last line's baseline right after the
- * final glyph, so it can never orphan itself below the block.
+ * two-column set, body in a transitional serif on a fixed measure, resting over
+ * a soft bottom-fade gradient (never a hard opaque box). The continue ▼ is
+ * *inline* — it flows on the last line's baseline right after the final glyph.
+ *
+ * The prose is split across TWO nodes, not one, and that is load-bearing:
+ * everything up to the last couple of words goes in `body`, and the tail —
+ * final words PLUS the ▼ — goes in a `white-space: nowrap` span. Two typography
+ * crimes are structurally impossible as a result: the last line can never come
+ * down to a single orphaned word, and the continue mark can never wrap onto a
+ * line of its own away from the sentence it belongs to. Neither is fixable by
+ * `text-wrap: pretty` alone, because the glyph is a separate inline box the
+ * line-breaker is free to move.
+ *
  * Owns a time-based typewriter with punctuation-aware cadence, skippable instantly.
  */
 import type { CharacterView } from '../core/types';
@@ -27,9 +36,13 @@ export class DialogueBox {
   readonly root: HTMLElement;
   private readonly nameEl: HTMLElement;
   private readonly bodyEl: HTMLElement;
+  private readonly tailEl: HTMLElement;
+  private readonly tailText: Text;
   private readonly continueEl: HTMLElement;
 
   private full = '';
+  /** Index into `full` at which the un-breakable tail begins. */
+  private tailAt = 0;
   private schedule: number[] = [];
   private startTime = 0;
   private raf = 0;
@@ -44,6 +57,13 @@ export class DialogueBox {
     // carries no interior detail. See .pq-continue.
     this.continueEl = el('span', { class: 'pq-continue', aria: { hidden: true } });
 
+    // The tail: last words + the mark, welded together by `white-space: nowrap`.
+    // The text lives in its own node so the mark survives every re-render of the
+    // typewriter (assigning textContent on the span would delete it).
+    this.tailText = document.createTextNode('');
+    this.tailEl = el('span', { class: 'pq-dialogue__tail' });
+    this.tailEl.append(this.tailText, this.continueEl);
+
     this.root = el(
       'div',
       {
@@ -56,7 +76,7 @@ export class DialogueBox {
         el('div', { class: 'pq-dialogue__scrim', aria: { hidden: true } }),
         el('div', { class: 'pq-dialogue__inner' }, [
           this.nameEl,
-          el('div', { class: 'pq-dialogue__text' }, [this.bodyEl, this.continueEl]),
+          el('div', { class: 'pq-dialogue__text' }, [this.bodyEl, this.tailEl]),
         ]),
       ],
     );
@@ -79,6 +99,7 @@ export class DialogueBox {
   show(speaker: CharacterView | null, text: string, opts: ShowOptions, onDone?: (natural: boolean) => void): void {
     this.stopRaf();
     this.full = text;
+    this.tailAt = tailIndex(text);
     this.onDone = onDone ?? null;
     this.root.hidden = false;
     this.root.classList.remove('is-done');
@@ -93,7 +114,7 @@ export class DialogueBox {
 
     const instant = opts.instant || opts.speed <= 0;
     if (instant) {
-      this.bodyEl.textContent = text;
+      this.paint(text.length);
       this.typing = false;
       this.revealed = text.length;
       this.markDone(true);
@@ -102,7 +123,7 @@ export class DialogueBox {
 
     this.schedule = buildSchedule(text, opts.speed);
     this.revealed = 0;
-    this.bodyEl.textContent = '';
+    this.paint(0);
     this.typing = true;
     this.startTime = performance.now();
     this.raf = requestAnimationFrame(this.tick);
@@ -114,7 +135,7 @@ export class DialogueBox {
     while (n < this.schedule.length && this.schedule[n] <= elapsed) n++;
     if (n !== this.revealed) {
       this.revealed = n;
-      this.bodyEl.textContent = this.full.slice(0, n);
+      this.paint(n);
     }
     if (n >= this.full.length) {
       this.typing = false;
@@ -130,16 +151,24 @@ export class DialogueBox {
     this.stopRaf();
     this.typing = false;
     this.revealed = this.full.length;
-    this.bodyEl.textContent = this.full;
+    this.paint(this.full.length);
     this.markDone(false);
+  }
+
+  /** Distribute the first `n` characters across the body / no-wrap tail pair. */
+  private paint(n: number): void {
+    const head = Math.min(n, this.tailAt);
+    this.bodyEl.textContent = this.full.slice(0, head);
+    this.tailText.data = n > this.tailAt ? this.full.slice(this.tailAt, n) : '';
   }
 
   clear(): void {
     this.stopRaf();
     this.typing = false;
     this.full = '';
+    this.tailAt = 0;
     this.revealed = 0;
-    this.bodyEl.textContent = '';
+    this.paint(0);
     this.nameEl.textContent = '';
     this.nameEl.hidden = true;
     this.continueEl.classList.remove('is-shown');
@@ -166,26 +195,81 @@ export class DialogueBox {
   }
 }
 
+/** Longest tail (in characters) that may be welded into one un-breakable run. */
+const TAIL_MAX = 26;
+
+/**
+ * Where the un-breakable tail of a line begins.
+ *
+ * Prefers the last TWO words, so the closing line of a speech always carries a
+ * phrase rather than a lone survivor — the "…heard of / it" orphan is the
+ * single most legible typography crime a dialogue bar can commit, and
+ * `text-wrap: pretty` is a hint, not a guarantee. Falls back to one word when
+ * two would make an un-breakable run long enough to force a bad break of its
+ * own, and to the whole string when there is nothing to split.
+ */
+function tailIndex(text: string): number {
+  const t = text.trimEnd();
+  const last = t.lastIndexOf(' ');
+  if (last <= 0) return 0;
+  const prev = t.lastIndexOf(' ', last - 1);
+  if (prev > 0 && t.length - prev - 1 <= TAIL_MAX) return prev + 1;
+  return last + 1;
+}
+
 /**
  * Build cumulative reveal times (ms) per character index (1-based end).
- * Base cadence from `cps`, with breathing pauses after punctuation and a small
- * ease-in so the first few characters don't arrive as a hard burst.
+ *
+ * The breathing pause belongs AFTER the punctuation, never before it. That
+ * reads like a pedantic distinction and is not: charging a full stop six
+ * character-times *before* revealing it means every sentence spends a third of
+ * a second on screen with its last word complete, its terminal punctuation
+ * missing and — since the line has not finished typing — no continue mark on
+ * it. A frame grabbed anywhere in that window shows an unpunctuated fragment
+ * with no affordance, which is exactly how the reading surface was being read
+ * as unfinished next to a shipped one. Marks now arrive with the word they
+ * close and the breath is spent before the NEXT character instead.
+ *
+ * Base cadence from `cps`, plus a small ease-in so the first few characters
+ * don't arrive as a hard burst.
  */
 function buildSchedule(text: string, cps: number): number[] {
   const base = 1000 / Math.max(1, cps);
   const out: number[] = new Array(text.length);
   let t = 0;
+  let rest = 0;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-    let step = base;
-    if (ch === ' ' || ch === ' ') step = base * 0.4;
-    else if (ch === ',' || ch === ';' || ch === ':') step = base * 3.2;
-    else if (ch === '.' || ch === '!' || ch === '?' || ch === '…') step = base * 6;
-    else if (ch === '—' || ch === '-') step = base * 2.4;
+    let step = isSpace(ch) ? base * 0.4 : base;
     // Gentle ease-in over the opening run.
     if (i < 6) step *= 1.6 - i * 0.1;
-    t += step;
+    // The mark that CLOSES the line arrives with the word it closes. There is
+    // no reading benefit to metering out a full stop that nothing follows, and
+    // every frame it is missing is a frame in which the line reads as an
+    // unpunctuated fragment with no continue mark under it.
+    if (i === text.length - 1 && restAfter(ch) > 0) step *= 0.15;
+    // `rest` is the breath owed by the PREVIOUS character's mark.
+    t += step + rest;
     out[i] = t;
+    rest = restAfter(ch) * base;
   }
   return out;
+}
+
+/** Ordinary space or the thin space the reading face sets before some marks. */
+function isSpace(ch: string): boolean {
+  return ch === ' ' || ch === ' ';
+}
+
+/**
+ * Breath charged after a mark, as a multiple of the base step. Slightly shorter
+ * than the old pre-mark figures (6 -> 5, 3.2 -> 2.2, 2.4 -> 1.4): a pause the
+ * reader enters having already SEEN the punctuation needs less length to read
+ * as a sentence ending than one they enter mid-word.
+ */
+function restAfter(ch: string): number {
+  if (ch === ',' || ch === ';' || ch === ':') return 2.2;
+  if (ch === '.' || ch === '!' || ch === '?' || ch === '…') return 5;
+  if (ch === '—' || ch === '-') return 1.4;
+  return 0;
 }

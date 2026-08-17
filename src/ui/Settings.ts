@@ -10,6 +10,11 @@
  * a half-cut toggle at a panel border is the single loudest "unfinished web modal"
  * tell there is.
  *
+ * Sections are separated by a single full-measure hairline under a tracked label —
+ * there are no section CARDS. A rounded, stroked, filled rectangle drawn three
+ * times inside a panel that is already a bounded object is box-in-box chrome, and
+ * it is what made this screen read as components rather than as composition.
+ *
  * Below the column sits a FOOT RAIL, outside the scroller and outside the mask: it
  * carries the ▼ affordance and the reset action. The ▼ used to float over the
  * column's last row, which put a glyph directly on top of body copy that was itself
@@ -190,12 +195,13 @@ export class SettingsPanel {
   /**
    * Slider — a drawn instrument, not a styled `<input type=range>`.
    *
-   * The rail beneath carries the whole picture: a 2px hairline for the unspent
-   * run and an accent-lit filled run with its own bloom. The default-value tick
-   * that used to hang under the rail is GONE: at 1× it rendered as a 1px stub
-   * dangling off the bottom of the thumb, which reads as a rendering artifact
-   * rather than as a graduation, and every capture had one under every slider.
-   * The input itself is transparent except for its thumb.
+   * The rail beneath carries the whole picture: a 1px hairline for the unspent
+   * run and the same hairline lit in the warm instrument accent for the spent
+   * one. The default-value tick that used to hang under the rail is GONE: at 1×
+   * it rendered as a 1px stub dangling off the bottom of the thumb, which reads
+   * as a rendering artifact rather than as a graduation, and every capture had
+   * one under every slider. The input itself is transparent except for its
+   * thumb, which is an 8px detent with a single lighter ring.
    */
   private slider(
     label: string,
@@ -239,9 +245,10 @@ export class SettingsPanel {
   }
 
   /**
-   * Toggle — a hairline pill. Off is a drawn outline with a dim dot; on fills with
-   * the key colour and lights a soft halo, with the dot punched out of it in the
-   * panel's own paper so the on-state reads as a switch rather than a teal blob.
+   * Toggle — an outlined pill drawn in one hairline, with an 11px dot inside it.
+   * Off is stroke-only (no fill, no moulded recess — that is the iOS capsule every
+   * framework ships); on fills the outline with the warm instrument accent and
+   * rides a warm-cream dot on it, the same colour language as the sliders above.
    */
   private toggle(
     label: string,

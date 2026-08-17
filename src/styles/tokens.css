@@ -21,6 +21,17 @@
      supposed to come from somewhere (title backdrop bleed, key-art card glow). */
   --pq-lamp-rgb: 232 160 92;
 
+  /* ── Instrument accent ──
+     The one colour every OPERABLE control is struck in: slider fill, slider
+     detent, switch-on. Bound to the WARM theme accent rather than the cool key.
+     A settings column is mostly controls, so whatever colour they carry becomes
+     the panel's second-largest chroma after the type — and a cool signal blue
+     sitting on a warm amber plate is a palette-incoherence read no amount of
+     spacing craft recovers from. The key colour still owns *diegetic signal*
+     (the proxy readout, waveforms, focus rings); the instruments belong to the
+     room's own light. Re-grades per story, because --pq-accent-rgb does. */
+  --pq-ctl-rgb: var(--pq-accent-rgb);
+
   /* Reading white — the paper stock of the dialogue bar. Deliberately NOT
      theme-driven: prose keeps one warm, filmic white across every story so the
      reading surface never picks up a cast from a story's key color. */
@@ -52,12 +63,17 @@
   --pq-pane-rgb: 178 208 218;
   --pq-line-pane: rgba(var(--pq-pane-rgb) / 0.16);
   --pq-line-pane-hi: rgba(var(--pq-pane-rgb) / 0.35);
-  /* The single hairline that etches diegetic glass into the scene. One stroke,
-     no shadow — a drop-shadowed rounded card reads as an HTML overlay pasted on
-     the art, which is the fastest way to lose a blind A/B. Struck at 0.08 in
-     near-white: any heavier and the stroke starts drawing a *border* around a
-     card instead of catching the arris of a pane. */
+  /* The single hairline that etches diegetic glass into the scene. Struck at
+     0.08 in near-white: any heavier and the stroke starts drawing a *border*
+     around a card instead of catching the arris of a pane. */
   --pq-line-glass: rgba(var(--pq-ink-rgb) / 0.08);
+  /* Pane arris. The modal shell carries this rather than --pq-line-glass: on a
+     panel that has been pulled back to ~60% fill so the room reads through it,
+     an 8% stroke evaporates and the glass loses its edge entirely. 12% flat
+     white is a *cut* edge — it catches the room's key the way a real sheet
+     does, and it is the only thing separating the pane from the plate now that
+     the backdrop is no longer being darkened into submission behind it. */
+  --pq-line-pane-edge: rgba(255 255 255 / 0.12);
   --pq-line-key: rgba(var(--pq-key-rgb) / 0.34);
   --pq-line-accent: rgba(var(--pq-accent-rgb) / 0.4);
 
@@ -130,11 +146,17 @@
   --pq-shadow-2: 0 8px 30px rgba(0, 0, 0, 0.36);
   --pq-shadow-3: 0 24px 70px rgba(0, 0, 0, 0.5), 0 4px 14px rgba(0, 0, 0, 0.3);
   --pq-shadow-glass: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(var(--pq-ink-rgb) / 0.08);
-  /* Pane float — one deep, wide, very soft cast plus a tight contact shadow, so
+  /* Pane float — one very large, very soft cast plus a tight contact shadow, so
      the glass reads as hovering a hand's width off the scene rather than being
-     stuck to it. Paired with the inner top highlight that gives it thickness. */
-  --pq-shadow-pane: 0 24px 64px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(var(--pq-pane-rgb) / 0.1);
+     stuck to it. Paired with the inner top highlight that gives it thickness.
+     A pane pulled back to ~60% fill has almost no value difference from the
+     room behind it; without a cast shadow it stops being an OBJECT and reverts
+     to a tint over the plate. The 80px penumbra is what states "there is air
+     between these two things" — the previous build tried to do that job with a
+     radial darkening painted on the backdrop, and a wash has no direction, so
+     the panel read as a flat web card on a dimmed screenshot. */
+  --pq-shadow-pane: 0 24px 80px rgba(0, 0, 0, 0.5), 0 3px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255 255 255 / 0.07);
   --pq-text-shadow: 0 1px 22px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.55);
 
   /* ── Motion ── */
@@ -175,18 +197,31 @@
      centred in the frame, which put a single line of prose floating across the
      middle of the screen with no left edge to read from. These three tokens
      land the set on an exact grid at 1920×1080 — caps plate flush right ending
-     at x=420, prose starting at x=500 and running 1050px — and stay
-     proportional below it. (Gutter 76 + name 344 = 420; + gap 80 = 500.) */
+     at x=420, prose starting at x=470 and running 1100px — and stay
+     proportional below it. (Gutter 76 + name 344 = 420; + gap 50 = 470.)
+     The gap was 80px, which opened a visible trench between the plate and the
+     prose and let the two columns read as two unrelated objects; at 50px they
+     read as one set with a label, which is the Eliza relationship. */
   --pq-name-col: clamp(104px, 17.92vw, 344px);
-  --pq-name-gap: clamp(20px, 4.17vw, 80px);
-  --pq-dialogue-measure: min(1050px, 100%);
-  /* Height of the bottom fade under the dialogue: exactly 380px at 1080, so the
-     fade begins at y=700 and lands on the scrim's 0.87.
-     At 300px the ramp only started at y=780 and the nameplate — which sits at
-     y≈930 — was still reading against lamp-lit desk clutter at ~35% density.
-     380px puts the whole two-line set plus its plate on a base that is already
-     past half density where the type begins. */
-  --pq-scrim-h: clamp(280px, 35.19vh, 380px);
+  --pq-name-gap: clamp(16px, 2.6vw, 50px);
+  /* 1150px at 1920 — the prose column runs x=470→1620 and still leaves a 300px
+     right margin. Widened from 1100: at the old measure a 70-character line
+     came within 20px of the wrap point, so the smallest change in a sentence
+     tipped its last two words onto a second line and left one of them stranded
+     there. Headroom in the measure is the cheapest orphan insurance there is
+     (the no-wrap tail in DialogueBox is the guarantee behind it). */
+  --pq-dialogue-measure: min(1150px, 100%);
+  /* Height of the veil that LEADS INTO the fade: 42vh = 454px at 1080, so the
+     first trace of darkening begins at y=626 and the ramp is approached through
+     130px of almost nothing. On a bright plate (the atrium) a fade that starts
+     at 35% and carries density immediately reads as the top edge of a box; the
+     longer the lead-in, the less there is for the eye to call an edge. */
+  --pq-scrim-h: clamp(320px, 42vh, 454px);
+  /* …and the DESIGNED band inside that long tail — the element the eye reads as
+     "the dialogue bar". It starts exactly 30% up the frame (y=756 at 1080) and
+     carries the fade's real density on an eased curve, while --pq-scrim-h keeps
+     a much fainter veil above it so the band is never entered through a step. */
+  --pq-scrim-band: clamp(228px, 30vh, 324px);
 
   /* ── Proxy panel geometry ───────────────────────────────────────────────
      The panel shares the frame with the speaker's face, and a UI edge across a
@@ -194,6 +229,11 @@
      the pane 8% narrower and drop it ~85px so its top arris clears the chin
      with room to spare; everything inside it was retuned to hold the same
      footprint. Anchored to vh/vw so the clearance survives a resize. */
+  /* Relay panel (the always-on Lumen readout, top right). ~356px at 1920 — the
+     width at which three telemetry rows can carry a label, a full track and a
+     tabular value without any of the three being abbreviated. Below ~300 the
+     rows collapse into a badge again, which is the thing it stopped being. */
+  --pq-relay-w: clamp(300px, 19vw, 356px);
   --pq-proxy-w: clamp(324px, 27.3vw, 524px);
   --pq-proxy-bottom: clamp(146px, 19.63vh, 212px);
   --pq-blur: 18px;
@@ -201,32 +241,57 @@
      1 = the Lumen ops-room tuning; 0 retires them entirely for a plate whose
      key light is somewhere else. */
   --pq-grade-amt: 1;
-  /* Modal backdrop defocus. Deliberately shallow: the room behind a modal must
-     stay a *place* (lamp, monitor, silhouette all still readable) rather than
-     collapsing into grey mush, so the panel floats in an environment instead of
-     on a blur.
-     Pulled 40% (10px → 6px): at 10px the speaker on the right lost her
-     silhouette entirely and read as a hidden asset rather than as a rack focus.
-     Pulled again 6px → 4px: at 6px over a plate that is *already* carrying a
-     painted shallow-focus falloff, the two defocuses compound and the portrait
-     and the practical stop reading as brushwork and start reading as mush —
-     which is the single loudest "the art is being hidden" tell in a blind A/B.
-     4px is a rack focus you can still see the painting through. */
-  --pq-modal-blur: 4px;
+  /* Modal backdrop defocus — the UNIFORM component, and it is now zero.
+     A flat blur applied edge to edge is not a rack focus, it is a frosted
+     sheet: every plane of the room goes soft by the same amount, which is
+     optically impossible and reads (correctly) as the art being concealed
+     rather than as a lens being focused. What replaces it is a FOCAL PLANE —
+     one sharp region at (--pq-focal-x, --pq-focal-y), defocus increasing with
+     distance from it — painted by .pq-modal__defocus below. */
+  --pq-modal-blur: 0px;
+  /* Where the lens is focused, in frame coordinates. The plates put the
+     speaker's face right of centre and above the horizon; that face is the
+     subject of every modal in the game, so it is the plane everything else is
+     defocused relative to. */
+  --pq-focal-x: 74%;
+  --pq-focal-y: 44%;
+  /* Defocus at the far edge of the frame — the deepest point of the ramp that
+     starts at zero on the focal plane. 7px is a stop and a half of separation:
+     enough that the eye reads the corners as *behind* the subject, not enough
+     that a painted shelf edge stops being a shelf edge. */
+  --pq-defocus: 7px;
   /* Extra defocus the PANE itself adds on top of the backdrop, so the glass has
-     a measurable thickness. This one stacks on the backdrop, so what the eye
-     reads behind the glass is roughly hypot(4, 17) ≈ 17px — the band where the
-     city bokeh behind the panel stays *bokeh* (discrete discs, transmitted
-     light) instead of pulping into flat grey at 24px+ or losing the thickness
-     cue entirely below ~12px. The room beside the pane stays at 4px, so the
-     panel has a measurable edge in FOCUS as well as in value. */
-  --pq-pane-blur: 17px;
+     a measurable thickness. The band where the bokeh behind the panel stays
+     *bokeh* (discrete discs, transmitted light) instead of pulping into flat
+     grey — and thick enough to hold its own against a focal plane that is now
+     genuinely sharp beside it, so the panel has a measurable edge in FOCUS as
+     well as in value. */
+  --pq-pane-blur: 21px;
+  /* Fill of the glass itself. The pane and the contact shadow behind it trade
+     off: the previous build had a near-opaque read (a 0.5 fill over a 0.46
+     black well) and no shadow, which is a painted rectangle. Pulling the well
+     out and letting the shadow do the seating puts the pane back at ~60% —
+     the room, the shafts and the far shelves all still legible through it. */
+  --pq-pane-fill: 0.56;
   /* Length of the dissolve at the ends of a long scrolling column, and the
      shorter exit ramp that stays put once the column has nothing further to
      dissolve into. Both ends are treated: prose that meets a panel edge with a
-     hard cut is the "undesigned scroll region" read. */
+     hard cut is the "undesigned scroll region" read.
+     The exit ramp is short (46px → 22px) because the PANEL now dissolves at its
+     own bottom edge as well (--pq-panel-fade); two 46px ramps stacked ate the
+     last two lines of the transcript. */
   --pq-fade-len: 56px;
-  --pq-fade-end: 46px;
+  --pq-fade-end: 22px;
+  /* Depth of the panel's own bottom dissolve. Eliza's dialogue bar has no
+     bottom edge at all — the plate simply carries the prose and the darkening
+     runs off the frame. A transcript column that terminates in a ruled
+     rectangle is the single most "HTML dialog" silhouette we can draw, so the
+     pane's lower 48px fades out fill, hairline and all. */
+  --pq-panel-fade: 48px;
+  /* Inner gutter of the transcript pane. Left and right are the SAME number:
+     the previous set ran 44px of hanging indent on the left against 22px on the
+     right, so every long line ran within a rail's width of the glass edge. */
+  --pq-panel-pad: 44px;
 }
 
 /* Reduced motion: collapse durations and disable ambient loops. */

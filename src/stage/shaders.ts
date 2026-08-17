@@ -327,14 +327,65 @@ uniform float uBright;
 uniform float uDesat;
 uniform float uTintAmt;
 uniform vec3  uTint;
+uniform float uPlateDesat;
+uniform float uPlateSplit;
+uniform float uPlateCool;
 `;
 
+/**
+ * Plate integration — the seam-killer.
+ *
+ * A character plate is photographed warm and clean; the room it is dropped into
+ * has been through a colourist's grade. The composite pass downstream then
+ * grades BOTH together, which preserves the difference between them rather than
+ * removing it: whatever separation the plate arrived with, it still has. So the
+ * plate is pre-graded here, in its own material, toward the scene:
+ *
+ *   • uPlateDesat pulls its saturation (skin is the most saturated thing in a
+ *     night frame by a wide margin, and it is the tell);
+ *   • uPlateSplit runs the same teal↔amber split-tone the GRADE_FRAGMENT runs,
+ *     with the same (0.55 + 0.9 · tint) shape, so the plate's shadows fall
+ *     toward the room's teal (#0e2a2c) and its lit side toward the practical's
+ *     amber (#e8a95f) instead of staying skin-coloured in both;
+ *   • uPlateCool then pulls the room's teal into the SPECULAR end — the sheen
+ *     on a cheekbone, a forehead, a knuckle. The split-tone above sends the
+ *     highlights warm because the key light is warm, which is correct and, on
+ *     its own, insufficient: a real face in this room is also being hit by a
+ *     monitor and a wall of city glass, and the brightest points on skin are
+ *     precisely where a cool bounce shows. Without it her highlights are the
+ *     only surface in frame carrying no teal at all, and the eye finds the one
+ *     object that isn't in the grade.
+ *
+ * Both tints are the peak-normalised hue of those two colours, scaled to the
+ * same magnitudes GRADE_FRAGMENT uses, which is why the two passes agree.
+ * Grain is deliberately NOT applied here: one emulsion over render + plate + UI
+ * is laid down once, downstream, and that is the point of it.
+ */
 export const SPRITE_DIFFUSE_PATCH = /* glsl */ `
 #include <map_fragment>
 diffuseColor.rgb *= uBright;
 float _spriteLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
 diffuseColor.rgb = mix(vec3(_spriteLuma), diffuseColor.rgb, 1.0 - clamp(uDesat, 0.0, 1.0));
 diffuseColor.rgb = mix(diffuseColor.rgb, uTint, clamp(uTintAmt, 0.0, 1.0));
+float _plateLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+diffuseColor.rgb = mix(vec3(_plateLuma), diffuseColor.rgb, 1.0 - clamp(uPlateDesat, 0.0, 1.0));
+vec3 _plateShadow = vec3(0.140, 0.420, 0.440);
+vec3 _plateHigh   = vec3(0.980, 0.713, 0.401);
+vec3 _plateSplit  = mix(_plateShadow, _plateHigh, smoothstep(0.0, 0.9, _plateLuma));
+diffuseColor.rgb = mix(
+  diffuseColor.rgb,
+  diffuseColor.rgb * (0.55 + 0.9 * _plateSplit),
+  clamp(uPlateSplit, 0.0, 1.0)
+);
+// Cool bounce in the speculars only — smoothstep starts well above mid so it
+// never touches skin midtones, which would read as a colour cast on the face
+// rather than as light on it.
+float _plateSpec = smoothstep(0.36, 0.88, _plateLuma);
+diffuseColor.rgb = mix(
+  diffuseColor.rgb,
+  diffuseColor.rgb * vec3(0.855, 1.0, 1.075),
+  _plateSpec * clamp(uPlateCool, 0.0, 1.0)
+);
 `;
 
 /* ───────────────────────────  Rain ↔ light coupling  ───────────────────────────
@@ -464,7 +515,15 @@ float rivuletField(vec2 uv) {
   return rivulet(uv, 0.585, 0.055, 0.0, 0.0024) * 0.85
        + rivulet(uv, 0.668, 0.039, 5.7, 0.0014) * 0.60
        + rivulet(uv, 0.742, 0.031, 2.1, 0.0012) * 0.55
-       + rivulet(uv, 0.906, 0.047, 4.4, 0.0018) * 0.70;
+       + rivulet(uv, 0.906, 0.047, 4.4, 0.0018) * 0.70
+       // Two more across the dead middle third. Every rivulet used to live at
+       // x > 0.58 — all of the water was on the right half of the pane and the
+       // centre of the frame carried no weather at all, which is half of why
+       // that band read as an undesigned hole. Deliberately the faintest two of
+       // the six: over near-black the lit gate keeps them around 5%, which is
+       // enough to say "there is glass here" and not enough to be seen.
+       + rivulet(uv, 0.335, 0.043, 1.3, 0.0013) * 0.44
+       + rivulet(uv, 0.452, 0.036, 3.9, 0.0010) * 0.38;
 }
 
 void main() {
@@ -474,11 +533,19 @@ void main() {
   float lit = mix(1.0, smoothstep(0.03, 0.30, behindLum), uHasLight);
 
   float riv = rivuletField(uv);
+  // The pane has a bottom. The rivulets used to run the full height of the
+  // frame, which put water tracking down the speaker's shoulder and down the
+  // laptop lid in front of her — objects that are on THIS side of the glass.
+  // Read at a glance that is not weather, it is a reflection smeared across a
+  // figure, and it is the loudest compositing tell in the lower third. The
+  // sill line retires them over the bottom quarter, which is also exactly the
+  // band the dialogue is read in.
+  float sill = smoothstep(0.06, 0.28, uv.y);
   // Density lifted (0.24 → 0.34 at full light): the pane's copy literally says
   // "Rain on the glass", and at the old strength — under a modal's backdrop
   // blur especially — the frame simply did not show it. A line the picture does
   // not earn is worse than no line.
-  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.12, 0.42, lit);
+  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.12, 0.42, lit) * sill;
 
   // Refraction. A bead of water is a cylindrical lens: the city behind it does
   // not merely brighten, it SHIFTS. The field's own horizontal derivative gives

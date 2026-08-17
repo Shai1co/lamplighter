@@ -52,6 +52,7 @@ export class UILayer implements IUILayer {
   private readonly liveEl: HTMLElement;
   private readonly creditsEl: HTMLElement;
   private readonly gradeEl: HTMLElement;
+  private readonly atmosEl: HTMLElement;
   private readonly plateEl: HTMLElement;
 
   private readonly dialogue: DialogueBox;
@@ -126,10 +127,27 @@ export class UILayer implements IUILayer {
     // and neither belongs to the reading layer, so they hang off .pq directly
     // and survive a modal taking the frame.
     this.gradeEl = el('div', { class: 'pq-roomgrade', aria: { hidden: true } });
+    // Atmosphere: the shaft/haze pass that belongs to the *plate currently on
+    // stage* rather than to the story. Keyed off `data-pq-bg` (set from
+    // scene:bg below), so a room whose light is a wall of clerestory glass gets
+    // shafts and a local-contrast restore, and a room whose light is one desk
+    // lamp gets neither.
+    this.atmosEl = el('div', { class: 'pq-atmos', aria: { hidden: true } }, [
+      // Order is the optical order: the midground is racked off the focal
+      // plane FIRST (a defocus is a property of the lens, so it happens before
+      // anything a colourist would do), local contrast is restored next (it
+      // reads the plate beneath it), the shafts are then laid into the air it
+      // just cleared, and the cool wash grades the shadows both of them leave.
+      el('span', { class: 'pq-atmos__focus' }),
+      el('span', { class: 'pq-atmos__local' }),
+      el('span', { class: 'pq-atmos__shafts' }),
+      el('span', { class: 'pq-atmos__cool' }),
+    ]);
     this.plateEl = el('div', { class: 'pq-plate', aria: { hidden: true } });
 
     this.pq = el('div', { class: 'pq' }, [
       this.gradeEl,
+      this.atmosEl,
       this.stage,
       this.topbar,
       this.modalLayer,
@@ -200,6 +218,15 @@ export class UILayer implements IUILayer {
         this.backlog.push({ name: p.speaker?.name ?? null, color: p.speaker?.color, text: p.text });
         this.announce(p.speaker ? `${p.speaker.name}. ${p.text}` : p.text);
         this.updateInputMode();
+      }),
+    );
+
+    // The grade needs to know which plate it is grading. One data attribute on
+    // the frame root is the whole mechanism: every per-plate power window,
+    // light shaft and haze pass in ui.css is selected off it.
+    this.unsubs.push(
+      this.bus.on('scene:bg', (p) => {
+        this.pq.dataset.pqBg = p.id;
       }),
     );
 

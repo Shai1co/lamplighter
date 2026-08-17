@@ -223,6 +223,13 @@ export function overlayShell(
     ],
   );
 
+  // The rack focus. A dedicated plate rather than a filter on the overlay
+  // itself, because it needs a MASK to make the defocus progressive — one sharp
+  // focal plane on the speaker, blur deepening with distance from it — and a
+  // mask on the overlay would take the panel with it. Purely decorative; it
+  // sits behind the panel and never sees a pointer event.
+  const defocus = el('div', { class: 'pq-modal__defocus', aria: { hidden: true } });
+
   const overlay = el(
     'div',
     {
@@ -232,11 +239,13 @@ export function overlayShell(
       aria: { modal: 'true', label: title },
       on: {
         click: (e: Event) => {
+          // The defocus plate is pointer-events:none, so a click anywhere off
+          // the panel still lands on the overlay itself.
           if (e.target === overlay) opts.onClose();
         },
       },
     },
-    [panel],
+    [defocus, panel],
   );
 
   return {

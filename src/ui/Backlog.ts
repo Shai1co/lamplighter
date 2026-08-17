@@ -5,12 +5,20 @@
  * serif — a long run of italic paragraphs collapses into a single undifferentiated
  * grey texture and destroys the scannability a transcript exists for — and italic
  * is reserved for stage-direction beats (parentheticals and em-dash asides), so
- * that when it does appear it carries meaning. Spoken lines carry a tracked-out
- * speaker label plus a 2px rail in that speaker's colour; off-script replies get
- * the warm quill accent so the player can retrace where they broke script.
+ * that when it does appear it carries meaning.
+ *
+ * The rail is binary and means exactly one thing — attribution. A spoken line
+ * carries a tracked-out speaker label plus a 2px rail struck from that
+ * speaker's colour; narration carries no rail at all, only the indent and a
+ * lighter ink. (The previous set gave narration its own hairline rail, which
+ * put eight ticks at two nearly-identical weights down the column and read as
+ * an inconsistency rather than a system.) Off-script replies keep the warm
+ * quill accent so the player can retrace where they broke script.
  *
  * The column is the panel's only scroller and is masked at both ends, so text
- * dissolves into the glass instead of being cut off mid-sentence at the border.
+ * dissolves into the glass instead of being cut off mid-sentence at the border;
+ * the pane itself then dissolves at its own lower edge, so the transcript has
+ * no bottom border to terminate against.
  */
 import type { ChoiceKind } from '../core/types';
 import { clear, el, icon, Icons, overlayShell } from './dom';

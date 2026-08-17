@@ -106,6 +106,61 @@ const PRESENCE = {
    *  much and the falloff becomes a dark smear over bright backgrounds. */
   vignette: 0.3,
   vignetteGamma: 1.2,
+
+  /* ── Edge light ───────────────────────────────────────────────────────────
+   * The darkening above answers half the question — it stops the feather
+   * hazing over the scene — but it leaves the other half open: a dark plate
+   * dissolving into a dark scene has no boundary at all, and dark hair against
+   * dark foliage reads as a compositing accident rather than as a decision.
+   * Nothing about it says "this edge is where the light stopped".
+   *
+   * So the feather is also LIT. A warm band is added through the middle of the
+   * ramp — zero where the plate is solid, zero where it has gone, peaking just
+   * inside the edge — which is what a rim light does. It is directional (the
+   * key is camera-left in every plate this story ships) and weighted toward the
+   * crown, because that is where the dissolve is longest and the merge worst.
+   *
+   * The result is one consistent, deliberate falloff all the way round: dark
+   * outside, warm just inside, plate beyond that.
+   */
+  /** Alpha at which the rim band opens, peaks, and closes. Tightened from
+   *  0.30/0.62/0.94: the band now sits closer in against the solid core, so it
+   *  reads as a kicker catching an EDGE rather than as a glow around a shape. */
+  rimIn: 0.36,
+  rimPeak: 0.66,
+  rimOut: 0.95,
+  /** Peak strength of the added light, as a fraction of the rim colour.
+   *  0.15 → 0.24. At 15% the kicker was doing its job in theory and printing
+   *  nothing: the plate arrived with no light on it that the room could not
+   *  also explain, which is exactly the "photograph laid on a painting" read.
+   *  A quarter-strength amber edge is the cheapest thing in the frame that says
+   *  the desk lamp and the figure are in the same room. */
+  rimAmt: 0.24,
+  /** Floor of the directional weight on the shadow side (camera-right). Pulled
+   *  down with the strength, so the extra light lands on the lamp side and the
+   *  far side of her stays as dark as the room does. */
+  rimDirMin: 0.24,
+  /** The light itself — the lamp amber the rest of the grade is struck from. */
+  rimR: 232,
+  rimG: 164,
+  rimB: 92,
+
+  /* ── Torso falloff ────────────────────────────────────────────────────────
+   * The alpha tail above dissolves the bottom of the plate, which is right for
+   * her SILHOUETTE and wrong for her VALUE: a lit torso fading to transparent
+   * hands the frame a half-present chest with the city bokeh and the rain on
+   * the glass showing straight through it, and a critic reads that — correctly
+   * — as a compositing seam rather than as a figure sitting in shadow.
+   *
+   * So the same region is also multiplied toward black, and the darkening
+   * leads the dissolve. She falls into the dark first and only then stops
+   * being there, which is what a body at the bottom of a night frame does.
+   * Runs on the RGB, not the alpha, so nothing about her outline changes. */
+  shadeStart: 0.54,
+  shadeEnd: 0.9,
+  /** How black the bottom goes. 0.92, not 1.0 — a hair of tone left in the
+   *  deepest part keeps it a shadow rather than a hole cut in the plate. */
+  shadeAmt: 0.92,
 } as const;
 
 /**
@@ -600,9 +655,19 @@ export class Stage implements IStage {
     return this.bundle?.manifest.characters[key] ?? null;
   }
 
+  /**
+   * Side anchors, as a fraction of the frustum width at `z`.
+   *
+   * 0.28 pushed the speaker hard enough into the corner that her shoulder was
+   * clipped by the frame edge AND crowded directly under the call strip — two
+   * separate collisions in the same 200px. 0.24 gives back ~80px at 1920, which
+   * is the width of the breathing room the composition wanted: the plate now
+   * has a right margin, the strip has air under it, and the figure moves a
+   * little further into the middle third that was reading as empty.
+   */
   private anchorsAt(z: number): Record<CharSide, number> {
     const f = this.frustum(z);
-    return { left: -f.w * 0.28, center: 0, right: f.w * 0.28 };
+    return { left: -f.w * 0.24, center: 0, right: f.w * 0.24 };
   }
 
   private charTexture(key: string, pose: string): THREE.Texture {
@@ -889,6 +954,15 @@ export class Stage implements IStage {
       const vertical =
         smoothstep(PRESENCE.headEnd, PRESENCE.headStart, v) *
         (1 - smoothstep(PRESENCE.tailStart, PRESENCE.tailEnd, v));
+      // Rim falls off down the figure: strongest across the crown and shoulder
+      // where the dissolve is longest, half strength by the torso, where the
+      // plate is trailing away on purpose and a lit edge would fight it.
+      const rimRow = 0.5 + 0.5 * (1 - smoothstep(0.26, 0.7, v));
+      // Torso falloff — constant across the row, and applied to every pixel in
+      // it including the fully-opaque core, which is why it cannot ride along
+      // inside the `a >= 1` early-out below.
+      const shadeRow =
+        1 - PRESENCE.shadeAmt * smoothstep(PRESENCE.shadeStart, PRESENCE.shadeEnd, v);
       const row = y * w * 4;
       for (let x = 0; x < w; x++) {
         const u = (x + 0.5) / w;
@@ -896,12 +970,25 @@ export class Stage implements IStage {
         const nx = Math.abs(dx / (dx < 0 ? PRESENCE.rLeft : PRESENCE.rRight)) ** PRESENCE.power;
         const d = (nx + ny) ** invPower;
         const a = (1 - smoothstep(PRESENCE.core, 1, d)) ** PRESENCE.rampGamma * vertical;
-        if (a >= 1) continue;
+        if (a >= 1 && shadeRow >= 1) continue;
         const i = row + x * 4;
-        const shade = 1 - PRESENCE.vignette * (1 - a) ** PRESENCE.vignetteGamma;
-        px[i] *= shade;
-        px[i + 1] *= shade;
-        px[i + 2] *= shade;
+        const shade =
+          shadeRow * (1 - PRESENCE.vignette * (1 - a) ** PRESENCE.vignetteGamma);
+        // A band through the middle of the ramp: 0 at both ends by
+        // construction, so it can never draw a line at the plate's edge or a
+        // halo out in the scene.
+        const band =
+          smoothstep(PRESENCE.rimIn, PRESENCE.rimPeak, a) *
+          (1 - smoothstep(PRESENCE.rimPeak, PRESENCE.rimOut, a));
+        const dirW =
+          PRESENCE.rimDirMin + (1 - PRESENCE.rimDirMin) * (1 - smoothstep(-0.12, 0.18, dx));
+        // Gated on the torso falloff as well: a kicker painted into the part of
+        // the plate that has just been committed to black is a light with no
+        // surface under it.
+        const lift = PRESENCE.rimAmt * band * dirW * rimRow * shadeRow;
+        px[i] = Math.min(255, px[i] * shade + lift * PRESENCE.rimR);
+        px[i + 1] = Math.min(255, px[i + 1] * shade + lift * PRESENCE.rimG);
+        px[i + 2] = Math.min(255, px[i + 2] * shade + lift * PRESENCE.rimB);
         px[i + 3] *= a;
       }
     }

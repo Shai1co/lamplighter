@@ -65,6 +65,25 @@ const APERTURE = 0.0005;
 /** Grain clump edge, in CSS pixels before the device pixel ratio. */
 const GRAIN_PX = 2.2;
 
+/**
+ * Bloom gate.
+ *
+ * THRESHOLD was 0.85, which on a daylit plate — a wall of clerestory glass, a
+ * lamp-lit sheet of paper — puts most of the upper midtones inside the bloom
+ * and returns them as a veil over the whole middle of the frame. That veil is
+ * indistinguishable from fog, and fog with no source has no shape: it is the
+ * single largest contributor to a centre that reads as undifferentiated mush.
+ * 0.93 admits only genuine specular highlights — the glass itself, the filament
+ * side of a shade, a wet eye — so bloom decorates the SOURCES and stops
+ * dissolving everything within a stop of them.
+ *
+ * RADIUS follows it down: a tight gate with a wide radius smears the few
+ * highlights that survive across the frame, which is the same failure by
+ * another route. 0.34 keeps the halo inside roughly a window's width.
+ */
+const BLOOM_THRESHOLD = 0.93;
+const BLOOM_RADIUS = 0.34;
+
 const v3 = (a?: [number, number, number], d = 0): THREE.Vector3 =>
   a ? new THREE.Vector3(a[0], a[1], a[2]) : new THREE.Vector3(d, d, d);
 
@@ -106,7 +125,12 @@ export class PostFX {
     this.composer.addPass(renderPass);
     this.composer.addPass(transitionPass);
 
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.65, 0.42, 0.85);
+    this.bloom = new UnrealBloomPass(
+      new THREE.Vector2(width, height),
+      0.65,
+      BLOOM_RADIUS,
+      BLOOM_THRESHOLD,
+    );
     this.composer.addPass(this.bloom);
 
     this.bokeh = new BokehPass(scene, camera, { focus: 6.5, aperture: APERTURE, maxblur: 0.009 });

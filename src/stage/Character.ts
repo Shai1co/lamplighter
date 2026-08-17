@@ -22,7 +22,32 @@ interface SpriteUniforms {
   uDesat: { value: number };
   uTintAmt: { value: number };
   uTint: { value: THREE.Color };
+  uPlateDesat: { value: number };
+  uPlateSplit: { value: number };
+  uPlateCool: { value: number };
 }
+
+/**
+ * How far the plate is pre-graded toward the room before the composite grade
+ * sees it. See SPRITE_DIFFUSE_PATCH for why this happens in the sprite's own
+ * material rather than downstream.
+ *
+ * PLATE_DESAT — 15%. Skin is the most saturated surface in a night interior and
+ * a photographic plate carries it at full strength into a painterly, low-chroma
+ * room; 15% is the point where she stops being the only saturated object in
+ * frame and still has blood in her.
+ * PLATE_SPLIT — 0.22, against the grade's own effective 0.36 × 0.55 ≈ 0.20, so
+ * the plate arrives already carrying roughly the split-tone the room has and
+ * the two are graded from the same place rather than converging from different
+ * ones.
+ * PLATE_COOL — 0.30. The room's teal, pulled into the specular end of skin (see
+ * SPRITE_DIFFUSE_PATCH). A third is the point where a highlight stops being the
+ * only warm-only surface in the frame and still reads as flesh; past ~0.45 the
+ * sheen goes grey and the face looks lit through a window that isn't there.
+ */
+const PLATE_DESAT = 0.15;
+const PLATE_SPLIT = 0.22;
+const PLATE_COOL = 0.3;
 
 function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
   material: THREE.MeshBasicMaterial;
@@ -41,12 +66,18 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     uDesat: { value: 0 },
     uTintAmt: { value: 0 },
     uTint: { value: tint.clone() },
+    uPlateDesat: { value: PLATE_DESAT },
+    uPlateSplit: { value: PLATE_SPLIT },
+    uPlateCool: { value: PLATE_COOL },
   };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uBright = uniforms.uBright;
     shader.uniforms.uDesat = uniforms.uDesat;
     shader.uniforms.uTintAmt = uniforms.uTintAmt;
     shader.uniforms.uTint = uniforms.uTint;
+    shader.uniforms.uPlateDesat = uniforms.uPlateDesat;
+    shader.uniforms.uPlateSplit = uniforms.uPlateSplit;
+    shader.uniforms.uPlateCool = uniforms.uPlateCool;
     shader.fragmentShader = SPRITE_UNIFORMS_DECL + shader.fragmentShader.replace(
       '#include <map_fragment>',
       SPRITE_DIFFUSE_PATCH,
@@ -214,17 +245,15 @@ export class Character {
       return;
     }
 
-    // Ghost of the old pose fades out over the new one.
+    // Ghost of the old pose fades out over the new one. Built through the same
+    // factory as the live sprite — an un-patched MeshBasicMaterial here would
+    // cross-fade an *ungraded* plate over a graded one for 280ms, i.e. flash the
+    // exact composite seam the plate grade exists to remove.
     this.clearGhost();
-    const ghostMat = new THREE.MeshBasicMaterial({
-      map: prevTex,
-      transparent: true,
-      depthTest: true,
-      depthWrite: false,
-      toneMapped: true,
-      opacity: 1,
-      alphaTest: 0.01,
-    });
+    const built = makeSpriteMaterial(prevTex, this.tint);
+    const ghostMat = built.material;
+    built.uniforms.uBright.value = this.uniforms.uBright.value;
+    built.uniforms.uDesat.value = this.uniforms.uDesat.value;
     const ghost = new THREE.Mesh(this.geometry, ghostMat);
     ghost.scale.copy(this.mesh.scale);
     ghost.renderOrder = this.mesh.renderOrder + 1;
