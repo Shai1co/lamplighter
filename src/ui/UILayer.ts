@@ -53,6 +53,7 @@ export class UILayer implements IUILayer {
   private readonly creditsEl: HTMLElement;
   private readonly gradeEl: HTMLElement;
   private readonly atmosEl: HTMLElement;
+  private readonly tonePlateEl: HTMLElement;
   private readonly plateEl: HTMLElement;
   private readonly cornerPlateEl: HTMLElement;
   private readonly wallPlateEl: HTMLElement;
@@ -153,6 +154,14 @@ export class UILayer implements IUILayer {
       el('span', { class: 'pq-atmos__shafts' }),
       el('span', { class: 'pq-atmos__cool' }),
     ]);
+    // The print's chromatic cast, laid UNDER the emulsion but on the same layer
+    // — over the render, the composited portrait and every panel alike, so the
+    // whole frame is graded once rather than each surface being graded on its
+    // own. See .pq-plate--tone.
+    this.tonePlateEl = el('div', {
+      class: 'pq-plate pq-plate--tone',
+      aria: { hidden: true },
+    });
     this.plateEl = el('div', { class: 'pq-plate', aria: { hidden: true } });
     // The corner emulsion is a SIBLING of the plate, never a child: opacity on
     // the plate establishes a compositing group, so a nested field would come
@@ -176,6 +185,7 @@ export class UILayer implements IUILayer {
       this.topbar,
       this.modalLayer,
       this.creditsEl,
+      this.tonePlateEl,
       this.plateEl,
       this.cornerPlateEl,
       this.wallPlateEl,

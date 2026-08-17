@@ -45,6 +45,16 @@ function isStageDirection(text: string): boolean {
 }
 
 /**
+ * Longest head dissolve the column will ever draw, in px.
+ *
+ * The ramp always TERMINATES on an entry boundary (see `syncHeadFade`); this
+ * caps how far back from that boundary it is allowed to START, so a scroll
+ * position that happens to sit 300px above the next entry does not dissolve a
+ * third of the panel. About three lines of the reading serif.
+ */
+const HEAD_FADE_MAX = 58;
+
+/**
  * Where the shift clock starts, in minutes past midnight — 03:11, the hour the
  * script itself puts on the board. Every entry is stamped one minute later, so
  * the right-hand column of the transcript reads as a monotonic log of a night
@@ -146,6 +156,7 @@ export class Backlog {
     // the region read as designed.
     this.cue.dataset.overflow = overflow ? '1' : '0';
     this.rail.dataset.overflow = overflow ? '1' : '0';
+    this.syncHeadFade(top);
     // Thumb geometry as fractions of the track: length is the visible share of
     // the column, offset is how far through the remainder we have travelled.
     const view = this.scroll.clientHeight;
@@ -154,6 +165,46 @@ export class Backlog {
     const travel = total > view ? this.scroll.scrollTop / (total - view) : 0;
     this.thumb.style.height = `${(share * 100).toFixed(2)}%`;
     this.thumb.style.top = `${(travel * (1 - share) * 100).toFixed(2)}%`;
+  }
+
+  /**
+   * Snap the head dissolve to an entry boundary.
+   *
+   * A fixed-length top fade lands wherever the scroll happens to be, which is
+   * how the captured frame ended up printing the transcript's first entry cut
+   * through the middle of its own first line: half a sentence at 55% sitting
+   * directly above a second line at 100%. At that scale the eye does not read
+   * "this is dissolving", it reads "this is broken" — and a scroll region that
+   * amputates a line is exactly the undesigned-web-modal tell the rest of this
+   * panel exists to avoid.
+   *
+   * So the ramp's END is pinned to the top of the first entry that is fully in
+   * view, and its START is at most {@link HEAD_FADE_MAX} above that. Whatever
+   * is dissolved is therefore always the WHOLE of the entry scrolling out, and
+   * the first entry the reader can actually read begins at full value on its
+   * own cap line. When an entry boundary happens to sit exactly at the top of
+   * the viewport the ramp collapses to nothing, which is correct: there is
+   * nothing half-shown to dissolve.
+   */
+  private syncHeadFade(scrolled: boolean): void {
+    const s = this.scroll.style;
+    if (!scrolled) {
+      s.setProperty('--fade-start', '0px');
+      s.setProperty('--fade-top', '0px');
+      return;
+    }
+    const y = this.scroll.scrollTop;
+    let boundary = 0;
+    for (const node of Array.from(this.scroll.children)) {
+      const offset = (node as HTMLElement).offsetTop - y;
+      if (offset >= 0) {
+        boundary = offset;
+        break;
+      }
+    }
+    const len = Math.min(boundary, HEAD_FADE_MAX);
+    s.setProperty('--fade-start', `${(boundary - len).toFixed(1)}px`);
+    s.setProperty('--fade-top', `${boundary.toFixed(1)}px`);
   }
 
   private appendRow(e: BacklogEntry, index: number, autoscroll: boolean): void {

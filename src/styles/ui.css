@@ -1001,9 +1001,55 @@
      carrying most of the field. This is what is left over for the DOM — enough
      to weld the reading layer and the panels into the same photograph, and
      enough to dither the dialogue ramp, at two thirds of the veil. */
-  opacity: 0.024;
+  opacity: 0.028;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='384' height='384'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='384' height='384' filter='url(%23g)'/></svg>");
   background-size: 384px 384px;
+}
+/* ── The print's own chromatic cast ─────────────────────────────────────────
+   A SIBLING plate on the same z-layer as the emulsion, so it covers the render,
+   the composited portrait and every piece of DOM chrome in one pass — which is
+   the entire point. The panels were being graded independently of the room:
+   each pane picks up the practical on its top edge and the key on its sheen,
+   but the *frame* had no single cast over it, so the glass sat a shade cleaner
+   and a shade cooler than the photograph behind it. One print cast fixes that
+   the way a colourist does — after the composite, over everything.
+
+   Three terms, and none of them is a flat wash: a flat wash has a DC term and
+   would lift the blacks of a render whose deepest value is already only 15.
+     • the practical's warm bleeding up out of the low-left corner (5%),
+     • the window's cool falling out of the high-right (3.5%),
+     • and a 1.4% warm bias that fades to nothing by the top third, so the
+       bottom of the frame — the deepest, most-graded part of every plate —
+       carries a touch of amber in its toe the way a warm print stock does.
+   Both radials reach zero well inside the frame, so the centre of the picture
+   (the pane, the sitter) is untouched and the cast is a GRADIENT across the
+   image rather than a veil over it. */
+.pq-plate--tone {
+  opacity: 1;
+  /* The base plate tiles a 384px emulsion; a cast is one gradient across the
+     WHOLE frame, so the inherited tile has to be cancelled or the three
+     gradients below repeat every 384px and print a visible grid of seams over
+     the picture — which is a hard fail on its own line of the rubric. */
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-image: radial-gradient(
+      74% 64% at 13% 78%,
+      rgba(232, 160, 92, 0.05) 0%,
+      rgba(232, 160, 92, 0.018) 46%,
+      rgba(232, 160, 92, 0) 76%
+    ),
+    radial-gradient(
+      66% 58% at 85% 20%,
+      rgba(146, 184, 202, 0.036) 0%,
+      rgba(146, 184, 202, 0.012) 48%,
+      rgba(146, 184, 202, 0) 78%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(255, 226, 194, 0.014) 0%,
+      rgba(255, 232, 206, 0.006) 38%,
+      rgba(255, 236, 214, 0) 68%
+    );
 }
 /* …and ~2% more of that same emulsion over the bottom-right quadrant. Not a
    second film stock: the identical monochrome tile, offset so the two fields
@@ -2849,11 +2895,22 @@
    acutance a contrast curve cannot invent. Everything outside this ellipse is
    left exactly as soft as it was, so the fall-off now has a plane to fall off
    from. */
+/* Round 8: the window covered the lamp, the mug and the near desk, and stopped
+   short of the two props the eye actually interrogates for sharpness — the
+   monitor and the headset — so the focal plane had a soft-edged hole in the
+   middle of it and the whole still-life still read as diffuse. It is now two
+   windows: the original over the lit desk, plus a second over the monitor and
+   the headset at slightly lower brightness (that plane is a stop back and
+   should not come up to the lamp's exposure). Contrast 1.16 → 1.28 across both:
+   what the eye reads as "in focus" is the STEEPNESS of a transition, and 1.16
+   was expanding local differences by about half what an unsharp pass would. */
 .pq-title__clarity {
-  filter: brightness(1.3) contrast(1.16) saturate(1.05);
+  filter: brightness(1.28) contrast(1.28) saturate(1.05);
   animation: pq-title-drift 52s var(--pq-ease-in-out) infinite alternate;
-  -webkit-mask-image: radial-gradient(15% 17% at 14% 73%, #000 0%, rgba(0, 0, 0, 0.55) 52%, transparent 92%);
-  mask-image: radial-gradient(15% 17% at 14% 73%, #000 0%, rgba(0, 0, 0, 0.55) 52%, transparent 92%);
+  -webkit-mask-image: radial-gradient(15% 17% at 14% 73%, #000 0%, rgba(0, 0, 0, 0.55) 52%, transparent 92%),
+    radial-gradient(11% 15% at 17% 58%, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.4) 54%, transparent 92%);
+  mask-image: radial-gradient(15% 17% at 14% 73%, #000 0%, rgba(0, 0, 0, 0.55) 52%, transparent 92%),
+    radial-gradient(11% 15% at 17% 58%, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.4) 54%, transparent 92%);
 }
 /* Far plate — the same frame thrown right out of focus and screened back, which
    is what turns distant window lights into real bokeh instead of flat pixels.
@@ -3085,15 +3142,35 @@
       rgba(var(--pq-ink-rgb) / 0.022) 29px 31px,
       transparent 31px 97px
     );
-  /* Opened at the left end: the old ramp started the rain at 4% and did not
-     reach full until 60%, which put the warm bounce only where the frame was
-     already lit. It now carries a third of its density over the desk quadrant
-     so the two warm notes are actually connected by something. */
+  /* ── Where the weather is allowed to be ───────────────────────────────────
+     Round 8. The horizontal band ran the rain at 30% density from x=0, which
+     put visible rivulets straight across the wordmark, the tagline and the
+     menu — over the one quadrant of the frame that is a wall and a desk, not a
+     window. Rain rendering on top of display type is the compositing order a
+     critic reads instantly as "a weather shader laid over an HTML page", and it
+     was doing it in the most expensive place on the screen.
+     The type column is now effectively dry (0.09 × the 101° ramp's own 0.18 at
+     that x ≈ 1.6% density — a trace, enough to keep the warm bounce connecting
+     the lamp to the card, far under the threshold at which a streak is a
+     streak), the density climbs through the partition, and everything right of
+     x 50% — which is glass — gets the full pass. */
   -webkit-mask-image: linear-gradient(101deg, rgba(0, 0, 0, 0.18) 2%, rgba(0, 0, 0, 0.55) 30%, #000 62%),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 44%, #000 48% 54%, rgba(0, 0, 0, 0.3) 58% 100%);
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.09) 0 26%,
+      rgba(0, 0, 0, 0.26) 41%,
+      #000 50% 56%,
+      rgba(0, 0, 0, 0.34) 64% 100%
+    );
   -webkit-mask-composite: source-in;
   mask-image: linear-gradient(101deg, rgba(0, 0, 0, 0.18) 2%, rgba(0, 0, 0, 0.55) 30%, #000 62%),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 44%, #000 48% 54%, rgba(0, 0, 0, 0.3) 58% 100%);
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.09) 0 26%,
+      rgba(0, 0, 0, 0.26) 41%,
+      #000 50% 56%,
+      rgba(0, 0, 0, 0.34) 64% 100%
+    );
   mask-composite: intersect;
   animation: pq-title-rain 38s var(--pq-ease-in-out) infinite alternate;
 }
@@ -3373,10 +3450,35 @@
        along the top of the monitor bezel. One genuinely sharp plane is what
        makes every soft thing around it read as depth of field rather than as an
        upscale. */
-    radial-gradient(30px 1.6px at 11.6% 44.6%, rgba(255 234 196 / 0.5), transparent 72%),
-    radial-gradient(25px 2px at 9.4% 70.1%, rgba(255 238 210 / 0.58), transparent 70%),
-    radial-gradient(31px 1.6px at 19.7% 68.9%, rgba(252 224 184 / 0.44), transparent 72%),
-    radial-gradient(64px 1.4px at 17% 49.4%, rgba(var(--pq-pane-rgb) / 0.3), transparent 74%),
+    radial-gradient(30px 1.6px at 11.6% 44.6%, rgba(255 234 196 / 0.62), transparent 72%),
+    radial-gradient(25px 2px at 9.4% 70.1%, rgba(255 238 210 / 0.68), transparent 70%),
+    radial-gradient(31px 1.6px at 19.7% 68.9%, rgba(252 224 184 / 0.54), transparent 72%),
+    radial-gradient(64px 1.4px at 17% 49.4%, rgba(var(--pq-pane-rgb) / 0.36), transparent 74%),
+    /* ── Round 8: the props the eye actually interrogates ─────────────────────
+       The note was that the monitor stand, the screen edge and the headphone
+       cups "dissolve into diffuse mush that reads as AI blur, not painterly
+       DoF", and it was right: the acutance set above resolved the LAMP zone and
+       nothing else, so the two objects nearest the lens in the still-life had
+       no hard transition anywhere on them. Depth of field is only legible as
+       depth of field when the plane that is meant to be sharp actually is.
+       Every mark below sits on geometry ops_room.png already paints, at
+       1.2–2px on its minor axis — the panel's left and right bezel arrises and
+       the bottom rail under the screen, the stand's column and its foot where
+       the desk light rakes across it, and the top of each headphone cup. */
+    radial-gradient(1.4px 62px at 11.1% 57.5%, rgba(var(--pq-pane-rgb) / 0.17), transparent 74%),
+    radial-gradient(1.4px 58px at 22.7% 57.8%, rgba(var(--pq-pane-rgb) / 0.2), transparent 74%),
+    radial-gradient(56px 1.3px at 16.7% 67.2%, rgba(var(--pq-pane-rgb) / 0.3), transparent 72%),
+    radial-gradient(1.6px 16px at 16.6% 69.4%, rgba(var(--pq-lamp-rgb) / 0.24), transparent 76%),
+    radial-gradient(26px 1.4px at 16.6% 71.9%, rgba(255 226 182 / 0.34), transparent 72%),
+    radial-gradient(9px 1.8px at 17.9% 74.1%, rgba(255 236 200 / 0.46), transparent 70%),
+    radial-gradient(8px 1.8px at 21.8% 73.6%, rgba(252 222 178 / 0.38), transparent 70%),
+    /* Bloom. A practical this bright, shot through a lens, veils the air around
+       its own source — and ours had a hot core sitting in perfectly clean
+       darkness, which is a rendered light rather than a photographed one. One
+       wide, very soft halo on the shade and one on the pool, both in the bulb's
+       own colour, at the ~13% a real flare carries. */
+    radial-gradient(74px 56px at 12.3% 44.8%, rgba(255 228 186 / 0.13), transparent 74%),
+    radial-gradient(210px 96px at 14.5% 79%, rgba(var(--pq-lamp-rgb) / 0.08), transparent 78%),
     /* The screen's own spill — short, cool and very local, because that is all a
        dim LCD throws. It lands on the desk in front of the panel and on the
        partition behind it, which is what makes the lit rectangle in
@@ -3395,6 +3497,17 @@
     /* …and one distant, unresolved practical further down the floor plate, so
        the far right edge is a depth rather than a wall. */
     radial-gradient(80px 130px at 98.5% 62%, rgba(236 212 178 / 0.05), transparent 78%),
+    /* ── The counterweight ───────────────────────────────────────────────────
+       Round 8. Everything with mass in this frame — the lamp, the wordmark, the
+       menu, the story pane — sits above and left of the lower-right sixth, and
+       that sixth was carrying nothing but falloff. It is wet floor, and there
+       is a second sodium source out along the far desks that the plate already
+       implies, so it gets its reflection: a small contact core with the long
+       comet a light lays on standing water running toward the lens. Faint by
+       construction — this is a counterweight, not a second subject. */
+    radial-gradient(5px 6px at 89.5% 71.5%, rgba(248 196 132 / 0.2), transparent 80%),
+    radial-gradient(9px 44px at 89.5% 80%, rgba(248 196 132 / 0.075), transparent 84%),
+    radial-gradient(150px 90px at 88% 84%, rgba(var(--pq-lamp-rgb) / 0.03), transparent 80%),
     /* ── Warm bounce ─────────────────────────────────────────────────────────
        The bottom third was crushing to a single value, so the darkness had no
        drawn shapes in it. Light does not stop at the edge of a lamp's pool: the
@@ -3554,6 +3667,31 @@
     rgba(var(--pq-pane-rgb) / 0.05) 72%,
     transparent 100%
   );
+}
+
+/* ── The corner stamp ───────────────────────────────────────────────────────
+   The lower-right sixth of the frame had no object in it and no counterweight
+   to the desk lamp diagonally opposite, so the composition's mass all sat above
+   the diagonal. One line of the micro system at 25%, terminating on the same
+   --pq-chrome-margin every other edge in the game does, is the cheapest honest
+   thing that can hang there: it reads as the mark a shipped build carries, it
+   is far too quiet to compete for attention, and — being type rather than paint
+   — it costs the frame nothing in atmosphere. */
+.pq-title__stamp {
+  position: absolute;
+  right: var(--pq-chrome-margin);
+  bottom: var(--pq-chrome-margin);
+  z-index: 2;
+  pointer-events: none;
+  /* Cancels the trailing letter-space so the run hangs optically flush right. */
+  margin-right: -0.2em;
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  line-height: 1;
+  letter-spacing: var(--pq-tr-micro);
+  text-transform: uppercase;
+  color: rgba(var(--pq-ink-rgb) / 0.25);
+  text-shadow: 0 1px 18px rgba(0, 0, 0, 0.7);
 }
 
 /* One grain pass over the entire frame — plate, gradients and type alike. Two
@@ -3725,9 +3863,17 @@
    italic Q's bowl and its slant both push the perceived stem right, so it is
    pulled back until its left extreme sits on the P's flat stem. */
 .pq-title__word-b {
-  /* Same optical size as the roman half so the compound reads as ONE word on
-     one line; the italic + key color carry the two-voice distinction alone. */
-  font-size: 0.96em;
+  /* ── Optical size, not metric size ────────────────────────────────────────
+     Round 8. 0.96em was the METRIC match, and a metric match between a roman
+     and its italic is not an optical one: Fraunces' italic carries a larger
+     x-height and a heavier stroke at the same em, so "lighter" was printing
+     visibly bigger than "Lamp" beside it and the compound read as two fonts
+     pasted together rather than one drawn wordmark. −2.5% (0.96 → 0.936) is
+     what puts the two x-heights on one line; the cap-heights then disagree by
+     a hair, which is correct — an italic's caps SHOULD sit a touch under the
+     roman's, and that is the difference between a fitted lockup and a
+     scaled one. */
+  font-size: 0.936em;
   font-style: italic;
   font-weight: 400;
   line-height: inherit;
@@ -3746,8 +3892,17 @@
      x-height — where the two sidebearings sit back to back with nothing but air
      between them. −58/1000 sets the p·l junction to the same optical gap as the
      m·p pair immediately before it, which is the only measurement that matters:
-     the seam has to be invisible against its own neighbours, not against zero. */
-  margin-left: -0.058em;
+     the seam has to be invisible against its own neighbours, not against zero.
+
+     Round 8: −58 overshot. The italic l leans INTO the p's bowl at x-height, so
+     the pair's tightest point is not where the sidebearings meet but ~40% up
+     the stem — and at −58 that point was closer than any other pair in the word.
+     A pinch announces a seam exactly as loudly as a gap does; the eye reads
+     both as "something happens here". −32/1000, taken together with the 2.5%
+     size drop above (which shortens the italic's own left sidebearing), sets
+     the p·l counter to the same width as the m·p counter before it, measured at
+     x-height rather than at the baseline. */
+  margin-left: -0.032em;
   margin-top: 0;
 }
 .pq-title__tag {
@@ -3866,79 +4021,90 @@
   text-shadow: 0 1px 24px rgba(0, 0, 0, 0.6);
   transition: color var(--pq-dur-2) var(--pq-ease);
 }
+/* The rule hangs off the LABEL, not off the button box, and that is the whole
+   fix for two separate faults at once.
+   (1) Width. On the button it ran `left:0; right:0.18em` of a 44px flex row,
+       which is the row's width, not the word's — it only looked right because
+       the row happened to shrink-wrap. On the label it IS the word's ink by
+       construction, at every size and in every language.
+   (2) Baseline. `bottom: 8px` measures from the bottom of a fixed 44px row, so
+       the rule sat at a different distance under the caps for the 17px primary
+       than for the 15px entries below it — i.e. off-baseline, and differently
+       off-baseline per item. `top: calc(100% + 6px − 0.26em)` measures from the
+       label's own line box and subtracts the descent, which lands it a true 6px
+       under the cap baseline at any type size. */
 .pq-menuitem__label {
+  position: relative;
   display: block;
 }
-/* The rule terminated on a hard 1px butt end, which is a border, not a mark.
-   It is now 2px — enough to read as drawn rather than as a hairline artifact —
-   and it dissolves over its last 12px so it ends the way a brush lifts. */
-.pq-menuitem::after {
+/* ── The hue ────────────────────────────────────────────────────────────────
+   Round 8. The live entry's rule was struck in the key BLUE, and it was the
+   only saturated element in an otherwise ivory column — a foreign hue sitting
+   under the one word the eye is meant to land on, which reads as a component
+   library's "active" colour rather than as a mark someone drew. The resting
+   rule is now the type's own ivory at 50% and 1px: a underscore in the same
+   ink as the word it underscores. The COOL only appears on interaction — a soft
+   cyan halo on hover and focus — which is the same treatment the BEGIN capsule
+   carries, so the frame has exactly one "this is live" language and it is a
+   light, not a colour. */
+.pq-menuitem__label::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0.18em; /* discount the trailing letterspace so the rule ends on the glyph */
-  bottom: 8px;
-  height: 2px;
+  top: calc(100% + 6px - 0.26em);
+  height: 1px;
   background: linear-gradient(
     90deg,
-    rgba(var(--pq-ink-rgb) / 0.32) 0,
-    rgba(var(--pq-ink-rgb) / 0.32) calc(100% - 12px),
+    rgba(var(--pq-ink-rgb) / 0.5) 0,
+    rgba(var(--pq-ink-rgb) / 0.5) calc(100% - 10px),
     rgba(var(--pq-ink-rgb) / 0) 100%
   );
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform var(--pq-dur-3) var(--pq-ease), opacity var(--pq-dur-2) var(--pq-ease);
+  transition: transform var(--pq-dur-3) var(--pq-ease), background var(--pq-dur-2) var(--pq-ease),
+    box-shadow var(--pq-dur-2) var(--pq-ease);
 }
 .pq-menuitem:hover,
 .pq-menuitem:focus-visible {
   color: var(--pq-ink);
 }
-.pq-menuitem:hover::after,
-.pq-menuitem:focus-visible::after {
+.pq-menuitem:hover .pq-menuitem__label::after,
+.pq-menuitem:focus-visible .pq-menuitem__label::after {
   transform: none;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--pq-ink-rgb) / 0.82) 0,
+    rgba(var(--pq-ink-rgb) / 0.82) calc(100% - 10px),
+    rgba(var(--pq-ink-rgb) / 0) 100%
+  );
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.3);
 }
-/* The keyboard ring is the rule itself, in key — never a rounded box. */
+/* The keyboard ring is the rule itself — never a rounded box. */
 .pq-menuitem:focus-visible {
   box-shadow: none;
   outline: none;
 }
-.pq-menuitem:focus-visible::after {
-  background: linear-gradient(
-    90deg,
-    rgba(var(--pq-key-rgb) / 0.75) 0,
-    rgba(var(--pq-key-rgb) / 0.75) calc(100% - 12px),
-    rgba(var(--pq-key-rgb) / 0) 100%
-  );
+.pq-menuitem:focus-visible .pq-menuitem__label::after {
+  box-shadow: 0 0 10px rgba(var(--pq-key-rgb) / 0.55);
 }
+/* ── Optical rhythm ─────────────────────────────────────────────────────────
+   The four entries ran on a hard 44px rail, which is a METRIC rhythm — and a
+   metric rhythm is only an optical one when every row holds the same cap
+   height. The primary is a size larger, so its caps eat 2px more of its row
+   than the three below eat of theirs, and the air between NEW STORY and LOAD
+   measured ~2px tighter than the air between LOAD and SETTINGS. Two pixels is
+   invisible as a number and unmistakable as a wobble. The primary's row grows
+   by exactly the difference so the WHITE between the caps is constant, which is
+   the only rhythm the eye is actually reading. */
 .pq-menuitem.is-primary {
+  height: 48px;
   font-size: 1.0625rem;
   font-weight: 420;
   color: var(--pq-ink-90);
 }
-/* The live entry's rule is the loudest non-type mark on the screen and it was
-   being carried by a flat 50% key with no light on it, which at 2px reads as a
-   border rather than as a lit signal. Up to 0.62 and given a 4px halo at 20% of
-   the same key — the amount a real emissive hairline spills onto the surface it
-   sits on. The card's BEGIN → rule now uses the identical treatment one weight
-   down, so both "this is live" marks in the frame come from one system. */
-.pq-menuitem.is-primary::after {
-  background: linear-gradient(
-    90deg,
-    rgba(var(--pq-key-rgb) / 0.62) 0,
-    rgba(var(--pq-key-rgb) / 0.62) calc(100% - 12px),
-    rgba(var(--pq-key-rgb) / 0) 100%
-  );
-  box-shadow: 0 0 4px rgba(var(--pq-key-rgb) / 0.2);
+.pq-menuitem.is-primary .pq-menuitem__label::after {
   transform: scaleX(1);
-}
-.pq-menuitem.is-primary:hover::after,
-.pq-menuitem.is-primary:focus-visible::after {
-  background: linear-gradient(
-    90deg,
-    rgba(var(--pq-key-rgb) / 0.88) 0,
-    rgba(var(--pq-key-rgb) / 0.88) calc(100% - 12px),
-    rgba(var(--pq-key-rgb) / 0) 100%
-  );
 }
 
 /* ── Story rail ── */
@@ -3950,12 +4116,47 @@
    of the frame instead of hanging from the top of it. The card then also sits
    over the wet floor rather than over bare wall, which is what puts weather
    behind its translucency. */
+/* ── ONE sheet of glass ─────────────────────────────────────────────────────
+   Round 8. The right column was three separately-styled objects stacked on a
+   photograph: a floating label row with its own rule, a bordered card, and a
+   ledger bar. Three boxes, three edges, three left margins that agreed to
+   within a couple of pixels and no further — which is precisely the "stacked
+   HTML layers" read the critic named, and it is also why the rain appeared to
+   run *across* the panel: the label row was transparent, so the world's weather
+   was legibly passing through the top of the composition.
+   The glass now lives on the CONTAINER. One pane, one arris, one shadow, one
+   inner gutter, carrying a header band, the key-art plate, the body and a
+   footer band — the way a physical instrument is built. The header's text is
+   printed ON the glass rather than floating in front of it, so nothing outside
+   the pane can cross it, and the label, the pane's edge and the right-aligned
+   counter necessarily share one grid line because they are the same box. */
 .pq-title__stories {
+  /* The one inner gutter every row in this pane is set to — header, card body,
+     card footer and shelf row alike, so the text block has a single left edge
+     from CHOOSE A STORY all the way down to LOCKED. */
+  --pq-card-pad: 24px;
   position: relative;
   align-self: start;
   justify-self: end;
   margin-top: clamp(0px, 8.5vh, 92px);
   width: 100%;
+  border-radius: var(--pq-r-glass);
+  overflow: hidden;
+  /* Cut glass: a 55% warm-neutral fill over a 20px defocus of the room, so the
+     window bokeh behind it is still transmitting; one hairline arris; a very
+     large soft cast that states there is AIR between the pane and the wall. */
+  background: rgba(10, 14, 16, 0.55);
+  backdrop-filter: blur(20px) saturate(0.96);
+  -webkit-backdrop-filter: blur(20px) saturate(0.96);
+  /* The base outline is deliberately almost nothing. A 1px stroke at even
+     weight on all four sides is the silhouette of an HTML card and the eye
+     reads it as one from across the room; a pane of glass has ONE bright edge
+     (the one facing the light) and three that are barely there. 0.16 → 0.06
+     here, and the lit top/right arris moves onto ::before where it can be
+     masked into a falloff. */
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 14px rgba(143, 184, 204, 0.05),
+    0 28px 72px rgba(0, 0, 0, 0.52);
   transform: translateY(20px);
   opacity: 0;
   transition: transform var(--pq-dur-5) var(--pq-ease) 200ms, opacity var(--pq-dur-5) var(--pq-ease) 200ms;
@@ -3964,37 +4165,98 @@
   transform: none;
   opacity: 1;
 }
-.pq-title__storieshead {
+/* ── The edge light ─────────────────────────────────────────────────────────
+   A sheet of glass in a room does not have a uniform outline: it has ONE lit
+   edge, the one facing the brightest thing in the scene, and the rest are dark.
+   The window wall is up and to the right, so a hairline is struck along the top
+   and right cheeks in pane steel and masked to nothing by the opposite corner. */
+.pq-title__stories::before {
+  content: '';
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 14px);
-  left: 0;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid transparent;
+  border-top-color: rgba(var(--pq-pane-rgb) / 0.42);
+  border-right-color: rgba(var(--pq-pane-rgb) / 0.26);
+  border-radius: inherit;
+  -webkit-mask-image: linear-gradient(214deg, #000 0%, rgba(0, 0, 0, 0.46) 34%, transparent 70%);
+  mask-image: linear-gradient(214deg, #000 0%, rgba(0, 0, 0, 0.46) 34%, transparent 70%);
+}
+/* ── Water ON the glass, not weather behind it ──────────────────────────────
+   The backdrop's rivulets used to be *screened* across this panel, which is an
+   additive highlight — i.e. the room's rain visibly continuing over a UI
+   surface, which is the single most reliable way to make a translucent panel
+   read as an overlay. A rivulet on a real pane is not a highlight: it is a
+   LENS. It displaces what is behind it, so it darkens on its leading cheek and
+   brightens by the same amount 1.5px along, and it does that to whatever is
+   under it regardless of value.
+   So the film blends in OVERLAY and every rake is a PAIR — a dark edge and its
+   displaced highlight — with a 0.4px roll-off so the water has a meniscus
+   rather than an aliased 1px step. Held to the upper two thirds and feathered
+   out before the prose, because water on glass runs and pools; it does not sit
+   uniformly over a page of type. */
+.pq-title__stories::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  filter: blur(0.4px);
+  background-image: repeating-linear-gradient(
+      95.5deg,
+      transparent 0 7px,
+      rgba(0, 0, 0, 0.1) 7px 8px,
+      rgba(255, 255, 255, 0.13) 8px 9.5px,
+      transparent 9.5px 27px
+    ),
+    repeating-linear-gradient(
+      92.5deg,
+      transparent 0 19px,
+      rgba(0, 0, 0, 0.07) 19px 20px,
+      rgba(255, 255, 255, 0.09) 20px 21.5px,
+      transparent 21.5px 61px
+    );
+  -webkit-mask-image: linear-gradient(202deg, #000 0%, rgba(0, 0, 0, 0.42) 38%, transparent 66%);
+  mask-image: linear-gradient(202deg, #000 0%, rgba(0, 0, 0, 0.42) 38%, transparent 66%);
+}
+/* The header band. A fixed row height with both labels optically centred in it
+   — same family, same size, same tracking, so their baselines coincide by
+   construction rather than by a `baseline` keyword that would hang them off
+   whichever happened to be taller. */
+.pq-title__storieshead {
+  position: relative;
+  z-index: 1;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 0;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(var(--pq-ink-rgb) / 0.1);
+  height: 42px;
+  padding: 0 var(--pq-card-pad, 24px);
+  border-bottom: 1px solid rgba(var(--pq-ink-rgb) / 0.09);
 }
-.pq-title__eyebrow {
-  font-family: var(--pq-mono);
-  font-size: var(--pq-fs-2xs);
-  letter-spacing: var(--pq-tr-wider);
-  text-transform: uppercase;
-  color: var(--pq-ink-55);
-}
+/* Both labels are the micro system and nothing else: one family, one tracking,
+   two inks. The trailing letter-space is cancelled on the right-hand label so
+   the counter hangs optically flush to the pane's own gutter rather than a
+   fifth of an em short of it. */
+.pq-title__eyebrow,
 .pq-title__count {
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
-  letter-spacing: var(--pq-tr-wider);
+  line-height: 1;
+  letter-spacing: var(--pq-tr-micro);
   text-transform: uppercase;
-  color: var(--pq-ink-40);
+}
+.pq-title__eyebrow {
+  color: var(--pq-micro-1);
+}
+.pq-title__count {
+  margin-right: -0.2em;
+  color: var(--pq-micro-2);
 }
 .pq-rail {
-  /* The one inner gutter every row in this column is set to — card body, card
-     footer and lock row alike, so the text block has a single left edge from
-     the story title all the way down to SLOT 03. */
-  --pq-card-pad: 24px;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   /* The gap is stated per PAIR rather than on the column, because not every
@@ -4004,7 +4266,11 @@
   gap: 0;
   max-height: 64vh;
   overflow-y: auto;
-  padding: 2px;
+  /* No padding. The 2px inset that used to live here for a focus glow put the
+     card's left edge two pixels inboard of the header's, and two almost-aligned
+     verticals a hand's width apart is the cheapest "assembled in a browser"
+     tell a captured frame carries. The focus ring is drawn inboard instead. */
+  padding: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--pq-ink-rgb) / 0.2) transparent;
 }
@@ -4016,11 +4282,12 @@
   border-radius: 3px;
 }
 
-/* Story card — key art bleeding edge to edge between two hairline rules.
-   Deliberately *not* a card: a boxed rounded rect with a 1px border all the way
-   round is the shape of an HTML component, and the eye reads it as one from
-   across the room. Cut the radius to near nothing, keep only the top and bottom
-   rules, and the art runs off both sides like a frame in a filmstrip. */
+/* Story card — a SECTION of the pane above, not a box of its own. The glass,
+   the arris, the cast shadow and the on-glass water all belong to
+   .pq-title__stories now; drawing them a second time here produced a bordered
+   rectangle inside a bordered rectangle, which is box-in-box chrome and the
+   reliable signature of a screen assembled out of components. What is left is
+   the content: a key-art plate and the type under it. */
 .pq-storycard {
   --k: var(--pq-key-rgb);
   --a: var(--pq-accent-rgb);
@@ -4029,99 +4296,46 @@
   position: relative;
   display: block;
   width: 100%;
+  padding: 0;
   text-align: left;
-  border-radius: 3px;
-  overflow: hidden;
-  /* Seated INTO the frame rather than laid on top of it. Three things do that
-     work together and none of them works alone: a top arris that catches the
-     room's own cold key while the other three edges stay nearly unlit (light
-     falls from above, so a pane's top edge is always its brightest); a 6% white
-     fill over a much-reduced paper well, so the bokeh behind the card is still
-     transmitting through it; and a 24px penumbra at 40% black, which is the
-     only thing in the stack that states there is AIR between the glass and the
-     window wall behind it. The previous set was an opaque 0.58→0.84 paper
-     gradient with two hairlines — i.e. a plain HTML rectangle. */
-/* Round 6: at 0.08 the hairline was under the threshold where an edge reads as
-   a MATERIAL boundary — the card had a border in the stylesheet and no visible
-   arris on screen, which is precisely how an HTML panel presents. 0.18 is a
-   drawn edge; the doubled inset stroke comes off (two hairlines at 0.18 would
-   read as a 2px rule) and is replaced by a top-only arris, because light falls
-   from above and a pane's top edge is always its brightest. Under it, a 12px
-   halo at 5.5% of the accent blue: not a glow effect but the small amount of
-   the room's own key that any real piece of glass throws onto whatever it is
-   standing in front of, and the one cue that states there is AIR behind it. */
-  background: rgba(10, 14, 16, 0.55);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 12px rgba(143, 184, 204, 0.055),
-    0 24px 60px rgba(0, 0, 0, 0.5);
-  transition: transform var(--pq-dur-3) var(--pq-ease), border-color var(--pq-dur-3) var(--pq-ease),
-    box-shadow var(--pq-dur-3) var(--pq-ease);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  transition: box-shadow var(--pq-dur-3) var(--pq-ease);
 }
-/* ── The edge light ─────────────────────────────────────────────────────────
-   Round 7. A sheet of glass in a room does not have a uniform outline: it has
-   ONE lit edge, the one facing the brightest thing in the scene, and the rest
-   are dark. The window wall is up and to the right of this card, so a single
-   hairline is struck along its top and right cheeks in pane steel and masked so
-   it is at full strength at the top-right corner and gone by the time it
-   reaches the opposite one. It is 1px, it is the room's own colour, and it is
-   the mark that states the card is IN the light rather than on top of it. */
+/* Keyboard focus draws a full ring one pixel inboard of the pane's own arris —
+   unmistakable, and still not a browser default. */
 .pq-storycard::before {
   content: '';
   position: absolute;
-  z-index: 2;
-  inset: 0;
+  z-index: 3;
+  inset: 1px;
   pointer-events: none;
   border: 1px solid transparent;
-  border-top-color: rgba(var(--pq-pane-rgb) / 0.36);
-  border-right-color: rgba(var(--pq-pane-rgb) / 0.22);
-  border-radius: inherit;
-  -webkit-mask-image: linear-gradient(214deg, #000 0%, rgba(0, 0, 0, 0.5) 32%, transparent 68%);
-  mask-image: linear-gradient(214deg, #000 0%, rgba(0, 0, 0, 0.5) 32%, transparent 68%);
+  border-radius: 2px;
+  transition: border-color var(--pq-dur-2) var(--pq-ease), box-shadow var(--pq-dur-2) var(--pq-ease);
 }
-/* Keyboard focus takes over that same hairline and closes it into a full ring
-   in key. The card's OUTER border can no longer carry the focus state — it is
-   shared with the ledger row welded to its foot — so the indicator moves one
-   pixel inboard, where it is still unmistakable and still not a browser
-   default. */
+.pq-storycard:focus-visible {
+  outline: none;
+}
 .pq-storycard:focus-visible::before {
-  border-color: rgba(var(--pq-key-rgb) / 0.85);
-  -webkit-mask-image: none;
-  mask-image: none;
+  border-color: rgba(var(--pq-key-rgb) / 0.8);
+  box-shadow: 0 0 14px rgba(var(--pq-key-rgb) / 0.28);
 }
-/* ── The weather, continued across the glass ────────────────────────────────
-   The card sat in front of a rainy window and had no rain on it, which is the
-   single most reliable way to make a translucent panel read as an HTML overlay:
-   the world stopped at its edge. Two of the backdrop's own rivulet rakes — the
-   same 95.5° and 92.5° repeats, at a third of their density — run across the
-   pane and die out before they reach the title block, so the picture and the
-   chrome share one weather system. */
-.pq-storycard::after {
-  content: '';
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  pointer-events: none;
-  mix-blend-mode: screen;
-  background-image: repeating-linear-gradient(
-      95.5deg,
-      transparent 0 7px,
-      rgba(var(--pq-ink-rgb) / 0.018) 7px 8px,
-      transparent 8px 27px
-    ),
-    repeating-linear-gradient(
-      92.5deg,
-      transparent 0 19px,
-      rgba(var(--pq-ink-rgb) / 0.013) 19px 20px,
-      transparent 20px 61px
-    );
-  -webkit-mask-image: linear-gradient(202deg, #000 0%, rgba(0, 0, 0, 0.44) 40%, transparent 76%);
-  mask-image: linear-gradient(202deg, #000 0%, rgba(0, 0, 0, 0.44) 40%, transparent 76%);
-}
+/* ── The plate, inset ───────────────────────────────────────────────────────
+   The key art used to run to the card's own outer edge, so its top and right
+   met the night behind it on a hard un-inset seam — a photograph butted
+   straight against a background, which is the join a critic reads as "pasted".
+   A framed picture is never flush with its frame: it is set a hair inside it,
+   and the reveal catches a shadow. One pixel of inset, a hairline in pane steel
+   and a soft inner shadow off the top edge (drawn on __glow, which is the last
+   layer in the stack and therefore the only one that can sit above the image)
+   are the whole difference. */
 .pq-storycard__art {
   position: relative;
+  margin: 1px 1px 0;
   aspect-ratio: 16 / 9;
+  border-radius: 2px 2px 0 0;
   background:
     radial-gradient(80% 120% at 78% 12%, rgba(var(--a) / 0.42), transparent 55%),
     radial-gradient(90% 120% at 12% 88%, rgba(var(--k) / 0.5), transparent 55%),
@@ -4183,8 +4397,14 @@
      element that sits outside the grade is enough to lose the whole shot.
      Contrast up 1.06 → 1.14: a downscale averages away micro-contrast, so it
      has to be paid back, and this is now the one image in the frame that can
-     afford it without amplifying interpolation artifacts. */
-  filter: saturate(0.84) contrast(1.14) brightness(0.92);
+     afford it without amplifying interpolation artifacts.
+     Round 8: 1.14 → 1.22 and the print-down eased 0.92 → 0.95. The card is the
+     focal destination of the whole screen and it was the softest thing in it —
+     an averaged-down painterly skyline with the grade layer's teal wash on top
+     of it, which took the last of its local contrast. The extra stop of
+     micro-contrast plus the lighter wash (see __grade) is as far as a filter
+     can carry this; the rest is a note on the source plate. */
+  filter: saturate(0.88) contrast(1.22) brightness(0.95);
   transform: scale(1.004); /* hides any sub-pixel seam at the rounded corners */
   transform-origin: 55.6% 51%; /* the crop's centre, so the push-in stays put */
   transition: transform var(--pq-dur-4) var(--pq-ease);
@@ -4204,11 +4424,16 @@
        a line, it is a value change; without this the waterline is a highlight
        with nothing behind it. */
       linear-gradient(180deg, transparent 58%, rgba(var(--p) / 0.38) 64%, rgba(var(--p) / 0.24) 100%),
+    /* Round 8: the teal wash comes off a third (0.26 → 0.17 at the top). Its
+       job is to bring the key art into the menu's grade, and it was doing that
+       by flattening the one region of the thumbnail that had any local contrast
+       left — the harbour and the warm shore above it. The card is now a stop
+       hotter (see __img) and this wash only has to tint, not to suppress. */
     linear-gradient(
       180deg,
-      rgba(var(--k) / 0.26) 0%,
-      rgba(var(--k) / 0.12) 52%,
-      rgba(var(--p) / 0.3) 100%
+      rgba(var(--k) / 0.17) 0%,
+      rgba(var(--k) / 0.09) 52%,
+      rgba(var(--p) / 0.26) 100%
     );
 }
 /* ── The keyframe's focal logic ─────────────────────────────────────────────
@@ -4294,10 +4519,18 @@
 .pq-storycard__art.has-cover .pq-storycard__grain {
   opacity: 0.1;
 }
+/* Last layer in the art stack, and therefore the only one that can carry the
+   plate's reveal: a 1px hairline in pane steel all the way round, plus the
+   short inner shadow the top edge of a recessed picture always throws. Nothing
+   else in the card is allowed to draw a rectangle, so this is where the frame
+   lives. */
 .pq-storycard__glow {
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   background: linear-gradient(180deg, transparent 40%, rgba(var(--p) / 0.7) 100%);
+  box-shadow: inset 0 0 0 1px rgba(var(--pq-pane-rgb) / 0.11),
+    inset 0 10px 24px -12px rgba(0, 0, 0, 0.78), inset 8px 0 20px -14px rgba(0, 0, 0, 0.6);
 }
 /* Key art sits deeper: a touch more scrim so the title below never fights it. */
 .pq-storycard__art.has-cover .pq-storycard__glow {
@@ -4320,9 +4553,14 @@
      enough acuity for the panel to read as something the type is printed ON
      rather than a gradient laid over a photograph — the same 2px of separation
      a real frosted overlay gives you, and small enough that the picture under
-     the fade is still legibly the picture. */
-  backdrop-filter: blur(2.5px);
-  -webkit-backdrop-filter: blur(2.5px);
+     the fade is still legibly the picture.
+     Round 8: 2.5 → 5px. The pane is now stated as physical glass with water
+     running on it, and glass has THICKNESS: what sits behind the lower half of
+     a real sheet is measurably softer than what sits behind the top of it. At
+     2.5 the picture under the fade was still crisp enough that the fade read as
+     a gradient laid over a photograph rather than as a plane in front of it. */
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 .pq-storycard__title {
   font-family: var(--pq-serif);
@@ -4341,99 +4579,116 @@
   color: rgba(var(--n) / 0.6);
   line-height: var(--pq-lh-snug);
 }
+/* The byline and the control are optically CENTRED on one another, not sat on a
+   shared baseline: the control is now a box with its own padding, and hanging a
+   box off a text baseline puts its top and bottom edges at two arbitrary
+   distances from everything around it. */
 .pq-storycard__foot {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin-top: 22px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(var(--n) / 0.12);
+  padding-top: 16px;
+  border-top: 1px solid rgba(var(--n) / 0.1);
 }
-/* Footer label and CTA share one family and one baseline. */
-.pq-storycard__author,
-.pq-storycard__cta {
-  font-family: var(--pq-mono);
-  line-height: 1;
-  text-transform: uppercase;
-}
+/* Byline: the micro system, reporting rank. */
 .pq-storycard__author {
+  font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
-  letter-spacing: var(--pq-tr-wider);
-  color: rgba(var(--n) / 0.4);
+  line-height: 1;
+  letter-spacing: var(--pq-tr-micro);
+  text-transform: uppercase;
+  color: var(--pq-micro-2);
 }
-/* The one thing on this screen a player has to find. It was set at the same
-   size as the byline beside it and read as a caption; it is now a stop larger,
-   opened up another 80 units, and underscored on its own rule. */
+/* ── The control ────────────────────────────────────────────────────────────
+   Round 8. It was an underlined word with a trailing arrow struck in the key
+   blue — which is, glyph for glyph, the default vocabulary of a web hyperlink,
+   and a hyperlink is the single most out-of-world object a game frame can
+   contain. Underline plus arrow is also redundant: two separate marks saying
+   "this is clickable" to a player who is looking at the only control on screen.
+   It is now a diegetic instrument: a hairline capsule struck at 30% of the
+   reading ivory (the same white the wordmark is set in, so it belongs to the
+   lamp rather than to the window), letterspaced caps on the micro track, with
+   drawn corner brackets at the two lit corners. Resting, it is a piece of
+   etched metal. Live, the room's cool signal comes up INSIDE it — a soft cyan
+   halo out and a fainter one in, exactly the treatment the live menu rule
+   carries, so the frame has one interaction language and it is a light rather
+   than a colour. */
 .pq-storycard__cta {
   position: relative;
   display: inline-flex;
-  align-items: baseline;
-  gap: 0.55em;
+  align-items: center;
   margin-left: auto;
-  font-size: var(--pq-fs-xs);
-  letter-spacing: var(--pq-tr-wider);
-  color: rgb(var(--k));
-  opacity: 0.72;
-  transition: opacity var(--pq-dur-2) var(--pq-ease);
+  padding: 8px 15px;
+  border: 1px solid rgba(var(--pq-warm-rgb) / 0.3);
+  border-radius: 2px;
+  background: rgba(var(--pq-warm-rgb) / 0.025);
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  line-height: 1;
+  letter-spacing: var(--pq-tr-micro);
+  text-transform: uppercase;
+  color: rgba(var(--pq-warm-rgb) / 0.8);
+  transition: color var(--pq-dur-2) var(--pq-ease), border-color var(--pq-dur-2) var(--pq-ease),
+    box-shadow var(--pq-dur-3) var(--pq-ease), background-color var(--pq-dur-2) var(--pq-ease);
 }
-/* Same mark as the live menu entry, one weight down: a key-blue rule that
-   dissolves over its last 8px rather than butting against a hard end, with the
-   same 4px halo. Two different underline treatments on one screen for two
-   things that mean the same thing ("this is the live action") is the kind of
-   inconsistency that reads as two people having built the UI. */
+/* Cancels the trailing letter-space so the caps sit optically centred in the
+   capsule instead of a fifth of an em left of centre. */
+.pq-storycard__ctalabel {
+  margin-right: -0.2em;
+}
+/* The brackets. Two 7px corner marks — top-left and bottom-right — drawn a
+   pixel inside the capsule's own stroke, which is what turns a rounded
+   rectangle into an INSTRUMENT: a machined part has registration marks, a web
+   button does not. Struck a step brighter than the capsule so they read as
+   catching the same light its top edge does. */
+.pq-storycard__cta::before,
 .pq-storycard__cta::after {
   content: '';
   position: absolute;
-  right: 0;
-  bottom: -5px;
-  left: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    rgba(var(--k) / 0.55) 0,
-    rgba(var(--k) / 0.55) calc(100% - 8px),
-    rgba(var(--k) / 0) 100%
-  );
-  box-shadow: 0 0 4px rgba(var(--k) / 0.2);
+  width: 7px;
+  height: 7px;
+  pointer-events: none;
+  border: 1px solid rgba(var(--pq-warm-rgb) / 0.42);
+  transition: border-color var(--pq-dur-2) var(--pq-ease);
 }
-/* The arrow is a glyph in the same run of type, not a mark hung off the end —
-   same weight, same baseline, same ink. */
-.pq-storycard__arrow {
-  position: relative;
-  top: -1px;
-  letter-spacing: var(--pq-tr-wider);
-  opacity: 1;
-  transition: transform var(--pq-dur-2) var(--pq-ease);
+.pq-storycard__cta::before {
+  top: 2px;
+  left: 2px;
+  border-right: 0;
+  border-bottom: 0;
 }
-/* The featured/hover state is carried by LIGHT — a warmer cast shadow and a
-   brighter inner arris — and no longer by the border colour, because the frame
-   is now shared with the ledger row welded to its foot; a card that brightened
-   its own outline while its footer did not would put a visible step across the
-   join, and a frame that changes weight halfway down is not a frame. */
-.pq-storycard:hover,
-.pq-storycard.is-featured,
-.pq-storycard:focus-visible {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 0 12px rgba(143, 184, 204, 0.08),
-    0 24px 60px rgba(0, 0, 0, 0.5), 0 0 34px rgba(var(--pq-lamp-rgb) / 0.1);
+.pq-storycard__cta::after {
+  right: 2px;
+  bottom: 2px;
+  border-top: 0;
+  border-left: 0;
 }
-/* Two cards are two objects. */
-.pq-storycard + .pq-storycard {
-  margin-top: var(--pq-3);
-}
-/* Only the pointer gets the lift — a card that floats on load reads as a web
-   component animating in. */
-.pq-storycard:hover {
-  transform: translateY(-2px);
-}
+/* The featured/hover state is carried by LIGHT — the pane keeps its own frame,
+   and the card inside it responds by lighting its control and warming its
+   plate, which is what a lit object does. No lift: a card that floats on hover
+   reads as a web component animating in. */
 .pq-storycard:hover .pq-storycard__cta,
 .pq-storycard.is-featured .pq-storycard__cta,
 .pq-storycard:focus-visible .pq-storycard__cta {
-  opacity: 1;
+  color: rgb(var(--pq-warm-rgb));
+  border-color: rgba(var(--k) / 0.5);
+  background: rgba(var(--k) / 0.05);
+  box-shadow: 0 0 16px rgba(var(--k) / 0.22), inset 0 0 14px rgba(var(--k) / 0.07);
 }
-.pq-storycard:hover .pq-storycard__arrow,
-.pq-storycard.is-featured .pq-storycard__arrow,
-.pq-storycard:focus-visible .pq-storycard__arrow {
-  transform: translateX(3px);
+.pq-storycard:hover .pq-storycard__cta::before,
+.pq-storycard:hover .pq-storycard__cta::after,
+.pq-storycard.is-featured .pq-storycard__cta::before,
+.pq-storycard.is-featured .pq-storycard__cta::after,
+.pq-storycard:focus-visible .pq-storycard__cta::before,
+.pq-storycard:focus-visible .pq-storycard__cta::after {
+  border-color: rgba(var(--k) / 0.75);
+}
+/* Two cards are two objects — a hairline between them, not a gap, because they
+   now live inside one pane and a floating gap would re-open the "stacked
+   boxes" read the pane exists to close. */
+.pq-storycard + .pq-storycard {
+  border-top: 1px solid rgba(var(--pq-ink-rgb) / 0.09);
 }
 
 /* Empty shelf space — stated, so the rail reads as a library with room in it.
@@ -4449,30 +4704,25 @@
    bottom rule serves both), the side and bottom rules are struck at the card's
    own 0.18 white, the radius is squared off at the top, and the fill continues
    the card's glass one step darker the way a footer band should. */
+/* Round 8: it is now a FOOTER BAND of the one pane, not a bordered box welded
+   to a bordered box. Its own border, radius, backdrop-filter and cast shadow
+   are all gone — the pane supplies every one of them — and what is left is a
+   rule, a slightly deeper fill and the same inner gutter as every other row, so
+   its two labels sit on the card body's exact left and right margins. */
 .pq-lockslot {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* Same inner gutter as the card above it, and the same 1px box, so the two
-     row types share one left edge instead of missing it by the width of a
-     border. */
   height: 44px;
   padding: 0 var(--pq-card-pad, 24px);
-  border: 1px solid rgba(255 255 255 / 0.18);
-  border-top: 0;
-  border-radius: 0 0 3px 3px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
-  background: linear-gradient(
-    180deg,
-    rgba(6 9 11 / 0.6) 0%,
-    rgba(6 9 11 / 0.72) 100%
-  );
-  backdrop-filter: blur(12px) saturate(0.94);
-  -webkit-backdrop-filter: blur(12px) saturate(0.94);
+  border: 0;
+  border-top: 1px solid rgba(var(--pq-ink-rgb) / 0.09);
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.18);
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
   line-height: 1;
-  letter-spacing: var(--pq-tr-wider);
+  letter-spacing: var(--pq-tr-micro);
   text-transform: uppercase;
 }
 /* Round 6: the row carried a 0.4 group opacity on top of ink already set at
@@ -4482,14 +4732,19 @@
    the two labels and 0.55 for the padlock (a 1px drawn stroke needs more ink
    than a letterform to hold the same apparent weight). The row's own box comes
    down to compensate so the *state* got louder, not the chrome. */
+/* Both are the micro system's reporting rank — a count and a state, so both sit
+   on --2. Four different greys across five 11px labels was drift, not
+   hierarchy. The trailing letter-space is cancelled on the right-hand group so
+   the row terminates on the same vertical the counter in the header does. */
 .pq-lockslot__idx {
-  color: rgba(255 255 255 / 0.45);
+  color: var(--pq-micro-2);
 }
 .pq-lockslot__state {
   display: inline-flex;
   align-items: center;
   gap: 0.85em;
-  color: rgba(255 255 255 / 0.45);
+  margin-right: -0.2em;
+  color: var(--pq-micro-2);
 }
 /* Padlock drawn from two hairline boxes rather than an icon set — it inherits
    the row's ink exactly, and stays a true 1px stroke at any scale. */
@@ -4498,15 +4753,11 @@
   width: 8px;
   height: 7px;
   margin-top: 0;
-  color: rgba(255 255 255 / 0.55);
+  /* A 1px drawn stroke needs a step more ink than a letterform to hold the same
+     apparent weight, which is exactly what the micro system's --1 is for. */
+  color: var(--pq-micro-1);
   border: 1px solid currentColor;
   border-radius: 1px;
-}
-/* …and the card it hangs off squares its own bottom corners, so the two share
-   one continuous frame rather than stacking two rounded rectangles. */
-.pq-rail.has-lock .pq-storycard:last-of-type {
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 0;
 }
 .pq-lockslot__lock::before {
   content: '';
@@ -4849,6 +5100,104 @@
      air. 38.2% is where the golden-section margin below lands the panel centre
      at 1920 (gutter 76 + offset 377 + half of 560 = 733 ≈ 38.2vw). */
   --pq-panel-cx: 38.2%;
+  /* ── The rack focus, moved off the sitter and onto the practical ───────────
+     Every previous pass focused this modal on the woman at the window, and the
+     result was a frame with no sharp object in it at all: she is a COMPOSITED
+     portrait behind 6px of uniform defocus, so "the focal plane" was a soft
+     figure whose hand and temple dissolved into each other — the one element a
+     zoomed reviewer files as an AI artefact — while every real prop in the room
+     sat behind the same wall-to-wall blur. A frame that is 100% soft reads as a
+     blurred stock photograph used to hide the absence of painted art.
+     So the lens is racked onto the DESK PRACTICAL: the lamp, its cone, and the
+     cup in the pool of light beneath it, low-left, which is the one piece of
+     genuine still-life in the plate and the natural anchor for a transcript
+     that is *about* the small hours at a desk.
+       • the uniform term comes down 6 → 2.5px, because near-focus is not zero
+         focus — the anchor keeps a hair of softness the way a fast lens gives
+         everything that is not exactly on the plane;
+       • the distance term goes 4 → 9px, so the far field (the window, the city
+         bokeh, and the sitter in front of it) lands at ~11.5px total, DEEPER
+         than the old 10px edge. She stops being a half-resolved face and
+         becomes what she should always have been: a silhouette against the
+         bokeh, which is both the more cinematic read and the one that cannot
+         be zoomed into and called mush.
+     The focal island itself is tightened below — the shared 62%×68% ellipse is
+     a rack onto half the frame, which is no rack at all. */
+  --pq-modal-blur: 1.8px;
+  --pq-focal-x: 12.5%;
+  --pq-focal-y: 50.5%;
+  --pq-defocus: 9px;
+  /* ── …and the reason none of that was working ──────────────────────────────
+     An element carrying `backdrop-filter` is a BACKDROP ROOT: its descendants'
+     own backdrop-filters sample what has been painted inside it, not the page
+     beneath it. `.pq-modal` carries one, so BOTH the focal-plane plate and the
+     pane's own frost have been sampling an empty rectangle this whole time —
+     measurably so: driving --pq-defocus from 4px to 40px changed not one pixel
+     of the captured frame, while --pq-modal-blur changed all of them.
+     Which is the actual, mechanical explanation for the note the screen keeps
+     losing on. "Wall-to-wall blur" was literal: the only live filter in the
+     frame was one uniform gaussian over the entire room, so there was no rack
+     focus, no depth, and no thickness in the glass — the pane was reading as a
+     flat 55%-black rectangle because that is exactly what it was, a fill over
+     a backdrop somebody else had already blurred.
+     The overlay therefore stops filtering, and the uniform term moves down onto
+     the dither plate below (::after), which is a child rather than an ancestor.
+     Scoped to this overlay so the other screens keep the geometry they were
+     signed off with. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* The uniform term, on a CHILD. 1.8px rather than the overlay's old 6px, now
+   sampling the real room, and doubling as the dither plate it already was —
+   the noise moves inside the SVG (`opacity` on the rect) so the element itself
+   can run at full alpha and its filter is not scaled away with it. */
+.pq-modal--offset::after {
+  opacity: 1;
+  backdrop-filter: blur(var(--pq-modal-blur));
+  -webkit-backdrop-filter: blur(var(--pq-modal-blur));
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='384' height='384'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='384' height='384' filter='url(%23g)' opacity='0.02'/></svg>");
+}
+/* ── The focal island, and the sitter's silhouette ──────────────────────────
+   The mask alpha IS the circle of confusion, so this ellipse is the depth of
+   field: 22%×40% of the frame centred on (240, 545) at 1920×1080 holds the lamp
+   shade (285, 355) and the cup (178, 745) both inside r≈0.48, where the ramp is
+   still under 5% — i.e. both props print at ~2.8px, near-focus — and everything
+   past r=1 sits at the full 11.5px. The falloff runs ~210px, most of it behind
+   the pane, so there is no ring anywhere the eye can find one.
+
+   The BACKGROUND on this layer is the second half of the same note. The mask
+   attenuates it exactly as it attenuates the blur, which is what makes it
+   usable here: the crush is painted at full strength over the far field and
+   erased over the practical. A backlit figure in front of a window IS dark —
+   pushing her the last stop down is not a wash over the picture, it is the
+   exposure the plate implies, and it converts a soft-focus face into a read
+   silhouette. Nothing is painted over the lamp, the desk or the pane. */
+.pq-modal--offset .pq-modal__defocus {
+  -webkit-mask-image: radial-gradient(
+    22% 40% at var(--pq-focal-x) var(--pq-focal-y),
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.02) 42%,
+    rgba(0, 0, 0, 0.2) 66%,
+    rgba(0, 0, 0, 0.62) 84%,
+    rgba(0, 0, 0, 0.9) 94%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    22% 40% at var(--pq-focal-x) var(--pq-focal-y),
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.02) 42%,
+    rgba(0, 0, 0, 0.2) 66%,
+    rgba(0, 0, 0, 0.62) 84%,
+    rgba(0, 0, 0, 0.9) 94%,
+    #000 100%
+  );
+  background: radial-gradient(
+    25% 40% at 68% 45%,
+    rgba(0, 0, 0, 0.26) 0%,
+    rgba(0, 0, 0, 0.17) 46%,
+    rgba(0, 0, 0, 0.05) 78%,
+    rgba(0, 0, 0, 0) 100%
+  );
 }
 .pq-modal--offset .pq-modal__panel {
   margin-inline-start: max(0px, calc(38.2vw - 280px - var(--pq-gutter)));
@@ -4863,20 +5212,43 @@
      top stays as open as it ever was (the city bokeh still reads through the
      masthead), the foot goes properly dark under the prose, and the ramp
      itself is the thing that stops the panel being a slab. The practical's
-     kiss on the top edge is kept: two lights on one surface. */
-  background: linear-gradient(180deg, rgba(var(--pq-lamp-rgb) / 0.05), rgba(var(--pq-lamp-rgb) / 0) 18%),
+     kiss on the top edge is kept: two lights on one surface.
+
+     ── ONE material, no landmark at the header ──────────────────────────────
+     The previous set put the lamp's kiss on the top 18% and stepped the paper
+     0.55 → 0.64 by 38%, which landed BOTH inflections within a few pixels of
+     the masthead rule (the head is ~110px of a 950px pane, i.e. 11.6%). Two
+     ramps changing gear at the same height as an edge-to-edge white rule is
+     read as two fills butted together, and that is exactly the note: an opaque
+     header block stepping against a more translucent list. The kiss now runs
+     out at 62% and the paper's first two stops are 6% apart instead of 9%, so
+     the sheet has ONE continuous ramp down it with nothing happening at the
+     header line. The separation the header needs is done by a scrim under the
+     rule (see .pq-modal__head::before) — a gradient, not a second fill. */
+  background: linear-gradient(
+      180deg,
+      rgba(var(--pq-lamp-rgb) / 0.045),
+      rgba(var(--pq-lamp-rgb) / 0.014) 30%,
+      rgba(var(--pq-lamp-rgb) / 0) 62%
+    ),
     linear-gradient(
       180deg,
-      rgba(var(--pq-paper-rgb) / 0.55) 0%,
-      rgba(var(--pq-paper-rgb) / 0.64) 38%,
+      rgba(var(--pq-paper-rgb) / 0.6) 0%,
+      rgba(var(--pq-paper-rgb) / 0.66) 34%,
       rgba(var(--pq-paper-rgb) / 0.85) 100%
     );
   /* 21 → 15px. With the fill now carrying a real value ramp the frost no
      longer has to do the thickness cue alone, and at 21px the city behind the
      foot of the pane had pulped to flat grey — which is a second way of
-     painting a rectangle. */
-  backdrop-filter: blur(15px) saturate(1.24);
-  -webkit-backdrop-filter: blur(15px) saturate(1.24);
+     painting a rectangle.
+     …plus a 7% BRIGHTNESS lift on what passes through, which is the half of
+     glass materiality a blur alone cannot state. A sheet of glass is not a
+     neutral density filter: it gathers and re-emits, so the room behind it
+     sits a hair ABOVE the room beside it. Without it the pane's only argument
+     for being glass is that it is blurry, and a blurry dark rectangle is a
+     flat 55%-black rectangle with extra steps. */
+  backdrop-filter: blur(15px) saturate(1.24) brightness(1.07);
+  -webkit-backdrop-filter: blur(15px) saturate(1.24) brightness(1.07);
   /* No bottom edge. Eliza's dialogue bar simply runs out of density and the
      plate takes over; a transcript that terminates in a ruled rectangle draws
      the one silhouette every HTML dialog in the world shares. The pane's lower
@@ -4927,26 +5299,145 @@
    rails now hang OUT into the 22px margin — classic hanging indent — and the
    eyebrow, the title, the prose and the close mark all share one 44px measure
    on both edges. */
+/* ── Glass materiality ──────────────────────────────────────────────────────
+   Two plates laid UNDER the content, exactly as the settings pane carries them,
+   because a pane whose interior has no value range and no tooth is a painted
+   rectangle however well its edges are cut.
+   ::before is the emulsion — the same monochrome field as the frame plate, at
+   3.6%, which lands the pane a hair above the room's own grain the way a sheet
+   of glass in a photograph does.
+   ::after is the light ON the sheet: a top-edge SPECULAR band (the room's key
+   raking the arris, ~4% falling to nothing over the first 90px), the shared
+   96° swell every other pane in the game carries, and a soft occlusion at the
+   far lower corner. Together they give the glass a gradient of its own, so the
+   fill is no longer the only thing describing the surface. */
+.pq-modal--offset .pq-modal__panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.036;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='256' height='256' filter='url(%23n)'/></svg>");
+  background-size: 256px 256px;
+}
+.pq-modal--offset .pq-modal__panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+      180deg,
+      rgba(255, 248, 236, 0.042) 0%,
+      rgba(255, 248, 236, 0.012) 42%,
+      rgba(255, 248, 236, 0) 100%
+    ),
+    linear-gradient(
+      96deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.011) 26%,
+      rgba(255, 255, 255, 0) 48%,
+      rgba(0, 0, 0, 0.024) 78%,
+      rgba(0, 0, 0, 0.038) 100%
+    ),
+    radial-gradient(88% 44% at 84% 92%, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0) 72%);
+  background-size: 100% 90px, 100% 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
+.pq-modal--offset .pq-modal__head,
+.pq-modal--offset .pq-modal__body {
+  position: relative;
+  z-index: 1;
+}
 .pq-modal--offset .pq-modal__head {
   padding-inline: var(--pq-panel-pad);
 }
-/* Architectural, not decorative. The shared rule is inset to the text column
-   and faded at both ends — the right call for a settings list, where it is
-   punctuation between two stacks of type. Under a masthead that has to state
-   where the transcript BEGINS it reads as a short underline hanging off the
-   word, and the panel loses its one horizontal. Run edge to edge at a flat 8%
-   white it becomes the pane's own datum line: the title sits on it, the log
-   hangs off it, and the eye gets a width to measure the column against. */
-.pq-modal--offset .pq-modal__head::after {
+/* …and its mirror at the foot. The head dissolves the column INTO the masthead
+   over 96px; the foot had nothing at all — the last line simply stopped and
+   130px of undifferentiated glass ran on to the frame edge, which breaks the
+   scroll metaphor the top of the panel spends so much craft establishing.
+   132px of paper building the other way, into the pane's own dissolve, is the
+   answer: the column visibly runs out of light rather than running out of
+   text. It is deliberately shallow where the prose actually ends (~106px off
+   the foot, where this ramp is still under 10%) so the last entry is never
+   printed at a fraction of its own value — the whole point of the head fix is
+   that entries dissolve whole or not at all, and the foot obeys the same rule. */
+.pq-modal--offset .pq-modal__body::after {
+  content: '';
+  position: absolute;
   left: 0;
   right: 0;
-  background: rgba(255 255 255 / 0.08);
+  bottom: 0;
+  height: 132px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--pq-paper-rgb) / 0) 0%,
+    rgba(var(--pq-paper-rgb) / 0.12) 42%,
+    rgba(var(--pq-paper-rgb) / 0.38) 74%,
+    rgba(var(--pq-paper-rgb) / 0.6) 100%
+  );
+}
+/* ── The scrim, which is what the header separation is actually made of ──────
+   The header carried no fill of its own and still read as an opaque block
+   stepping against a translucent list, for two reasons that compounded: the
+   pane's two fill ramps both changed gear at roughly the header's height (now
+   fixed above), and an 8% white rule running the full 560 drew the top edge of
+   a box across the sheet.
+   What replaces the second half of that is a SCRIM: 96px of paper density
+   hung below the rule, dissolving to nothing, painted under the type because
+   the head is earlier in the tree than the body. It gives the masthead a floor
+   to sit on and the first entries something to emerge from, and it has no edge
+   anywhere — which is the whole difference between one glass material with a
+   gradient on it and two fills butted together. */
+.pq-modal--offset .pq-modal__head::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 96px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--pq-paper-rgb) / 0.3) 0%,
+    rgba(var(--pq-paper-rgb) / 0.11) 44%,
+    rgba(var(--pq-paper-rgb) / 0) 100%
+  );
+}
+/* One hairline, on the TEXT margins. The rule used to run edge to edge at a
+   flat 8% white on the argument that a masthead needs a datum line — but a
+   full-bleed stroke is the top edge of a box, and paired with the fill step it
+   was carrying it is what made the header read as a separate, more opaque
+   plate. Inset to --pq-panel-pad it terminates exactly where TRANSCRIPT starts
+   and where the close mark ends, so the rule is measuring the column rather
+   than framing the panel — and warmed off flat white so it belongs to the same
+   grade as everything else on the sheet. */
+.pq-modal--offset .pq-modal__head::after {
+  left: var(--pq-panel-pad);
+  right: var(--pq-panel-pad);
+  background: rgba(255 242 224 / 0.09);
 }
 /* 37.6 → 34px, against a rule that now runs the full 560. The display was
    sized when it had a 472px underline to sit on; over the full width it was
-   the only thing in the masthead not on the grid. */
+   the only thing in the masthead not on the grid.
+   ── The display CUT ────────────────────────────────────────────────────────
+   `font-optical-sizing: auto` maps Fraunces' opsz axis to the type size, so a
+   34px masthead was being set in the 34pt TEXT cut: low contrast, sturdy
+   serifs, generous sidebearings — a face drawn to survive being read in a
+   paragraph. At masthead scale that is precisely what "default serif" looks
+   like. Pinned to opsz 144 the same word is drawn as a DISPLAY cut: thinner
+   hairlines, finer bracketing, tighter fit. Tracking then relaxes from the
+   global −2% to −1%, because a display cut is already fitted tight and −2% on
+   top of it closes the o/r joint into a pinch. SOFT/WONK held at 0 so the cut
+   stays sober — matched to the settings masthead, which is the only other
+   display serif in the chrome. */
 .pq-modal--offset .pq-modal__title {
   font-size: clamp(1.5rem, 1rem + 1.1vw, 2.125rem);
+  font-variation-settings: 'opsz' 144, 'SOFT' 0, 'WONK' 0;
+  letter-spacing: -0.01em;
 }
 .pq-modal__head {
   position: relative;
@@ -4987,13 +5478,25 @@
    it at roughly the chroma of the practical in the art, so the label belongs to
    the room — and it still re-grades per story, because both ends of the mix are
    theme tokens. */
+/* ── ONE tracked-mono label, used twice ─────────────────────────────────────
+   TRANSCRIPT (here) and NOOR (.pq-backlog__name) are the same object at two
+   ranks, and in a captured frame they sit 650px apart on the same sheet of
+   glass where the eye can compare them directly. Family, size, weight and
+   tracking are therefore literally the same four tokens — mono / --pq-fs-2xs /
+   500 / --pq-tr-wider — and the colour is the same 72% mix into the reading
+   warm. The only thing left free is the CHROMA SOURCE (the eyebrow takes the
+   theme accent, a nameplate takes the speaker's own colour), which is the one
+   difference that carries meaning. Opacity was 0.82 against the nameplate's
+   0.86 — a 4% step nobody can resolve at eleven pixels and therefore not a
+   rank, just drift; matched. */
 .pq-modal__kicker {
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
+  font-weight: 500;
   letter-spacing: var(--pq-tr-wider);
   text-transform: uppercase;
   color: color-mix(in oklab, var(--pq-accent) 72%, rgb(var(--pq-warm-rgb)));
-  opacity: 0.82;
+  opacity: 0.86;
 }
 .pq-modal__title {
   font-family: var(--pq-serif);
@@ -5165,30 +5668,44 @@
      a shipped narrative game is. */
   width: 32px;
   height: 32px;
-  /* Centres the target on the eyebrow's line box (11px cap, ~14px leading), so
-     the mark and the kicker share one optical line across the head. */
-  margin-top: -9px;
+  /* OPTICALLY on the eyebrow, not boxed near it. The kicker is 11px mono on the
+     reading leading (1.62 → a 17.8px line box), so its baseline sits ~12.9px
+     below the head's content top, its cap line ~4.8px, and the optical centre
+     of the caps — which is what the eye actually registers as "the line" —
+     ~8.9px. A 32px target centres its glyph at 16px, so −7px lands the cross's
+     own centre on that same 8.9px. The mark and TRANSCRIPT then share one
+     optical line all the way across the masthead instead of merely both being
+     "near the top", which is what −9px (glyph centre at 7px, a clear 2px high
+     of the label it is supposed to be level with) actually printed. */
+  margin-top: -7px;
   border: 0;
   border-radius: 0;
   background: none;
-  /* 45% — present, deferential, and dim enough that the eye reaches the title
-     before it reaches the exit. */
-  color: rgba(var(--pq-ink-rgb) / 0.45);
+  /* Struck in the READING WARM, not the cool ink. Every other small mark in the
+     panel — the eyebrow, the nameplate, the shift stamps, the scroll thumb — is
+     mixed off the warm paper stock; an exit glyph left in #e8eef2 was the one
+     cool object in the masthead, which at 45% is exactly bright enough for the
+     eye to find it and file it as stock chrome. 40% of the warm is the same
+     rank, inside the grade. */
+  color: rgba(var(--pq-warm-rgb) / 0.4);
   transition: color var(--pq-dur-2) var(--pq-ease);
 }
-/* A 16px cross drawn in a true hairline. The icon strikes its X from 6→18 of a
-   24 viewBox, so a 32px box prints a 16px glyph, and stroke-width 0.9 of that
-   same viewBox lands the stroke at 1.2 device px — a drawn line, not a UI
-   weight. Anything at 1.5+ starts reading as a button label. */
+/* A 13px cross drawn in a true hairline. The icon strikes its X from 6→18 of a
+   24 viewBox, so a 26px svg prints a 13px glyph, and stroke-width 0.9 of that
+   same viewBox lands the stroke at 0.98 device px — a drawn line, not a UI
+   weight. It was a 16px glyph at 1.2px, which is the weight and the scale every
+   framework ships its close icon at; a hair smaller and a hair finer is the
+   whole difference between a drawn mark and a default one. The 32px hit target
+   is unchanged, the svg is simply smaller inside it. */
 .pq-modal__close svg {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   stroke-width: 0.9;
 }
 /* Hover is the ONLY state that brightens it, and it goes most of the way to
    full so the affordance is unambiguous once it is wanted. */
 .pq-modal__close:hover {
-  color: rgba(var(--pq-ink-rgb) / 0.9);
+  color: rgba(var(--pq-warm-rgb) / 0.88);
 }
 /* Keyboard only. The panel takes opening focus, so this never appears in a
    captured frame — but a bare glyph with no ring is unusable without it. */
@@ -6170,20 +6687,46 @@
   text-transform: uppercase;
   color: rgba(var(--pq-ctl-rgb) / 0.7);
   padding: 6px 0 6px 10px;
-  text-decoration: underline 1px transparent;
-  text-underline-offset: 5px;
-  transition: color var(--pq-dur-2) var(--pq-ease),
-    text-decoration-color var(--pq-dur-2) var(--pq-ease);
+  position: relative;
+  transition: color var(--pq-dur-2) var(--pq-ease);
+}
+/* Round 8: a DRAWN rule, not `text-decoration`. Browser underlines are the one
+   mark in a UI that no designer chose — they inherit the engine's own thickness
+   rounding and skip-ink behaviour, they cannot dissolve at their end, and they
+   are the exact vocabulary of a hyperlink. Nothing in this game carries one now.
+   Struck at 1px in the instrument amber, running the ink of the word only (the
+   trailing letter-space is discounted) and lifting over its last 6px the way a
+   brush does. */
+.pq-set__reset::after {
+  content: '';
+  position: absolute;
+  right: 0.2em;
+  bottom: 1px;
+  left: 10px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--pq-ctl-rgb) / 0.6) 0,
+    rgba(var(--pq-ctl-rgb) / 0.6) calc(100% - 6px),
+    rgba(var(--pq-ctl-rgb) / 0) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--pq-dur-2) var(--pq-ease);
 }
 .pq-set__reset:hover {
   color: rgba(var(--pq-ctl-rgb) / 0.95);
-  text-decoration-color: rgba(var(--pq-ctl-rgb) / 0.6);
+}
+.pq-set__reset:hover::after {
+  opacity: 1;
 }
 .pq-set__reset:focus-visible {
   outline: none;
   color: rgb(var(--pq-ctl-rgb));
   box-shadow: none;
-  text-decoration-color: rgba(var(--pq-ctl-rgb) / 0.85);
+}
+.pq-set__reset:focus-visible::after {
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(var(--pq-ctl-rgb) / 0.4);
 }
 
 /* ── Section ──
@@ -6658,6 +7201,19 @@
    custom properties so the JS can retract the bottom fade once the column is
    actually at its end (nothing left to dissolve into). */
 .pq-backlog {
+  /* Its own offset parent, so a row's offsetTop is read directly in content
+     coordinates by the head-fade snap in Backlog.syncHeadFade. */
+  position: relative;
+  /* --fade-start / --fade-top are the two ends of the HEAD ramp, and they are
+     both driven from JS (see Backlog.syncFades) rather than being a fixed
+     length. The reason is the defect they fix: a fixed 52px ramp lands wherever
+     the scroll happens to be, so the captured frame printed the first entry cut
+     through the middle of its own first line — half a sentence at 55% over a
+     second line at 100%, which reads as a rendering fault rather than as a
+     dissolve. The ramp now TERMINATES on the cap line of the first fully
+     visible entry, so what dissolves is always the whole of the entry above it
+     and never part of the one below. */
+  --fade-start: 0px;
   --fade-top: 0px;
   --fade-bot: var(--pq-fade-len);
   flex: 1;
@@ -6680,14 +7236,14 @@
      padding plus the serif's half-leading IS the gap.
      The right pad is deepened by the rail's own lane (see .pq-backlog__rail),
      so no line of prose ever runs under the scroll track. */
-  padding: 21px calc(var(--pq-panel-pad) + 12px) calc(var(--pq-panel-fade) + 16px) var(--pq-5);
+  padding: 26px calc(var(--pq-panel-pad) + 12px) calc(var(--pq-panel-fade) + 2px) var(--pq-5);
   /* The native bar is retired in favour of the drawn rail below — a UA
      scrollbar, thin or not, is the other half of the "web modal" read. */
   scrollbar-width: none;
   -webkit-mask-image: linear-gradient(
     180deg,
     transparent 0,
-    transparent 9px,
+    transparent var(--fade-start),
     #000 var(--fade-top),
     #000 calc(100% - var(--fade-bot)),
     transparent 100%
@@ -6695,7 +7251,7 @@
   mask-image: linear-gradient(
     180deg,
     transparent 0,
-    transparent 9px,
+    transparent var(--fade-start),
     #000 var(--fade-top),
     #000 calc(100% - var(--fade-bot)),
     transparent 100%
@@ -6709,9 +7265,9 @@
 .pq-backlog:not([data-overflow='1']) {
   --fade-bot: 0px;
 }
-.pq-backlog[data-top='1'] {
-  --fade-top: 52px;
-}
+/* The head ramp is no longer a constant — see Backlog.syncHeadFade, which sets
+   --fade-start/--fade-top inline so the dissolve lands on an entry boundary.
+   `data-top` survives as the state flag the JS reads. */
 /* At the end of the column there is nothing left to dissolve INTO, but the exit
    treatment stays. The old 18px was effectively a hard cut: the transcript
    opens scrolled to its newest line, so the state a captured frame lands in was
@@ -6739,7 +7295,7 @@
    end of something long" without a single word or arrow. */
 .pq-backlog__rail {
   position: absolute;
-  top: 21px;
+  top: 26px;
   /* Terminates level with the reserved foot of the column, not with the
      scroller's true bottom edge — a hairline that outlasts the last line of
      prose and runs on into the dissolve stops reading as a scroll track and
@@ -6838,11 +7394,16 @@
    Prose always occupies column 1 so its ragged right edge is measured against
    one axis whether the entry has a speaker or not. */
 .pq-backlog__row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
   column-gap: var(--pq-4);
-  row-gap: 5px;
+  /* 5 → 8px. The nameplate's line box was just tightened to exactly its own
+     type size (see .pq-backlog__name), which took ~3.4px of half-leading out
+     from under it; the gap is given back explicitly so the speaker block reads
+     the same as it did while the geometry underneath it became measurable. */
+  row-gap: 8px;
   padding-left: calc(var(--pq-5) + 1px);
   border-left: 0;
 }
@@ -6870,15 +7431,38 @@
 .pq-backlog__row.is-offscript {
   margin-top: 8px;
 }
-.pq-backlog__row:not(.is-narration) {
-  padding-left: calc(var(--pq-5) - 1px);
-  border-left: 2px solid var(--pq-rail-lamp);
+/* ── The rail, cut to the speaker LINE ──────────────────────────────────────
+   It used to be a `border-left` on the whole row, which meant a 2px bar running
+   the full height of the entry — nameplate, both lines of prose, and the air
+   between them. That bar has no relationship to anything: it starts and stops
+   on box edges, so it floats beside the block rather than marking a line in it,
+   and on a two-line speech it is the tallest mark in the panel.
+   What a rail is FOR is attribution, and attribution happens on one line — the
+   speaker's. So the mark is now cut to exactly that line's cap-height-to-
+   baseline: 0.13em down from the nameplate's line box for the cap line, 0.73em
+   tall for the cap height (JetBrains Mono's cap is 730/1000, and the nameplate
+   is set line-height 1 precisely so those two numbers are computable rather
+   than inherited). At 11px that is an 8px tick — the height of the letters it
+   belongs to, which is the only height it could honestly be. */
+.pq-backlog__row:not(.is-narration)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(var(--pq-fs-2xs) * 0.13);
+  width: 2px;
+  height: calc(var(--pq-fs-2xs) * 0.73);
+  background: var(--pq-rail, var(--pq-rail-lamp));
 }
 .pq-backlog__name {
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
   font-weight: 500;
   letter-spacing: var(--pq-tr-wider);
+  /* The line box IS the type size. Everything about the rail beside it — where
+     the cap line starts, how tall the cap is — is derived from this, and a
+     line-height inherited from the reading body (1.62) makes both numbers a
+     function of a token that has nothing to do with this label. */
+  line-height: 1;
   text-transform: uppercase;
   /* Pulled 28% toward the reading white, which drops the chroma to about the
      level of the practical lamp in the plate. Full-strength #e0a46b next to a
@@ -6895,8 +7479,17 @@
 .pq-backlog__time {
   font-family: var(--pq-mono);
   font-size: var(--pq-fs-2xs);
-  font-weight: 400;
+  /* 400 → 500, matching the nameplate and the TRANSCRIPT eyebrow. Three mono
+     labels in one panel at two weights is drift, not hierarchy; rank is carried
+     by ink level alone (55/37%), which is the one axis the eye can actually
+     resolve at eleven pixels. */
+  font-weight: 500;
   letter-spacing: var(--pq-tr-wider);
+  /* Same reason as the nameplate: row 1 of a named entry holds the label and
+     the stamp side by side, and two items whose line boxes are computed from
+     different leading cannot be relied on to share a baseline no matter what
+     `align-items` says about their intent. Equal boxes, one baseline. */
+  line-height: 1;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
   color: rgba(var(--pq-warm-rgb) / 0.37);
@@ -6928,10 +7521,15 @@
   font-style: italic;
   color: rgba(var(--pq-warm-rgb) / 0.46);
 }
-/* Off-script: the same 2px at the same 40%, in the quill accent at full chroma.
-   Width and style are restated because a narration row now carries no rail at
-   all, and an off-script beat has to keep its mark whatever it is attributed to. */
+/* Off-script: the same mark, in the quill accent at full chroma. An attributed
+   off-script beat retunes the tick above via --pq-rail; an unattributed one has
+   no speaker line for a cap-height tick to be cut to, so it keeps the full-
+   height border — the mark has to exist either way, and a rail with nothing to
+   measure itself against can only be the block's own height. */
 .pq-backlog__row.is-offscript {
+  --pq-rail: var(--pq-line-accent);
+}
+.pq-backlog__row.is-offscript.is-narration {
   padding-left: calc(var(--pq-5) - 1px);
   border-left: 2px solid var(--pq-line-accent);
 }

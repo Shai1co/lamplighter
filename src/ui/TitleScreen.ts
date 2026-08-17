@@ -133,6 +133,13 @@ export class TitleScreen {
             this.railEl,
           ]),
         ]),
+        // The frame's counterweight. Everything with mass — the wordmark, the
+        // menu, the lamp, the story pane — sits in the upper two thirds and the
+        // lower right was an unoccupied crop. One line of mono at 25% is the
+        // cheapest honest object that can hang there: it terminates on the same
+        // chrome margin every other edge does, and it is the kind of mark a
+        // shipped build carries in the corner of its title screen.
+        el('div', { class: 'pq-title__stamp', aria: { hidden: true }, text: 'Lamplighter · build 0.1.0' }),
         // One grain pass over the whole frame — background *and* type — so the
         // photographic plate and the HTML layer share a single emulsion. It also
         // dithers the long dark falloffs that would otherwise band.
@@ -303,11 +310,13 @@ export class TitleScreen {
           story.subtitle ? el('p', { class: 'pq-storycard__sub', text: smartQuotes(story.subtitle) }) : null,
           el('div', { class: 'pq-storycard__foot' }, [
             story.author ? el('span', { class: 'pq-storycard__author', text: story.author }) : null,
+            // The one control on this screen, and it is a CONTROL, not a link:
+            // an underline plus an arrow is default-web vocabulary and reads as
+            // an <a> pasted onto a game. It is now a hairline capsule with
+            // drawn corner brackets — a diegetic instrument that lights up in
+            // the room's own cool signal when it is live.
             el('span', { class: 'pq-storycard__cta' }, [
               el('span', { class: 'pq-storycard__ctalabel', text: 'Begin' }),
-              // A typographic arrow, not an icon set: it sits on the label's own
-              // baseline and inherits its tracking.
-              el('span', { class: 'pq-storycard__arrow', text: '→', aria: { hidden: true } }),
             ]),
           ]),
         ]),

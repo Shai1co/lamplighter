@@ -141,7 +141,14 @@
      in ems of a different font — the two edges then agree at every viewport
      width instead of at exactly one. */
   --pq-wordmark: clamp(2.6rem, 1.2rem + 5.6vw, 6.7rem);
-  --pq-lockup: calc(var(--pq-wordmark) * 4.298);
+  /* Re-fitted in round 8. The italic half came down 2.5% (its x-height was
+     running visibly larger than the roman's, so the compound read as two fonts
+     pasted rather than one drawn wordmark) and the p·l joint was opened from
+     −58/1000 to −32/1000, because −58 had gone past "closed" into a PINCH: the
+     p's bowl and the l's stem were tighter than any other pair in the word,
+     which is just as loud a seam as a gap. Net ink width −1.1%, so the ratio
+     the tagline derives its measure from moves with it. */
+  --pq-lockup: calc(var(--pq-wordmark) * 4.25);
 
   --pq-lh-tight: 1.12;
   --pq-lh-snug: 1.32;
@@ -157,6 +164,20 @@
   /* Plate tracking — reserved for the small caps eyebrow on interstitials,
      where the letters must read as an engraved plate, not as a word. */
   --pq-tr-ultra: 0.35em;
+
+  /* ── The micro-label system ────────────────────────────────────────────────
+     Every 11px mono caps label in the game — data eyebrows, counters, bylines,
+     shelf states, the build stamp — is ONE style: this family, this tracking,
+     and exactly two ink levels. They used to run 0.14em against 0.2em and four
+     different greys (0.40 / 0.45 / 0.55 / 0.72), which at eleven pixels is not
+     a hierarchy, it is drift: the eye cannot resolve a 5% alpha step at that
+     size, so the variation reads as inconsistency rather than as rank.
+     Two steps, and the rule for choosing between them is structural: --1 is a
+     label that NAMES the thing next to it, --2 is a label that merely reports a
+     count or a state. Nothing else. */
+  --pq-tr-micro: 0.2em;
+  --pq-micro-1: rgba(var(--pq-ink-rgb) / 0.55);
+  --pq-micro-2: rgba(var(--pq-ink-rgb) / 0.36);
 
   /* ── Spacing ── */
   --pq-1: 4px;
@@ -442,13 +463,16 @@
      shorter exit ramp that stays put once the column has nothing further to
      dissolve into. Both ends are treated: prose that meets a panel edge with a
      hard cut is the "undesigned scroll region" read.
-     The exit ramp is now ZERO, and that is deliberate: the column reserves a
-     full --pq-panel-fade of bottom padding (see .pq-backlog), so at the end of
-     the scroll the last line has already been parked ABOVE the panel's own
-     dissolve. Ramping it a second time only dimmed a line that was already
-     clear of every edge in the frame. */
+     The exit ramp was ZERO for a while, on the argument that the column already
+     reserves a full --pq-panel-fade of bottom padding so the last line is
+     parked above the panel's own dissolve. In the frame that reads as an
+     ASYMMETRY: the head of the column dissolves into the glass and the foot
+     simply stops, and a scroll region treated at one end only is the tell that
+     the treatment was an accident. 34px is a short exit ramp — about half a
+     line of the reading serif — so the foot of the column mirrors its head
+     without ever eating a whole line. */
   --pq-fade-len: 56px;
-  --pq-fade-end: 0px;
+  --pq-fade-end: 34px;
   /* Depth of the panel's own bottom dissolve. Eliza's dialogue bar has no
      bottom edge at all — the plate simply carries the prose and the darkening
      runs off the frame. A transcript column that terminates in a ruled
