@@ -99,6 +99,9 @@
     },
     "card_cover": {
       "prompt": "Hand-painted story-cover key art designed to be READ SMALL (as a 490px-wide card): a tight, high-clarity composition of the rain-streaked night window with the city beyond — CRISP painted skyline edges, one dominant warm amber light cluster reflected in dark water, defined window mullion at right, rain rivulets catching cyan light. Confident visible brushwork, strong value structure that survives thumbnail scale, deep blue-black + teal + one amber focal. No mush, no soft-focus blur anywhere, no figure, no text, no border."
+    },
+    "title_backdrop": {
+      "prompt": "Hand-painted TITLE-SCREEN backdrop composed for a menu overlay, 16:9. LEFT THIRD lower: a crisp, lovingly painted desk still-life anchored by one warm articulated task lamp — mug with a specular rim, padded headset with defined earcup highlights, slim monitor showing a dim readable teal relay-queue UI glow that casts a cool secondary rim on the headset. UPPER-LEFT: calm, near-empty deep blue-black wall with subtle painted texture — negative space reserved for a logotype. RIGHT HALF: floor-to-ceiling window, rain rivulets on the glass, city beyond painted as CRISP bokeh discs and defined skyline silhouettes with one warm amber cluster low on the water. Sharp focal plane on the desk still-life; depth softness ONLY through the glass. Confident visible brushwork everywhere, deep blue-black + teal + single amber focal, filmic, no text, no UI chrome, no border, no people."
     }
   },
   "music": {
