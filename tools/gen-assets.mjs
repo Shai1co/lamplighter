@@ -98,13 +98,32 @@ function buildPrompt(style, context, entryPrompt, aspect, filename) {
     .join('\n\n');
 }
 
+function resolveCodexCommand() {
+  if (process.platform !== 'win32') return 'codex';
+  // Node >= 20.12 refuses to spawn .cmd shims with shell:false (CVE-2024-27980),
+  // so locate the native codex.exe instead of the npm .cmd wrapper.
+  const candidates = [
+    path.join(process.env.LOCALAPPDATA || '', 'OpenAI', 'Codex', 'bin', 'codex.exe'),
+    path.join(os.homedir(), 'AppData', 'Local', 'OpenAI', 'Codex', 'bin', 'codex.exe'),
+  ];
+  for (const c of candidates) {
+    if (c && existsSync(c)) return c;
+  }
+  // Last resort: the .cmd shim via cmd.exe. Prompt goes through a temp file? No —
+  // keep argv intact by invoking cmd /c with the shim; quoting long prompts through
+  // cmd is unreliable, so warn loudly.
+  console.warn('[gen-assets] WARNING: codex.exe not found; falling back to codex.cmd via cmd.exe (long prompts may break).');
+  return null;
+}
+
 function runCodex(targetDir, prompt) {
   return new Promise((resolve) => {
     const tmpOut = path.join(
       os.tmpdir(),
       `pq-codex-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`,
     );
-    const cmd = process.platform === 'win32' ? 'codex.cmd' : 'codex';
+    const resolved = resolveCodexCommand();
+    const cmd = resolved ?? (process.platform === 'win32' ? 'codex.cmd' : 'codex');
     const args = [
       'exec',
       '--skip-git-repo-check',
@@ -120,7 +139,8 @@ function runCodex(targetDir, prompt) {
 
     let child;
     try {
-      child = spawn(cmd, args, { stdio: 'inherit', shell: false });
+      // shell:true only for the .cmd fallback; the native exe runs shell-free.
+      child = spawn(cmd, args, { stdio: 'inherit', shell: resolved == null });
     } catch (err) {
       resolve({ ok: false, reason: `could not launch codex: ${err?.message || err}` });
       return;
