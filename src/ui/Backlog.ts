@@ -8,17 +8,22 @@
  * that when it does appear it carries meaning.
  *
  * The rail is binary and means exactly one thing — attribution. A spoken line
- * carries a tracked-out speaker label plus a 2px rail struck from that
- * speaker's colour; narration carries no rail at all, only the indent and a
- * lighter ink. (The previous set gave narration its own hairline rail, which
- * put eight ticks at two nearly-identical weights down the column and read as
- * an inconsistency rather than a system.) Off-script replies keep the warm
+ * carries a tracked-out speaker label plus a 2px rail struck in the DESK
+ * PRACTICAL's amber (--pq-rail-lamp), not in the speaker's own colour: a
+ * character whose declared colour is a near-neutral put a grey tick down the
+ * column, the one mark in the panel belonging to no light in the room.
+ * Per-speaker identity still lives in the nameplate. Narration carries no rail
+ * at all, only the indent and a lighter ink. Off-script replies keep the warm
  * quill accent so the player can retrace where they broke script.
  *
- * The column is the panel's only scroller and is masked at both ends, so text
- * dissolves into the glass instead of being cut off mid-sentence at the border;
- * the pane itself then dissolves at its own lower edge, so the transcript has
- * no bottom border to terminate against.
+ * Each entry also prints a shift stamp on a fixed right-hand tab stop, and a
+ * named voice gets 8px of extra air above it, so the column chunks into events
+ * and scans as a log rather than as an essay.
+ *
+ * The column is the panel's only scroller. It reserves a full panel-dissolve of
+ * bottom padding so its last line always sits ABOVE the ramp rather than being
+ * guillotined at the pane's edge, and a drawn 2px rail (not a UA scrollbar)
+ * carries the position.
  */
 import type { ChoiceKind } from '../core/types';
 import { clear, el, icon, Icons, overlayShell } from './dom';
@@ -39,12 +44,32 @@ function isStageDirection(text: string): boolean {
   return (t.startsWith('(') && t.endsWith(')')) || (t.startsWith('—') && t.endsWith('—'));
 }
 
+/**
+ * Where the shift clock starts, in minutes past midnight — 03:11, the hour the
+ * script itself puts on the board. Every entry is stamped one minute later, so
+ * the right-hand column of the transcript reads as a monotonic log of a night
+ * rather than as a decorated list. Nothing here touches story text: the stamp
+ * is UI metadata derived from an entry's ordinal, exactly as a real transcript
+ * viewer would derive it from a record's index.
+ */
+const SHIFT_BASE_MIN = 3 * 60 + 11;
+
+/** `03:11` for entry 0, `03:12` for entry 1, wrapping at midnight. */
+function stampFor(index: number): string {
+  const m = (SHIFT_BASE_MIN + index) % (24 * 60);
+  const hh = String(Math.floor(m / 60)).padStart(2, '0');
+  const mm = String(m % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 export class Backlog {
   readonly overlay: HTMLElement;
   readonly panel: HTMLElement;
   private readonly body: HTMLElement;
   private readonly scroll: HTMLElement;
   private readonly cue: HTMLElement;
+  private readonly rail: HTMLElement;
+  private readonly thumb: HTMLElement;
   private entries: BacklogEntry[] = [];
 
   constructor(parent: HTMLElement, onClose: () => void) {
@@ -62,6 +87,12 @@ export class Backlog {
     this.scroll = el('div', { class: 'pq-backlog', tabIndex: 0, aria: { label: 'Transcript' } });
     this.scroll.addEventListener('scroll', () => this.syncFades(), { passive: true });
     this.body.appendChild(this.scroll);
+    // Drawn scroll rail. It lives in the body rather than the panel so its
+    // track spans exactly the scrolling region — a rail that started under the
+    // masthead would be measuring the wrong thing.
+    this.thumb = el('div', { class: 'pq-backlog__thumb' });
+    this.rail = el('div', { class: 'pq-backlog__rail', aria: { hidden: true } }, [this.thumb]);
+    this.body.appendChild(this.rail);
     this.cue = icon(Icons.chevron, 'pq-backlog__cue');
     this.panel.appendChild(this.cue);
     parent.appendChild(this.overlay);
@@ -69,7 +100,7 @@ export class Backlog {
 
   push(entry: BacklogEntry): void {
     this.entries.push(entry);
-    if (!this.overlay.hidden) this.appendRow(entry, true);
+    if (!this.overlay.hidden) this.appendRow(entry, this.entries.length - 1, true);
   }
 
   reset(): void {
@@ -87,7 +118,7 @@ export class Backlog {
       this.syncFades();
       return;
     }
-    for (const e of this.entries) this.appendRow(e, false);
+    this.entries.forEach((e, i) => this.appendRow(e, i, false));
     // Open on the newest line. The freshly built column has no measurable height
     // until the next frame, so the scroll (and the fades derived from it) has to
     // be set there or it silently lands at the top.
@@ -111,12 +142,21 @@ export class Backlog {
     this.scroll.dataset.end = end ? '1' : '0';
     this.cue.dataset.end = end ? '1' : '0';
     // A column that fits has no scroll region, so it gets no terminator at all;
-    // one that scrolls keeps the mark even at its end (dimmed, see CSS) so both
-    // ends of the region read as designed.
+    // one that scrolls keeps the mark until its end (see CSS) so both ends of
+    // the region read as designed.
     this.cue.dataset.overflow = overflow ? '1' : '0';
+    this.rail.dataset.overflow = overflow ? '1' : '0';
+    // Thumb geometry as fractions of the track: length is the visible share of
+    // the column, offset is how far through the remainder we have travelled.
+    const view = this.scroll.clientHeight;
+    const total = Math.max(this.scroll.scrollHeight, 1);
+    const share = Math.min(1, view / total);
+    const travel = total > view ? this.scroll.scrollTop / (total - view) : 0;
+    this.thumb.style.height = `${(share * 100).toFixed(2)}%`;
+    this.thumb.style.top = `${(travel * (1 - share) * 100).toFixed(2)}%`;
   }
 
-  private appendRow(e: BacklogEntry, autoscroll: boolean): void {
+  private appendRow(e: BacklogEntry, index: number, autoscroll: boolean): void {
     const narration = e.name === null;
     const off = e.kind === 'offscript';
     const row = el('div', {
@@ -132,6 +172,9 @@ export class Backlog {
       if (e.color) row.style.setProperty('--pq-name', e.color);
       row.appendChild(el('span', { class: 'pq-backlog__name', text: e.name ?? '' }));
     }
+    // The shift stamp, on every entry — it is the right-hand tab stop that makes
+    // the column scan as a log instead of as a wall of paragraphs.
+    row.appendChild(el('span', { class: 'pq-backlog__time', text: stampFor(index) }));
     row.appendChild(el('p', { class: 'pq-backlog__line', text: e.text }));
     this.scroll.appendChild(row);
     if (autoscroll) this.scroll.scrollTop = this.scroll.scrollHeight;

@@ -55,6 +55,7 @@ export class UILayer implements IUILayer {
   private readonly atmosEl: HTMLElement;
   private readonly plateEl: HTMLElement;
   private readonly cornerPlateEl: HTMLElement;
+  private readonly wallPlateEl: HTMLElement;
 
   private readonly dialogue: DialogueBox;
   private readonly callstrip: CallStrip;
@@ -158,6 +159,13 @@ export class UILayer implements IUILayer {
       class: 'pq-plate pq-plate--corner',
       aria: { hidden: true },
     });
+    // …and a third field over the dark wall and ceiling, upper left, where the
+    // frame's longest near-black falloff lives and where 8-bit banding shows
+    // first. Same reasoning, same structure. See .pq-plate--wall.
+    this.wallPlateEl = el('div', {
+      class: 'pq-plate pq-plate--wall',
+      aria: { hidden: true },
+    });
 
     this.pq = el('div', { class: 'pq' }, [
       this.gradeEl,
@@ -168,6 +176,7 @@ export class UILayer implements IUILayer {
       this.creditsEl,
       this.plateEl,
       this.cornerPlateEl,
+      this.wallPlateEl,
       this.liveEl,
     ]);
     root.appendChild(this.pq);
@@ -290,6 +299,7 @@ export class UILayer implements IUILayer {
         this.callstrip.reset();
         this.narratorLabel = p.story.narrator;
         this.applyTheme(p.story.theme);
+        this.applySlotArt(p.story.id);
       }),
     );
   }
@@ -805,6 +815,21 @@ export class UILayer implements IUILayer {
     if (theme.accent) set('--pq-accent', theme.accent);
     if (theme.ink) set('--pq-ink', theme.ink);
     if (theme.paper) set('--pq-paper', theme.paper);
+  }
+
+  /**
+   * Publishes the running story's establishing plate as `--pq-slot-art`, the
+   * image the save screen ghosts into every unwritten slot (see `.pq-slot__art`).
+   * Written the same way the theme is — one custom property on the document root,
+   * consumed by CSS — so nothing in the save screen has to reach back into the
+   * bundle, and a story with no art yet simply leaves the property unset and the
+   * blanks fall back to their gradients.
+   */
+  private applySlotArt(storyId: string): void {
+    const url = this.host.getBackdropUrl(storyId);
+    const rootStyle = document.documentElement.style;
+    if (url) rootStyle.setProperty('--pq-slot-art', `url("${url}")`);
+    else rootStyle.removeProperty('--pq-slot-art');
   }
 
   applySettings(settings: Settings): void {

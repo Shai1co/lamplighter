@@ -31,6 +31,12 @@
      (the proxy readout, waveforms, focus rings); the instruments belong to the
      room's own light. Re-grades per story, because --pq-accent-rgb does. */
   --pq-ctl-rgb: var(--pq-accent-rgb);
+  /* The EDGE the instruments are cut in — the control accent lifted halfway to
+     the panel's reading cream. A switch outlined in the saturated accent itself
+     reads as a coloured chip; outlined in the accent's own highlight it reads as
+     lit metal catching the practical, which is what a hairline on a physical
+     control actually is. Re-grades with the accent, like everything else here. */
+  --pq-ctl-edge: color-mix(in oklab, rgb(var(--pq-ctl-rgb)) 55%, rgb(var(--pq-warm-rgb)));
 
   /* Reading white — the paper stock of the dialogue bar. Deliberately NOT
      theme-driven: prose keeps one warm, filmic white across every story so the
@@ -70,6 +76,15 @@
      cold monitor blue. Every modal hairline, close-button stroke and inner
      highlight is struck from this so the panel edges belong to the grade. */
   --pq-pane-rgb: 178 208 218;
+  /* Lamp-graded pane base. --pq-paper is a COOL near-black (#0d1418) — correct
+     for a panel that sits over the monitor wall, wrong for one that sits over
+     the desk practical. A neutral sheet in an amber/teal frame is the one
+     element outside the grade, and a blind critic reads it as an HTML surface
+     floating on a painting. #14110d is the same value pushed to the warm side
+     of neutral, so the glass picks up the lamp the way every other surface in
+     the room already does. Used by the wide slot pane only; narrow columns keep
+     the cool paper because they sit against the window. */
+  --pq-pane-warm-rgb: 20 17 13;
   --pq-line-pane: rgba(var(--pq-pane-rgb) / 0.16);
   --pq-line-pane-hi: rgba(var(--pq-pane-rgb) / 0.35);
   /* The single hairline that etches diegetic glass into the scene. Struck at
@@ -85,6 +100,17 @@
   --pq-line-pane-edge: rgba(255 255 255 / 0.12);
   --pq-line-key: rgba(var(--pq-key-rgb) / 0.34);
   --pq-line-accent: rgba(var(--pq-accent-rgb) / 0.4);
+  /* Attribution rail — struck in the DESK PRACTICAL's own amber rather than in
+     the speaker's nameplate colour. A character whose declared colour is a
+     near-neutral (Noor's is) produced a grey tick down the left of the
+     transcript: the one element in the panel that belonged to no light in the
+     room, sitting directly under a masthead and a nameplate that both do. The
+     rail is a piece of the room's lamp reaching into the UI, so it is sampled
+     off the practical (#c9924a) and struck at 70% — bright enough to be the
+     column's only chroma, dim enough never to out-read the label above it.
+     Per-speaker identity still lives in the nameplate, which is where a reader
+     actually looks for it. */
+  --pq-rail-lamp: rgba(201 146 74 / 0.7);
 
   /* ── Glows ── */
   --pq-glow-key: rgba(var(--pq-key-rgb) / 0.28);
@@ -201,6 +227,17 @@
 
   /* ── Layout ── */
   --pq-gutter: clamp(20px, 4.5vw, 76px);
+  /* ── Chrome margin ─────────────────────────────────────────────────────────
+     The single vertical every piece of screen-edge chrome hangs off: the
+     hamburger's GLYPH and the relay panel's right arris both terminate here.
+     They used to disagree — the topbar padded 30px and then centred a 20px glyph
+     inside a 40px button (optical edge at 40px), while the panel's border sat at
+     30px, so the two marks in the top-right corner were 10px out of register.
+     Two elements a hand's width apart, almost-but-not-quite aligned, is the
+     cheapest "assembled in a browser" tell a captured frame carries; the eye
+     finds the disagreement long before it can name it.
+     48 at 1920 — Eliza's own corner margin — resolving down to 20 on a phone. */
+  --pq-chrome-margin: clamp(20px, 2.5vw, 48px);
   /* ── Dialogue bar ────────────────────────────────────────────────────────
      A DESIGNED column, not a centred block, struck on Eliza's own grid at
      1920×1080: speaker plate flush left on x=90, prose column starting on a
@@ -221,6 +258,20 @@
   --pq-name-col: clamp(96px, 16.40625vw, 315px);
   --pq-name-gap: clamp(18px, 3.385vw, 65px);
   --pq-dialogue-measure: min(1050px, 100%);
+  /* ── Where the prose SITS ───────────────────────────────────────────────────
+     The floor under the reading block, and the most consequential number in the
+     bar. The set is bottom-anchored and the text column is pinned to two lines
+     (`min-height: 3em`), so this token plus the block's own height fixes the
+     first baseline: floor + 67px at the 34px reading size.
+
+     It was 118, which put the first baseline ~185px off the bottom edge — and
+     since the plate under it is a crushed near-black at that height, a one-line
+     speech printed with a hand's width of empty black beneath it and read, to
+     the letter, as a layout bug: text floating above the bar rather than set in
+     it. Eliza lands its first baseline at 112px and its second at 65px. 55 puts
+     ours at 122/71 — the same well of atmosphere, and the fade now has type in
+     the part of it that is actually dark. */
+  --pq-dialogue-floor: clamp(30px, 5.1vh, 55px);
   /* Height of the veil that LEADS INTO the fade: 42vh = 454px at 1080, so the
      first trace of darkening begins at y=626 and the ramp is approached through
      130px of almost nothing. On a bright plate (the atrium) a fade that starts
@@ -270,27 +321,35 @@
      1 = the Lumen ops-room tuning; 0 retires them entirely for a plate whose
      key light is somewhere else. */
   --pq-grade-amt: 1;
-  /* Modal backdrop defocus — the UNIFORM component, and it is now zero.
-     A flat blur applied edge to edge is not a rack focus, it is a frosted
-     sheet: every plane of the room goes soft by the same amount, which is
-     optically impossible and reads (correctly) as the art being concealed
-     rather than as a lens being focused. What replaces it is a FOCAL PLANE —
-     one sharp region at (--pq-focal-x, --pq-focal-y), defocus increasing with
-     distance from it — painted by .pq-modal__defocus below. */
-  --pq-modal-blur: 0px;
+  /* Modal backdrop defocus — the UNIFORM component.
+     It was zero, on the argument that a flat blur is a frosted sheet rather
+     than a rack focus. Correct in principle, wrong in the frame: with the
+     darkening this layer used to carry, the room behind the glass had gone to
+     flat black everywhere the focal plane was not, so there was no *depth* for
+     the ramp to describe — the backdrop read as an undesigned void, which is a
+     hard fail on its own. A modest global 6px is what a real lens gives the
+     whole background plane once it racks off it; the FOCAL PLANE below
+     (--pq-defocus, masked to a ramp around --pq-focal-x/y) still adds the
+     distance-dependent term on top, so the speaker stays the sharpest thing in
+     the room and the corners stay the softest. 6 + 4 at the frame edge is the
+     same total separation the old 7px ramp reached, redistributed so the
+     backdrop reads as *out of focus* rather than as *switched off*. */
+  --pq-modal-blur: 6px;
   /* Where the lens is focused, in frame coordinates. The plates put the
      speaker's face right of centre and above the horizon; that face is the
      subject of every modal in the game, so it is the plane everything else is
      defocused relative to. Tracked left with the reframe (74% → 68%): the
      anchor moved onto the right-third power point, and a focal plane left
-     behind on the old mark is a rack focus onto her ear. */
-  --pq-focal-x: 68%;
+     behind on the old mark is a rack focus onto her ear. Tracked again with the
+     eyeline reframe (68% → 66.7%, see anchorsAt). */
+  --pq-focal-x: 66.7%;
   --pq-focal-y: 44%;
   /* Defocus at the far edge of the frame — the deepest point of the ramp that
-     starts at zero on the focal plane. 7px is a stop and a half of separation:
-     enough that the eye reads the corners as *behind* the subject, not enough
-     that a painted shelf edge stops being a shelf edge. */
-  --pq-defocus: 7px;
+     starts at zero on the focal plane. 7 → 4 now that --pq-modal-blur carries a
+     uniform 6px underneath it: the edge total is unchanged at ~10px, but the
+     focal plane keeps a legible 6px of its own instead of being razor sharp
+     against a black surround. */
+  --pq-defocus: 4px;
   /* Extra defocus the PANE itself adds on top of the backdrop, so the glass has
      a measurable thickness. The band where the bokeh behind the panel stays
      *bokeh* (discrete discs, transmitted light) instead of pulping into flat
@@ -308,17 +367,24 @@
      shorter exit ramp that stays put once the column has nothing further to
      dissolve into. Both ends are treated: prose that meets a panel edge with a
      hard cut is the "undesigned scroll region" read.
-     The exit ramp is short (46px → 22px) because the PANEL now dissolves at its
-     own bottom edge as well (--pq-panel-fade); two 46px ramps stacked ate the
-     last two lines of the transcript. */
+     The exit ramp is now ZERO, and that is deliberate: the column reserves a
+     full --pq-panel-fade of bottom padding (see .pq-backlog), so at the end of
+     the scroll the last line has already been parked ABOVE the panel's own
+     dissolve. Ramping it a second time only dimmed a line that was already
+     clear of every edge in the frame. */
   --pq-fade-len: 56px;
-  --pq-fade-end: 22px;
+  --pq-fade-end: 0px;
   /* Depth of the panel's own bottom dissolve. Eliza's dialogue bar has no
      bottom edge at all — the plate simply carries the prose and the darkening
      runs off the frame. A transcript column that terminates in a ruled
      rectangle is the single most "HTML dialog" silhouette we can draw, so the
-     pane's lower 48px fades out fill, hairline and all. */
-  --pq-panel-fade: 48px;
+     pane's lower edge fades out fill, hairline and all.
+     48 → 104: at 48 the ramp was shorter than a line of the prose it was meant
+     to dissolve, so the last paragraph still met a legible edge and the panel
+     still terminated mid-canvas. A ramp about six lines deep — with the pane
+     now running off the bottom of the FRAME rather than stopping in the middle
+     of it — is the length at which the glass stops having a bottom. */
+  --pq-panel-fade: 104px;
   /* Inner gutter of the transcript pane. Left and right are the SAME number:
      the previous set ran 44px of hanging indent on the left against 22px on the
      right, so every long line ran within a rail's width of the glass edge. */

@@ -10,8 +10,11 @@
  * a half-cut toggle at a panel border is the single loudest "unfinished web modal"
  * tell there is.
  *
- * Sections are separated by a single full-measure hairline under a tracked label —
- * there are no section CARDS. A rounded, stroked, filled rectangle drawn three
+ * Sections are separated by a single short hairline (60% of the measure, hung off
+ * the column's left margin) under a tracked label — there are no section CARDS. A
+ * full-bleed rule there would carry the same architectural weight as the two rules
+ * that bracket the panel, and three lines of one weight read as a grid rather than
+ * as a hierarchy. A rounded, stroked, filled rectangle drawn three
  * times inside a panel that is already a bounded object is box-in-box chrome, and
  * it is what made this screen read as components rather than as composition.
  *
@@ -195,9 +198,10 @@ export class SettingsPanel {
   /**
    * Slider — a drawn instrument, not a styled `<input type=range>`.
    *
-   * The rail beneath carries the whole picture: a 1px hairline for the unspent
-   * run and the same hairline lit in the warm instrument accent for the spent
-   * one. The default-value tick that used to hang under the rail is GONE: at 1×
+   * The rail beneath carries the whole picture: a 1px hairline (etched by a dark
+   * line under it) for the unspent run, and a 2px lit run in the warm instrument
+   * accent for the spent one — the 1px/2px step is what the eye reads at a glance
+   * before it resolves either colour. The default-value tick is GONE: at 1×
    * it rendered as a 1px stub dangling off the bottom of the thumb, which reads
    * as a rendering artifact rather than as a graduation, and every capture had
    * one under every slider. The input itself is transparent except for its
@@ -235,20 +239,23 @@ export class SettingsPanel {
     const wrap = el('div', { class: 'pq-range-wrap' }, [rail, input]);
     wrap.style.setProperty('--pq-fill', at(value));
 
+    // The readout rides the TRACK row, not the label row: a value parked on the
+    // label's baseline is a caption about the row, while the same value optically
+    // centred on the rail is that rail's position — which is what it means.
     return el('div', { class: 'pq-field pq-field--slider' }, [
       el('div', { class: 'pq-field__head' }, [
         el('label', { class: 'pq-field__label', text: label }),
-        val,
       ]),
-      wrap,
+      el('div', { class: 'pq-field__track' }, [wrap, val]),
     ]);
   }
 
   /**
-   * Toggle — an outlined pill drawn in one hairline, with an 11px dot inside it.
-   * Off is stroke-only (no fill, no moulded recess — that is the iOS capsule every
-   * framework ships); on fills the outline with the warm instrument accent and
-   * rides a warm-cream dot on it, the same colour language as the sliders above.
+   * Toggle — a 34×18 track drawn in one warm hairline with a 12px thumb in it.
+   * Off is stroke-plus-glass (no fill, no moulded recess — that is the iOS capsule
+   * every framework ships, and at 42×22 we were still wearing its proportions); on
+   * fills the outline with the EXACT slider accent and lights a soft halo under it,
+   * so toggle and slider are provably one instrument language.
    */
   private toggle(
     label: string,

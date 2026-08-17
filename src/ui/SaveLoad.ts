@@ -6,17 +6,22 @@
  * in load mode only filled slots are actionable.
  *
  * Empty and filled slots share ONE record structure — story line, chapter line,
- * timestamp — with em-dashes standing in for the fields a blank slot has not
- * filled yet. Six repetitions of a chirpy "Save here" read as untemplated dummy
- * copy in a captured frame; a redacted record reads as a save system.
+ * timestamp — so a blank reads as an unwritten record rather than as a sixth
+ * repetition of a chirpy "Save here", which lands as untemplated dummy copy in a
+ * captured frame.
+ *
+ * What a blank does NOT do any more is print an em-dash in all three value
+ * positions. Three dashes across six cards is eighteen identical marks and no
+ * words: at frame scale that is indistinguishable from a layout comp whose copy
+ * never arrived. The blank record now states itself once, in words — an italic
+ * serif "Empty" on the story line — leaves the timestamp genuinely absent, and
+ * rules the chapter field the way a paper ledger rules a line it has not filled.
  */
 import type { AppHost, SaveSlotInfo } from '../core/types';
 import { clear, el, formatWhen, Icons, overlayShell } from './dom';
 
 export type SaveLoadMode = 'save' | 'load';
 const SLOT_COUNT = 6;
-/** The blank field mark. One glyph, used everywhere a record has no value. */
-const BLANK = '—';
 
 /** Hairline plus — the write affordance on an empty plate. Thinner stroke than
  *  the icon set so it sits at watermark weight rather than reading as a button.
@@ -123,9 +128,14 @@ export class SaveLoad {
         el('img', { attrs: { src: info.thumbnail, alt: '' }, class: 'pq-slot__img' }),
       );
     } else {
-      // Blank plate: a lit-centre vignette (CSS), the story sigil at watermark
-      // strength behind it, and the affordance stack on top.
+      // Blank plate: the story's own establishing art ghosted in at ~14% under a
+      // multiply wash (`--pq-slot-art`, written at runtime by UILayer), a
+      // lit-centre vignette over it, the sigil in the corner, affordances on top.
+      // Six identical dead-black rectangles was the largest undesigned area in
+      // the frame; six crops of the painting the modal is floating on is a
+      // contact sheet, and it costs one element and no new asset.
       thumb.classList.add('is-empty');
+      thumb.appendChild(el('span', { class: 'pq-slot__art', aria: { hidden: true } }));
       thumb.appendChild(
         el('span', { class: 'pq-slot__mark', html: Icons.spark, aria: { hidden: true } }),
       );
@@ -147,20 +157,25 @@ export class SaveLoad {
 
     // One record shape in every state: index + timestamp on the ledger line, the
     // story on the serif line, the chapter captioned beneath. An unwritten slot
-    // is the same record with em-dashes in the value positions — never a sixth
-    // repetition of a chirpy "Save here", which reads as untemplated dummy copy.
+    // is the same record with its values unset — the timestamp simply absent (a
+    // record with no time is not a record with a dash where the time goes), the
+    // story line carrying the italic "Empty", the chapter field ruled blank.
     const meta = el('div', { class: 'pq-slot__meta' }, [
       el('div', { class: 'pq-slot__row' }, [
         el('span', { class: 'pq-slot__idx', text: `Slot ${slot}`, aria: { hidden: true } }),
-        el('span', { class: 'pq-slot__when', text: (info && formatWhen(info.savedAt)) || BLANK }),
+        info
+          ? el('span', { class: 'pq-slot__when', text: formatWhen(info.savedAt) })
+          : null,
       ]),
       el('span', {
         class: filled ? 'pq-slot__story' : 'pq-slot__story is-blank',
-        text: info ? info.storyTitle : BLANK,
+        text: info ? info.storyTitle : 'Empty',
       }),
       el('span', { class: 'pq-slot__field' }, [
         el('span', { class: 'pq-slot__cap', text: 'Chapter', aria: { hidden: true } }),
-        el('span', { class: 'pq-slot__label', text: info?.label || BLANK }),
+        info?.label
+          ? el('span', { class: 'pq-slot__label', text: info.label })
+          : el('span', { class: 'pq-slot__blank', aria: { hidden: true } }),
       ]),
     ]);
 

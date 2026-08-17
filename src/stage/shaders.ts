@@ -192,6 +192,20 @@ void main() {
   float vig = smoothstep(1.30, 0.30, r2 * (1.0 + vAmt * 1.6));
   color *= 1.0 - vAmt * (1.0 - vig);
 
+  // Frame-right exit guard.
+  //
+  // A radial vignette is weakest exactly where a 16:9 frame leaks hardest: the
+  // middle of the short edges, where r2 is smallest for a given distance from
+  // centre. On the ops plate that band holds a cluster of city bokeh a few
+  // pixels off the right edge, and it was the brightest thing outboard of the
+  // speaker — an object with nowhere to go, dragging the eye off the picture
+  // at the one place the composition has nothing to say. So the outer tenth of
+  // the frame carries its own long falloff, independent of the radius. 192px at
+  // 1920, ramped on a smoothstep, ~-0.6 stop at the extreme edge: a colourist's
+  // edge window, not a mask — the mullions and the desk silhouette are still
+  // legible inside it.
+  color *= 1.0 - 0.40 * smoothstep(0.90, 1.0, vUv.x);
+
   // Black floor. Crushing to pure 0 turns whole regions into a void that reads
   // as "missing render" rather than "night", and — worse in a STILL — a region
   // pinned within two code values of zero has no room left for the dither that
@@ -350,6 +364,28 @@ uniform vec3  uTint;
 uniform float uPlateDesat;
 uniform float uPlateSplit;
 uniform float uPlateCool;
+uniform float uEnvTint;
+uniform float uCanvas;
+
+/** Cheap 2->1 hash + smoothed value noise, local to the sprite program. The
+ *  stage's shared GLSL_NOISE is only injected into the post passes; a plate
+ *  needs its own because the tooth below is sampled in TEXTURE space, not in
+ *  screen space (see the uCanvas note). */
+float pqPlateHash(vec2 p) {
+  p = fract(p * vec2(127.13, 311.7));
+  p += dot(p, p + 42.21);
+  return fract(p.x * p.y);
+}
+float pqPlateNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(pqPlateHash(i), pqPlateHash(i + vec2(1.0, 0.0)), u.x),
+    mix(pqPlateHash(i + vec2(0.0, 1.0)), pqPlateHash(i + vec2(1.0, 1.0)), u.x),
+    u.y
+  );
+}
 `;
 
 /**
@@ -406,6 +442,49 @@ diffuseColor.rgb = mix(
   diffuseColor.rgb * vec3(0.855, 1.0, 1.075),
   _plateSpec * clamp(uPlateCool, 0.0, 1.0)
 );
+/* Environmental tint — the room's ambient, over ALL of her.
+ *
+ * uPlateCool above only reaches the speculars, on the reasoning that a cool
+ * bounce shows on a sheen. True, and it leaves the other 90% of her surface
+ * area carrying no ambient at all: a figure whose midtones and shadows are
+ * innocent of the room she is sitting in is a figure that was lit somewhere
+ * else, and that is the read the critic gave the frame. Every object in a
+ * night interior with a wall of city glass behind it sits in a weak teal
+ * ambient; this is hers.
+ *
+ * Mixed toward LUMINANCE × the ambient hue rather than toward a flat colour,
+ * and the hue is scaled by 1/its own luma (0.725) so the operation is exactly
+ * value-preserving: it moves her chroma toward the room and never her
+ * exposure. 12% is the point where she stops being the only warm-only object
+ * in frame and still, unmistakably, has blood in her.
+ */
+vec3 _envHue = vec3(0.42, 0.80, 0.88) * 1.379;
+float _envLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+diffuseColor.rgb = mix(
+  diffuseColor.rgb,
+  vec3(_envLuma) * _envHue,
+  clamp(uEnvTint, 0.0, 1.0)
+);
+/* Painterly tooth — the last difference between the two renderers.
+ *
+ * The room is a painting: every surface in it carries a mottle at the scale of
+ * a brush, and the plate — however well graded — carries a perfectly smooth
+ * one. Colour operations cannot close that gap, because it is not a colour
+ * difference, it is a TEXTURE difference, and the eye finds the smooth object
+ * and calls it pasted.
+ *
+ * Two octaves of value noise in the plate's OWN uv (not screen space — this is
+ * a property of the painted surface, so it must parallax and breathe with her,
+ * unlike the emulsion downstream which is a property of the camera). The
+ * frequencies are chosen against the plate's on-screen size: ~64 × 40 cells is
+ * a brush stroke, ~190 × 120 is the tooth of the ground under it, and both sit
+ * comfortably above two screen pixels per cell so neither can alias into a
+ * grid. Applied MULTIPLICATIVELY, so it modulates what is there and cannot
+ * fog her shadows.
+ */
+float _tooth = (pqPlateNoise(vMapUv * vec2(64.0, 40.0)) - 0.5) * 0.62
+             + (pqPlateNoise(vMapUv * vec2(190.0, 120.0)) - 0.5) * 0.38;
+diffuseColor.rgb *= 1.0 + _tooth * 2.0 * clamp(uCanvas, 0.0, 1.0);
 `;
 
 /* ───────────────────────────  Rain ↔ light coupling  ───────────────────────────
@@ -486,11 +565,17 @@ attribute float aStreak;
  * WIDTH together — which is the whole complaint: every drop was drawn at the
  * identical width and the identical length, at every depth, and a field of
  * identical ticks reads as an overlay stamped on the plate rather than as rain
- * falling through it. 0.55…1.45 about the mean, deterministic per particle.
+ * falling through it.
+ *
+ * 0.55…1.45 was not a wide enough spread to survive the grade: at 0.9 base
+ * opacity over a dark plate the shortest drop and the longest differed by about
+ * one visible streak-length, and the field still read as one gauge. 0.40…1.70,
+ * mean 1.05 — a factor of four between the smallest drop and the largest, which
+ * is roughly what a real rain field spans across two metres of depth.
  */
 export const RAIN_POINTSIZE_PATCH = /* glsl */ `
 vStreak = aStreak;
-gl_PointSize = size * (0.55 + 0.90 * aStreak);`;
+gl_PointSize = size * (0.40 + 1.30 * aStreak);`;
 
 export const RAIN_FRAGMENT_DECL = /* glsl */ `
 varying float vStreak;
@@ -503,10 +588,16 @@ float _behindLum = dot(_behind, vec3(0.2126, 0.7152, 0.0722));
 float _lit = mix(1.0, smoothstep(0.03, 0.30, _behindLum), uHasLight);
 // Over dead blacks a streak keeps only a whisper; in a practical it flares.
 diffuseColor.a *= mix(0.15, 1.0, _lit);
-// Per-drop exposure, 30–80%. Uniform opacity across a field is the other half
-// of the "identical ticks" tell; the field base is scaled up to compensate so
-// the overall density is unchanged.
-diffuseColor.a *= mix(0.30, 0.80, vStreak);
+// Per-drop exposure, 16–92%, and DECORRELATED from the length above.
+// Uniform opacity across a field is the other half of the "identical ticks"
+// tell — but driving length and exposure off the same attribute only trades it
+// for a rule (every long streak is also the brightest one), which the eye finds
+// just as fast. One cheap hash off the same attribute gives the second axis its
+// own distribution at zero extra cost, so a field now contains short bright
+// drops and long faint ones as well as the obvious pairs. Mean is 0.54 against
+// the old 0.55, so the field's overall density is unchanged.
+float _expo = fract(vStreak * 43.7585 + 0.3713);
+diffuseColor.a *= mix(0.16, 0.92, _expo);
 // …and the figure fence. Rain falls OUTSIDE; she is at a desk inside. Held at
 // 18% rather than 0 so the two or three streaks crossing the bright bokeh
 // beside her ear still carry a whisper of continuity across the silhouette —
@@ -554,12 +645,16 @@ float pqHash21(vec2 p) {
  * fatter bead at the head. Widths are in screen-UV, so ~0.001 ≈ 2px at 1080p —
  * any thicker and it stops being water and starts being a worm.
  */
-float rivulet(vec2 uv, float x0, float speed, float phase, float width) {
+float rivulet(vec2 uv, float x0, float speed, float phase, float width, float decay) {
   float wob = sin(uv.y * 9.0 + phase) * 0.0022 + sin(uv.y * 23.0 + phase * 2.3) * 0.0008;
   float dx = uv.x - (x0 + wob);
   float head = 1.16 - fract(uTime * speed + phase * 0.13) * 1.4;
   float above = uv.y - head;
-  float tail = smoothstep(-0.010, 0.004, above) * exp(-max(above, 0.0) * 4.6);
+  // decay is per-rivulet, and that is the point: every trail used to fall off
+  // at the same 4.6, so all six were the same LENGTH however different their
+  // gauges and speeds were — six copies of one line again, one axis down. A fat
+  // slow bead drags a long trail; a fine fast one is nearly all head.
+  float tail = smoothstep(-0.010, 0.004, above) * exp(-max(above, 0.0) * decay);
   float core = exp(-pow(dx / width, 2.0)) * tail;
   float bead = exp(-pow(dx / (width * 2.3), 2.0)) * exp(-pow(above / 0.013, 2.0));
   return core + bead * 0.55;
@@ -568,25 +663,38 @@ float rivulet(vec2 uv, float x0, float speed, float phase, float width) {
 /**
  * The whole pane's worth of water, as one field.
  *
- * Four rivulets at four genuinely different gauges and speeds. They used to run
- * 0.0011 / 0.0009 / 0.0010 wide at near-identical speeds — three copies of one
+ * Eight rivulets at eight genuinely different gauges, speeds and tail lengths.
+ * They used to run 0.0011 / 0.0009 / 0.0010 wide at near-identical speeds —
+ * three copies of one
  * line, which is what makes water on glass read as a repeated texture. Sampled
  * as a field (rather than summed inline) so the refraction below can take its
  * horizontal derivative with a central difference.
  */
 float rivuletField(vec2 uv) {
-  return rivulet(uv, 0.585, 0.055, 0.0, 0.0024) * 0.85
-       + rivulet(uv, 0.668, 0.039, 5.7, 0.0014) * 0.60
-       + rivulet(uv, 0.742, 0.031, 2.1, 0.0012) * 0.55
-       + rivulet(uv, 0.906, 0.047, 4.4, 0.0018) * 0.70
+  return rivulet(uv, 0.585, 0.055, 0.0, 0.0024, 3.4) * 0.85
+       + rivulet(uv, 0.668, 0.039, 5.7, 0.0014, 6.1) * 0.60
+       + rivulet(uv, 0.742, 0.031, 2.1, 0.0012, 7.8) * 0.55
+       + rivulet(uv, 0.906, 0.047, 4.4, 0.0018, 4.4) * 0.70
        // Two more across the dead middle third. Every rivulet used to live at
        // x > 0.58 — all of the water was on the right half of the pane and the
        // centre of the frame carried no weather at all, which is half of why
        // that band read as an undesigned hole. Deliberately the faintest two of
        // the six: over near-black the lit gate keeps them around 5%, which is
        // enough to say "there is glass here" and not enough to be seen.
-       + rivulet(uv, 0.335, 0.043, 1.3, 0.0013) * 0.44
-       + rivulet(uv, 0.452, 0.036, 3.9, 0.0010) * 0.38;
+       + rivulet(uv, 0.335, 0.043, 1.3, 0.0013, 5.5) * 0.44
+       + rivulet(uv, 0.452, 0.036, 3.9, 0.0010, 8.6) * 0.38
+       // …and two ACROSS THE LAMP, which is the one place on this pane where
+       // water can be properly seen. Everything in the field so far runs over
+       // city bokeh or over near-black, so every drop in the frame was cool or
+       // invisible and the weather belonged to a different light than the room
+       // did. These two cross the practical at x≈0.15–0.21, where the light
+       // field behind them is
+       // the lamp's own amber: lightHue() below then flares them warm, for free
+       // and entirely motivated — the same coupling that makes a streak crossing
+       // the skyline flare teal. Two or three beads catching the lamp is what
+       // welds the glass to the room instead of laying it over the top.
+       + rivulet(uv, 0.148, 0.050, 2.7, 0.0021, 4.0) * 0.62
+       + rivulet(uv, 0.209, 0.034, 0.6, 0.0012, 7.0) * 0.40;
 }
 
 void main() {
@@ -601,21 +709,31 @@ void main() {
   // laptop lid in front of her — objects that are on THIS side of the glass.
   // Read at a glance that is not weather, it is a reflection smeared across a
   // figure, and it is the loudest compositing tell in the lower third. The
-  // sill line retires them over the bottom quarter, which is also exactly the
+  // sill line retires them over the bottom band, which is also exactly the
   // band the dialogue is read in.
-  float sill = smoothstep(0.06, 0.28, uv.y);
+  //
+  // 0.06→0.28 pulled down to 0.03→0.17. At the old numbers the pane ran out of
+  // water a third of the way up the frame, which put its lower terminus right
+  // across the speaker's shoulder: the streaks visibly STOPPED partway down
+  // her, and a sheet of glass that ends in mid-air over a figure is a worse
+  // read than no glass at all — it says "layer", not "window". The pane now
+  // continues to within ~180px of the frame edge and only retires inside the
+  // reading band itself.
+  float sill = smoothstep(0.03, 0.17, uv.y);
   // The pane is genuinely in FRONT of her, so unlike the falling field the
-  // water does not stop at her outline — it thins. Half strength over the
-  // figure: present enough that the glass demonstrably continues across the
-  // shot (which is the whole claim of a through-the-window frame), quiet
-  // enough that nothing legible ever runs down a face.
+  // water does not stop at her outline — it thins. Three quarters strength over
+  // the figure (was one half): the claim a through-the-window frame makes is
+  // that the glass demonstrably continues across the shot, and at half strength
+  // over an unlit subject the arithmetic put the water at ~6% alpha, i.e. the
+  // pane was, over the one object it most needed to cross, absent.
   float fig = pqFigure(uv);
-  // Density lifted (0.24 → 0.34 at full light): the pane's copy literally says
-  // "Rain on the glass", and at the old strength — under a modal's backdrop
-  // blur especially — the frame simply did not show it. A line the picture does
-  // not earn is worse than no line.
-  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.12, 0.42, lit) * sill
-             * mix(1.0, 0.50, fig);
+  // Density: 0.42 at full light, and a FLOOR of 0.19 rather than 0.12 where
+  // there is nothing lit behind the pane. The lit gate is what made the water
+  // vanish over her coat and over the dead middle — correct as a light model,
+  // wrong as a picture, because rain on a window is still visible against a
+  // dark room by refraction alone. The floor is that refraction term.
+  float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.19, 0.42, lit) * sill
+             * mix(1.0, 0.74, fig);
 
   // Refraction. A bead of water is a cylindrical lens: the city behind it does
   // not merely brighten, it SHIFTS. The field's own horizontal derivative gives
@@ -626,7 +744,11 @@ void main() {
   // the pass is gated by uOpacity and discards on empty glass.
   float e = 1.6 / max(uLightRes.x, 1.0);
   float gx = rivuletField(uv + vec2(e, 0.0)) - rivuletField(uv - vec2(e, 0.0));
-  vec3 refr = texture2D(uLight, clamp(uv + vec2(gx * 0.09, 0.010), 0.0, 1.0)).rgb;
+  // Lens power 0.09 → 0.15. The displacement is what makes a bead read as a
+  // bead and not as a white tick, and at the old value the shift was under a
+  // texel of the 64×36 light field for every gauge but the fattest — i.e. the
+  // refraction was, for four of the eight rivulets, arithmetically absent.
+  vec3 refr = texture2D(uLight, clamp(uv + vec2(gx * 0.15, 0.012), 0.0, 1.0)).rgb;
 
   vec3 cRiv = mix(vec3(0.72, 0.80, 0.86), lightHue(behind), 0.7 * lit) * (0.75 + 0.8 * lit);
   // Gated on lit: lightHue() peak-normalises, so over dead black it would
@@ -670,7 +792,7 @@ void main() {
   float sheenBand = exp(-pow((diag - 0.86) / 0.30, 2.0));
   float haze = 0.55 + 0.45 * pqHash21(floor(uv * uLightRes / 3.0));
   float aSheen = sheenBand * haze * (0.006 + 0.022 * lit) * uOpacity * sill
-               * mix(1.0, 0.55, fig);
+               * mix(1.0, 0.72, fig);
   vec3 cSheen = mix(vec3(0.70, 0.80, 0.88), lightHue(behind), 0.55 * lit);
 
   float a = clamp(aRiv + aRefl + aSheen, 0.0, 1.0);

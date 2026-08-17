@@ -25,6 +25,8 @@ interface SpriteUniforms {
   uPlateDesat: { value: number };
   uPlateSplit: { value: number };
   uPlateCool: { value: number };
+  uEnvTint: { value: number };
+  uCanvas: { value: number };
 }
 
 /**
@@ -49,6 +51,22 @@ const PLATE_DESAT = 0.15;
 const PLATE_SPLIT = 0.22;
 const PLATE_COOL = 0.3;
 
+/**
+ * PLATE_ENV — 12%. The room's ambient teal laid over ALL of her, not only her
+ * speculars (see the uEnvTint note in SPRITE_DIFFUSE_PATCH). Value-preserving
+ * by construction, so this is a chroma move and never an exposure one; the
+ * critic's brief asked for 10–15% and 12 is the middle of it.
+ *
+ * PLATE_CANVAS — 0.045, which after the ×2 in the patch is a ±9% modulation:
+ * the painterly tooth that puts the plate and the painted room on the same
+ * surface. Read against the emulsion downstream (~2% at the default mix) this
+ * is deliberately the LOUDER of the two — grain is a property of the camera and
+ * belongs to the whole frame at one strength, tooth is a property of a painted
+ * SURFACE and only the plate is missing it.
+ */
+const PLATE_ENV = 0.12;
+const PLATE_CANVAS = 0.045;
+
 function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
   material: THREE.MeshBasicMaterial;
   uniforms: SpriteUniforms;
@@ -69,6 +87,8 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     uPlateDesat: { value: PLATE_DESAT },
     uPlateSplit: { value: PLATE_SPLIT },
     uPlateCool: { value: PLATE_COOL },
+    uEnvTint: { value: PLATE_ENV },
+    uCanvas: { value: PLATE_CANVAS },
   };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uBright = uniforms.uBright;
@@ -78,6 +98,8 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     shader.uniforms.uPlateDesat = uniforms.uPlateDesat;
     shader.uniforms.uPlateSplit = uniforms.uPlateSplit;
     shader.uniforms.uPlateCool = uniforms.uPlateCool;
+    shader.uniforms.uEnvTint = uniforms.uEnvTint;
+    shader.uniforms.uCanvas = uniforms.uCanvas;
     shader.fragmentShader = SPRITE_UNIFORMS_DECL + shader.fragmentShader.replace(
       '#include <map_fragment>',
       SPRITE_DIFFUSE_PATCH,

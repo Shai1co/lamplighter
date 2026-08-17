@@ -156,19 +156,52 @@ const PRESENCE = {
   /** Mask centre — sits on the face / upper chest of a 3:4 portrait crop. */
   cx: 0.45,
   cy: 0.43,
-  /** Superellipse half-extents; alpha reaches 0 at exactly ±r from the centre. */
-  rLeft: 0.43,
-  rRight: 0.47,
+  /* Superellipse half-extents; alpha reaches 0 at exactly ±r from the centre.
+   *
+   * ASYMMETRIC, and the asymmetry is the fix rather than a tuning nicety. A
+   * portrait plate ships with a painted backdrop, and this one's is not empty:
+   * the lamp motivating her key is IN it, hard against the left edge, with a
+   * wall of mid-value grey around it. At rLeft 0.43 the matte held content out
+   * to u≈0.02 — i.e. it kept the entire backdrop, lamp and all — so what the
+   * composite showed was a second desk lamp floating in a lighter rectangle of
+   * wall, bounded by the only clean curve in the frame. That is the whole of
+   * the "curved-glass cutout" note: the arc was never a stroke, it was the
+   * silhouette of a pane of someone else's room.
+   *
+   * 0.34 puts the zero-crossing at u≈0.11, which is outboard of her hand and
+   * inboard of that lamp: her side of the plate survives, the other room does
+   * not. The right stays generous (0.50) because there is nothing over there
+   * but her shoulder and dark, and a shoulder wants room to trail away in.
+   */
+  rLeft: 0.34,
+  rRight: 0.5,
   /** Vertical extents are deliberately generous — the two ramps below own
    *  top and bottom, so the superellipse only rounds the shape there. */
   rTop: 0.58,
   rBottom: 0.95,
   /** Superellipse exponent; slightly over 2 keeps the core a touch squarer. */
   power: 2.1,
-  /** Keep the portrait fully opaque until the outermost 8% of its matte. */
-  core: 0.92,
-  /** A quick but still soft edge melt, with no long translucent skirt. */
-  rampGamma: 1.35,
+  /* ── The feather ──────────────────────────────────────────────────────────
+   * 0.92 → 0.78, and the ramp gamma with it.
+   *
+   * This is the single loudest note the frame came back with, and the geometry
+   * says why. The zero-crossing sits at rLeft × plate-width from the centre —
+   * ~268px on screen once the plate is drawn at 0.72 of frame height — so a
+   * ramp running from d=0.92 to d=1.0 was 21 pixels wide. Twenty-one pixels is
+   * not a feather, it is an EDGE, and because the superellipse is a smooth
+   * closed curve that edge is a clean arc: a curved-glass cutout with the
+   * portrait sitting inside it, which is precisely what the critic named. Both
+   * rim bands below then paint their light along it, drawing the arc a second
+   * time in amber and a third in teal.
+   *
+   * A 0.22-wide ramp against the wider radii is ~59px, inside the 40–60px the
+   * brief asks for, and it dissolves rather than terminates. rampGamma comes
+   * down with it (1.35 → 1.10): a gamma over 1 pulls the whole ramp toward
+   * transparent, which concentrates what is left of the transition back into
+   * its outer third — i.e. re-sharpens the very thing the width just fixed.
+   */
+  core: 0.75,
+  rampGamma: 1.1,
   /** Crown dissolve: alpha 0 at the very top, full by `headStart`. */
   headStart: 0.08,
   headEnd: 0.0,
@@ -204,12 +237,15 @@ const PRESENCE = {
   rimPeak: 0.66,
   rimOut: 0.95,
   /** Peak strength of the added light, as a fraction of the rim colour.
-   *  0.15 → 0.24. At 15% the kicker was doing its job in theory and printing
-   *  nothing: the plate arrived with no light on it that the room could not
-   *  also explain, which is exactly the "photograph laid on a painting" read.
-   *  A quarter-strength amber edge is the cheapest thing in the frame that says
-   *  the desk lamp and the figure are in the same room. */
-  rimAmt: 0.24,
+   *  0.24 → 0.15. Not a retreat: the light budget MOVED. A band that lives in
+   *  alpha space paints wherever the matte happens to be dissolving, which is
+   *  out in the feather — so at 24% it was drawing a bright arc around her
+   *  silhouette and calling it a kicker, and the arc was half of what made the
+   *  plate read as a pasted cutout. The lamp's actual work is now done by KEY
+   *  below, which lands on her cheek and shoulder because it is weighted by the
+   *  plate's own values rather than by its matte. This is left as what it
+   *  honestly is: a small warm separation on the outermost lit pixels. */
+  rimAmt: 0.1,
   /** Floor of the directional weight on the shadow side (camera-right). Pulled
    *  down with the strength, so the extra light lands on the lamp side and the
    *  far side of her stays as dark as the room does. */
@@ -252,8 +288,11 @@ const PRESENCE = {
   rimCoolOut: 0.96,
   /** Well under the amber, and under its own first draft (0.19): a key names
    *  the light, a kicker only separates, and this one is separating her from a
-   *  background that is already almost black. */
-  rimCoolAmt: 0.11,
+   *  background that is already almost black. Down again (0.11 → 0.07) for the
+   *  same reason the amber came down — over a 59px feather the band has three
+   *  times the area it had over a 21px one, so the same amount is three times
+   *  as much light, and what it would be lighting is the dissolve. */
+  rimCoolAmt: 0.045,
   /** Floor on the camera-right side — the wrap never fully closes. */
   rimCoolDirMin: 0.34,
   rimCoolR: 116,
@@ -294,6 +333,74 @@ const PRESENCE = {
   /** How black the bottom goes. 0.92, not 1.0 — a hair of tone left in the
    *  deepest part keeps it a shadow rather than a hole cut in the plate. */
   shadeAmt: 0.92,
+
+  /* ── The key ──────────────────────────────────────────────────────────────
+   * Both rims above are matte-driven: they can only ever paint where the alpha
+   * is between two values, which is a ribbon around her outline. That is a
+   * separation device. It is not a LIGHT, and the note the frame came back with
+   * — "she is lit neutrally from nowhere" — is a note about light.
+   *
+   * So the desk practical is finally allowed onto her form. The weight is the
+   * product of three things a real key would obey and a matte cannot:
+   *   • DIRECTION — full on camera-left, where the lamp is (it is in shot, in
+   *     her own plate, at u≈0.10), falling to zero across her by u≈0.61;
+   *   • SURFACE — gated on the plate's own luminance, so it lands on the cheek
+   *     that is already turned toward the lamp, on the hand at her temple, on
+   *     the lit edge of the shoulder, and NOT on the black cardigan. A wash
+   *     that ignores this is a colour cast on a photograph; one that obeys it
+   *     is light falling on a form;
+   *   • PRESENCE — × alpha × the torso falloff, so it cannot light the feather
+   *     or the part of her already committed to shadow.
+   *
+   * Applied as a per-channel GAIN, never an add: a light scales what a surface
+   * already reflects. An additive lift of the same size blooms her highlights
+   * to paper and, worse, lifts her blacks — which is the exact signature of a
+   * badly composited plate.
+   *
+   * The ratio is a 2700K tungsten source normalised to red (1.00 : 0.67 : 0.36)
+   * — the same fixture the room grade's practical is struck from, so the lamp
+   * on the desk and the light on her face are demonstrably one bulb.
+   */
+  keyAmt: 0.25,
+  keyR: 1.0,
+  keyG: 0.67,
+  keyB: 0.36,
+  /** Direction ramp across the plate, in u−cx. Zero past `keyDirEnd`. */
+  keyDirStart: -0.24,
+  keyDirEnd: 0.16,
+  /** Luminance gate (0..1). Opens on lit planes, and rolls back off at the very
+   *  top so an existing specular is not driven into clipping. */
+  keyLumIn: 0.1,
+  keyLumFull: 0.44,
+  keyLumRollFrom: 0.62,
+  keyLumRollTo: 0.95,
+  keyRoll: 0.55,
+
+  /* ── Backdrop falloff ─────────────────────────────────────────────────────
+   * The matte says where the plate ENDS. It says nothing about what the plate
+   * still contains inside it, and what this one contains is a painted room —
+   * mid-value wall, a lamp, a corner — which arrives at full strength right up
+   * to the ramp and then dissolves. Two rooms in one frame, one of them
+   * bounded by a smooth closed curve. Widening the feather softens that
+   * boundary; it cannot remove it, because the boundary is a VALUE difference
+   * and a feather is an alpha operation.
+   *
+   * So the plate carries a falloff of its own, keyed on the superellipse
+   * DISTANCE rather than on alpha, opening well inside the solid core and
+   * reaching most of the way to black by the time the matte starts to go. Her
+   * face and torso sit under d≈0.45 and are untouched; everything the eye would
+   * read as "her backdrop" is between there and the ramp, and it goes.
+   *
+   * Directional, because the problem is: the lamp side of this plate holds a
+   * lit wall and the far side holds nothing but shadow, so the far side needs a
+   * quarter of the treatment. It is also the right optical answer — the light
+   * in her plate falls off away from its own source — which is why it can be
+   * this strong without reading as a mask.
+   */
+  backdropIn: 0.46,
+  backdropOut: 0.95,
+  backdropLeft: 0.72,
+  backdropRight: 0.34,
 } as const;
 
 /* ── Screen props baked into a plate ─────────────────────────────────────────
@@ -361,16 +468,26 @@ const CALL_ROWS: ReadonlyArray<readonly [string, string, boolean]> = [
  * Emissive level is low by construction and was MEASURED, not guessed: the first
  * pass set the header ink at 24% and the finished frame put it at 28% luma — a
  * hair brighter than the lamp-lit desk beside it, i.e. a *primary* focal point,
- * which is exactly the wrong answer. Every alpha below is that pass scaled by
- * ~0.58, landing the brightest glyph near 16% against the desk's 25%: a stop and
- * a half down, unmistakably legible, and unmistakably the second thing you look
- * at. The base stays only three quarters opaque so the painting's own backlight
- * glows through and reads as the board's own backlight.
+ * which is exactly the wrong answer. Every alpha below was that pass scaled by
+ * ~0.58, landing the brightest glyph near 16% against the desk's 25%.
+ *
+ * EMISSIVE then puts most of that back, and the arithmetic that made 0.58 right
+ * is exactly what makes 1.9 right now. The board was never too bright in
+ * absolute terms; it was too bright RELATIVE to a desk that has since been
+ * opened up by two thirds of a stop (see the room grade's spill windows). At
+ * 0.58 × 1.9 ≈ 1.1 the brightest glyph lands near 30% against the desk's new
+ * ~38%: still the second thing you look at, and now actually readable at a
+ * glance instead of a cool smudge in an underexposed corner — which is what a
+ * left half needs to counterweight a lit portrait. The base stays only three
+ * quarters opaque so the painting's own backlight glows through and reads as
+ * the board's own backlight.
  */
+const EMISSIVE = 1.9;
+
 function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number, h: number): void {
   const { bw, bh } = s;
-  const ink = (a: number): string => `rgba(186, 236, 248, ${a})`;
-  const warm = (a: number): string => `rgba(238, 178, 112, ${a})`;
+  const ink = (a: number): string => `rgba(186, 236, 248, ${a * EMISSIVE})`;
+  const warm = (a: number): string => `rgba(238, 178, 112, ${a * EMISSIVE})`;
   const right = bw - 9;
 
   ctx.save();
@@ -397,16 +514,20 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   ctx.fillRect(0, 0, bw, bh);
 
   const glow = ctx.createRadialGradient(bw * 0.7, bh * 0.78, 2, bw * 0.7, bh * 0.78, bh * 0.95);
-  glow.addColorStop(0, 'rgba(104, 204, 218, 0.13)');
-  glow.addColorStop(0.42, 'rgba(72, 162, 180, 0.045)');
+  glow.addColorStop(0, 'rgba(104, 204, 218, 0.24)');
+  glow.addColorStop(0.42, 'rgba(72, 162, 180, 0.085)');
   glow.addColorStop(1, 'rgba(40, 110, 128, 0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, bw, bh);
 
   // A hair of bloom on everything drawn from here on — a lit screen scatters in
   // the glass in front of it, and this is the only "emissive" this stack has.
-  ctx.shadowColor = 'rgba(126, 208, 226, 0.5)';
-  ctx.shadowBlur = 5;
+  // Widened 5 → 8 with the level: a brighter source scatters further, and a
+  // sharp-edged bright glyph is the one thing on this board that could still
+  // read as type composited onto a photograph rather than as light coming off a
+  // panel. The halo is what makes it the latter.
+  ctx.shadowColor = 'rgba(126, 208, 226, 0.55)';
+  ctx.shadowBlur = 8;
   ctx.textBaseline = 'alphabetic';
   const styled = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
   styled.letterSpacing = '0.05em';
@@ -1042,18 +1163,24 @@ export class Stage implements IStage {
   /**
    * Side anchors, as a fraction of the frustum width at `z`.
    *
-   * 0.28 → 0.24 → 0.18. The rule-of-thirds power point is at exactly ±1/6 of
-   * the frame (0.1667); 0.24 put her at 74% of frame width, which is not the
-   * right third at all but the right MARGIN — pinned against the edge, directly
-   * under the relay panel, and leaving the entire middle 40% of the frame with
-   * nothing in it. 0.18 lands her core on 68%, a hair outboard of the power
-   * point so the plate still has a right margin, and buys back ~115px at 1920:
-   * the panel now clears her hair with air to spare, and the dead centre closes
-   * by the same distance from the other side.
+   * 0.28 → 0.24 → 0.18 → 0.166. The rule-of-thirds power point is at exactly
+   * ±1/6 of the frame (0.16667); 0.24 put her at 74% of frame width, which is
+   * not the right third at all but the right MARGIN — pinned against the edge,
+   * directly under the relay panel, and leaving the entire middle 40% of the
+   * frame with nothing in it.
+   *
+   * 0.18 landed her plate CENTRE on 68%, which was the right correction made
+   * against the wrong landmark. A portrait is read at the eyes, not at the
+   * centroid of its quad, and this plate's eyeline sits ~1.5% of frame width
+   * right of the mask centre — so the thing the composition is actually hung on
+   * was printing at 69.3%, i.e. dead-centring the right half rather than
+   * landing on the third line. 0.166 puts the EYES on 66.6% and leaves the
+   * plate's own centre a hair inboard of it, which is the correct relationship:
+   * the subject on the power point, the mass just behind it.
    */
   private anchorsAt(z: number): Record<CharSide, number> {
     const f = this.frustum(z);
-    return { left: -f.w * 0.18, center: 0, right: f.w * 0.18 };
+    return { left: -f.w * 0.166, center: 0, right: f.w * 0.166 };
   }
 
   private charTexture(key: string, pose: string): THREE.Texture {
@@ -1397,8 +1524,9 @@ export class Stage implements IStage {
       // plate is trailing away on purpose and a lit edge would fight it.
       const rimRow = 0.5 + 0.5 * (1 - smoothstep(0.26, 0.7, v));
       // Torso falloff — constant across the row, and applied to every pixel in
-      // it including the fully-opaque core, which is why it cannot ride along
-      // inside the `a >= 1` early-out below.
+      // it including the fully-opaque core. The loop below now only skips
+      // pixels the matte has already zeroed, so nothing that is still on the
+      // plate can miss this (or the key).
       const shadeRow =
         1 - PRESENCE.shadeAmt * smoothstep(PRESENCE.shadeStart, PRESENCE.shadeEnd, v);
       const row = y * w * 4;
@@ -1408,10 +1536,39 @@ export class Stage implements IStage {
         const nx = Math.abs(dx / (dx < 0 ? PRESENCE.rLeft : PRESENCE.rRight)) ** PRESENCE.power;
         const d = (nx + ny) ** invPower;
         const a = (1 - smoothstep(PRESENCE.core, 1, d)) ** PRESENCE.rampGamma * vertical;
-        if (a >= 1 && shadeRow >= 1) continue;
+        if (a <= 0) {
+          px[row + x * 4 + 3] = 0;
+          continue;
+        }
         const i = row + x * 4;
+        // The key. Runs on EVERY surviving pixel including the fully-opaque
+        // core — that is the whole point of it, and it is why the old
+        // `a >= 1 && shadeRow >= 1` early-out had to go: the one region the
+        // previous pass could never touch is the one region a key light
+        // actually falls on.
+        const keyDir =
+          1 - smoothstep(PRESENCE.keyDirStart, PRESENCE.keyDirEnd, dx);
+        let key = 0;
+        if (keyDir > 0 && shadeRow > 0) {
+          const lum = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
+          const surf =
+            smoothstep(PRESENCE.keyLumIn, PRESENCE.keyLumFull, lum) *
+            (1 -
+              PRESENCE.keyRoll *
+                smoothstep(PRESENCE.keyLumRollFrom, PRESENCE.keyLumRollTo, lum));
+          key = PRESENCE.keyAmt * keyDir * surf * a * shadeRow;
+        }
+        // Backdrop falloff — see PRESENCE.backdrop*. Folded into `shade`, so
+        // the key wash above and the torso dissolve below all scale with it and
+        // no light can ever exceed the surface it is supposedly landing on.
+        const backdropAmt =
+          PRESENCE.backdropRight +
+          (PRESENCE.backdropLeft - PRESENCE.backdropRight) *
+            (1 - smoothstep(-0.1, 0.3, dx));
         const shade =
-          shadeRow * (1 - PRESENCE.vignette * (1 - a) ** PRESENCE.vignetteGamma);
+          shadeRow *
+          (1 - PRESENCE.vignette * (1 - a) ** PRESENCE.vignetteGamma) *
+          (1 - backdropAmt * smoothstep(PRESENCE.backdropIn, PRESENCE.backdropOut, d));
         // A band through the middle of the ramp: 0 at both ends by
         // construction, so it can never draw a line at the plate's edge or a
         // halo out in the scene.
@@ -1434,9 +1591,18 @@ export class Stage implements IStage {
           PRESENCE.rimCoolDirMin +
           (1 - PRESENCE.rimCoolDirMin) * (1 - smoothstep(-0.06, 0.22, dx));
         const cool = PRESENCE.rimCoolAmt * coolBand * coolDir * shadeRow;
-        px[i] = Math.min(255, px[i] * shade + lift * PRESENCE.rimR + cool * PRESENCE.rimCoolR);
-        px[i + 1] = Math.min(255, px[i + 1] * shade + lift * PRESENCE.rimG + cool * PRESENCE.rimCoolG);
-        px[i + 2] = Math.min(255, px[i + 2] * shade + lift * PRESENCE.rimB + cool * PRESENCE.rimCoolB);
+        px[i] = Math.min(
+          255,
+          px[i] * shade * (1 + key * PRESENCE.keyR) + lift * PRESENCE.rimR + cool * PRESENCE.rimCoolR,
+        );
+        px[i + 1] = Math.min(
+          255,
+          px[i + 1] * shade * (1 + key * PRESENCE.keyG) + lift * PRESENCE.rimG + cool * PRESENCE.rimCoolG,
+        );
+        px[i + 2] = Math.min(
+          255,
+          px[i + 2] * shade * (1 + key * PRESENCE.keyB) + lift * PRESENCE.rimB + cool * PRESENCE.rimCoolB,
+        );
         px[i + 3] *= a;
       }
     }
