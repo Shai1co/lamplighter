@@ -94,18 +94,11 @@ export class TitleScreen {
         el('div', { class: 'pq-title__inner' }, [
           el('div', { class: 'pq-title__lead' }, [
             el('h1', { class: 'pq-title__word' }, [
-              // Hand-kerned. At 112px the two loose pairs in "Picture" are the
-              // cap-P against the i (the P's arm overhangs a bare stem) and the
-              // r against the e (the r's ear leaves a hole). Both are closed
-              // here as optical corrections on the *pair*, not as tracking on
-              // the word, so the rest of the fitting stays the designer's.
-              el('span', { class: 'pq-title__word-a' }, [
-                el('span', { class: 'pq-kern pq-kern--pi', text: 'P' }),
-                el('span', { text: 'ictu' }),
-                el('span', { class: 'pq-kern pq-kern--re', text: 'r' }),
-                el('span', { text: 'e' }),
-              ]),
-              el('span', { class: 'pq-title__word-b', text: 'Quest' }),
+              // "Lamplighter", stacked as a compound-word lockup: the roman
+              // "Lamp" over the italic accent "lighter". One name, two voices —
+              // the same two-tone treatment the previous lockup established.
+              el('span', { class: 'pq-title__word-a', text: 'Lamp' }),
+              el('span', { class: 'pq-title__word-b', text: 'lighter' }),
             ]),
             el('p', {
               class: 'pq-title__tag',

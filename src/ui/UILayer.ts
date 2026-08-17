@@ -656,13 +656,13 @@ export class UILayer implements IUILayer {
   }
 
   private buildAbout(): ReturnType<typeof overlayShell> {
-    const shell = overlayShell('About', { onClose: () => this.closeTop(), kicker: 'Picture Quest' });
+    const shell = overlayShell('About', { onClose: () => this.closeTop(), kicker: 'Lamplighter' });
     shell.body.appendChild(
       el('div', { class: 'pq-about' }, [
         el('p', {
           class: 'pq-about__lede',
           text:
-            'Picture Quest is a cinematic narrative-quest engine. You play the human voice of an AI companion — choosing between the words it suggests and the words that are truly yours.',
+            'Lamplighter is a cinematic anthology of narrative quests. You play the human voice of an AI companion — choosing between the words it suggests and the words that are truly yours.',
         }),
         el('p', {
           class: 'pq-about__body',
