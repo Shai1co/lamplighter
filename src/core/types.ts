@@ -244,6 +244,8 @@ export interface StoryManifest {
   credits?: string[];
   /** Cover art key (into cg) shown on the title/story-picker. */
   cover?: string;
+  /** Art-director style preamble prepended to every asset prompt for cohesion. */
+  artStyle?: string;
   theme: StoryTheme;
   characters: Record<string, CharacterDef>;
   backgrounds: Record<string, BackgroundDef>;
@@ -306,6 +308,18 @@ export interface HistoryEntry {
   text: string;
   /** If this entry was a chosen reply, its kind. */
   choiceKind?: ChoiceKind;
+}
+
+export interface SaveSlotInfo {
+  slot: number;
+  state: GameState;
+  /** PNG data URL captured from the stage at save time. */
+  thumbnail?: string;
+  savedAt: string;
+  /** Human label for the moment (e.g. current chapter or speaker line). */
+  label: string;
+  storyId: string;
+  storyTitle: string;
 }
 
 /* ─────────────────────────────  Settings  ───────────────────────────── */
@@ -448,4 +462,25 @@ export interface IRuntime {
   start(): void;
   snapshot(): GameState;
   dispose(): void;
+}
+
+/**
+ * The application controller the UI layer calls into for cross-subsystem actions
+ * (title-screen navigation, save/load with stage thumbnails, settings). main.ts
+ * implements this and passes it to the UILayer constructor as the 3rd argument.
+ */
+export interface AppHost {
+  /** All discovered stories, for the title/story-picker. */
+  stories(): StoryManifest[];
+  startStory(storyId: string): void;
+  /** Resume the rolling autosave, if any. */
+  continueGame(): void;
+  hasContinue(): boolean;
+  saveToSlot(slot: number): void;
+  loadFromSlot(slot: number): void;
+  deleteSlot(slot: number): void;
+  listSaves(): SaveSlotInfo[];
+  applySettings(settings: Settings): void;
+  getSettings(): Settings;
+  returnToTitle(): void;
 }

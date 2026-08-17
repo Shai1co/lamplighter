@@ -1,0 +1,66 @@
+/* Picture Quest — typography foundation.
+ *
+ * Fraunces (transitional serif, optical sizing on) carries the wordmark, chapter
+ * titles and the narration/dialogue body. Inter runs the chrome. JetBrains Mono
+ * is the Lumen system voice. */
+
+body {
+  font-family: var(--pq-sans);
+  font-size: var(--pq-fs-base);
+  line-height: var(--pq-lh-body);
+  font-weight: 400;
+  letter-spacing: var(--pq-tr-normal);
+  font-feature-settings: 'cv05' 1, 'cv08' 1, 'ss03' 1, 'calt' 1, 'kern' 1;
+  font-optical-sizing: auto;
+}
+
+/* Serif display — narration, dialogue body, titles. */
+.pq-serif,
+.pq-dialogue__body,
+.pq-chapter__title,
+.pq-title__word,
+.pq-storycard__title,
+.pq-modal__title,
+.pq-credits__word {
+  font-family: var(--pq-serif);
+  font-optical-sizing: auto;
+  font-weight: 420;
+  letter-spacing: var(--pq-tr-tight);
+}
+
+/* Mono system voice — the Lumen proxy readout. */
+.pq-mono,
+.pq-proxy__name,
+.pq-proxy__tag,
+.pq-proxy__status,
+.pq-proxy__label,
+.pq-meter__label,
+.pq-tile__cue,
+.pq-tile__num,
+.pq-slot__idx,
+.pq-slot__when,
+.pq-modal__kicker,
+.pq-title__over,
+.pq-title__eyebrow {
+  font-family: var(--pq-mono);
+  font-weight: 500;
+  font-feature-settings: 'kern' 1;
+}
+
+/* Small tracked-out labels (eyebrows, nameplates). */
+.pq-eyebrow {
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-widest);
+  text-transform: uppercase;
+  color: var(--pq-ink-55);
+}
+
+b,
+strong {
+  font-weight: 600;
+}
+
+em,
+i {
+  font-style: italic;
+}

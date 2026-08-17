@@ -1,0 +1,137 @@
+/* Picture Quest — design tokens.
+ *
+ * The four theme roots (--pq-key/accent/ink/paper and their -rgb triplets) are
+ * overwritten at runtime by UILayer.applyTheme() from the story manifest. Every
+ * surface, line and glow below is derived from those four so the whole UI
+ * re-grades itself per story. Defaults here are the flagship "Lumen" palette. */
+
+:root {
+  /* ── Theme (runtime-overridden) ── */
+  --pq-key: #7db4c8; /* cool signal / primary accent */
+  --pq-accent: #e0a46b; /* warm human accent (off-script, nameplates) */
+  --pq-ink: #e8eef2; /* foreground text */
+  --pq-paper: #0d1418; /* deep panel base */
+
+  --pq-key-rgb: 125 180 200;
+  --pq-accent-rgb: 224 164 107;
+  --pq-ink-rgb: 232 238 242;
+  --pq-paper-rgb: 13 20 24;
+
+  /* ── Derived surfaces (glass) ── */
+  --pq-glass: rgba(var(--pq-paper-rgb) / 0.52);
+  --pq-glass-2: rgba(var(--pq-paper-rgb) / 0.66);
+  --pq-glass-strong: rgba(var(--pq-paper-rgb) / 0.82);
+  --pq-glass-hi: rgba(var(--pq-ink-rgb) / 0.045);
+  --pq-scrim: rgba(var(--pq-paper-rgb) / 0.72);
+
+  /* ── Ink levels ── */
+  --pq-ink-90: rgba(var(--pq-ink-rgb) / 0.92);
+  --pq-ink-70: rgba(var(--pq-ink-rgb) / 0.72);
+  --pq-ink-55: rgba(var(--pq-ink-rgb) / 0.56);
+  --pq-ink-40: rgba(var(--pq-ink-rgb) / 0.4);
+  --pq-ink-25: rgba(var(--pq-ink-rgb) / 0.25);
+
+  /* ── Hairlines & edges ── */
+  --pq-line: rgba(var(--pq-ink-rgb) / 0.1);
+  --pq-line-2: rgba(var(--pq-ink-rgb) / 0.16);
+  --pq-line-key: rgba(var(--pq-key-rgb) / 0.34);
+  --pq-line-accent: rgba(var(--pq-accent-rgb) / 0.4);
+
+  /* ── Glows ── */
+  --pq-glow-key: rgba(var(--pq-key-rgb) / 0.28);
+  --pq-glow-key-soft: rgba(var(--pq-key-rgb) / 0.14);
+  --pq-glow-accent: rgba(var(--pq-accent-rgb) / 0.26);
+
+  /* ── Type families ── */
+  --pq-serif: 'Fraunces Variable', 'Fraunces', ui-serif, Georgia, 'Times New Roman', serif;
+  --pq-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pq-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* ── Type scale (fluid) ── */
+  --pq-fs-2xs: 0.6875rem; /* 11 */
+  --pq-fs-xs: 0.75rem; /* 12 */
+  --pq-fs-sm: 0.8125rem; /* 13 */
+  --pq-fs-base: 0.9375rem; /* 15 */
+  --pq-fs-md: 1.0625rem; /* 17 */
+  --pq-fs-lg: clamp(1.15rem, 0.9rem + 0.9vw, 1.5rem);
+  --pq-fs-xl: clamp(1.5rem, 1.05rem + 1.7vw, 2.35rem);
+  --pq-fs-2xl: clamp(2.1rem, 1.3rem + 3.4vw, 3.6rem);
+  --pq-fs-hero: clamp(3rem, 1.4rem + 7vw, 7rem);
+
+  --pq-lh-tight: 1.12;
+  --pq-lh-snug: 1.32;
+  --pq-lh-body: 1.62;
+  --pq-lh-loose: 1.75;
+
+  /* ── Tracking ── */
+  --pq-tr-tight: -0.02em;
+  --pq-tr-normal: 0;
+  --pq-tr-wide: 0.04em;
+  --pq-tr-wider: 0.14em;
+  --pq-tr-widest: 0.26em;
+
+  /* ── Spacing ── */
+  --pq-1: 4px;
+  --pq-2: 8px;
+  --pq-3: 12px;
+  --pq-4: 16px;
+  --pq-5: 22px;
+  --pq-6: 30px;
+  --pq-7: 42px;
+  --pq-8: 60px;
+  --pq-9: 84px;
+  --pq-10: 120px;
+
+  /* ── Radii ── */
+  --pq-r-1: 6px;
+  --pq-r-2: 10px;
+  --pq-r-3: 14px;
+  --pq-r-4: 20px;
+  --pq-r-pill: 999px;
+
+  /* ── Shadows ── */
+  --pq-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --pq-shadow-2: 0 8px 30px rgba(0, 0, 0, 0.36);
+  --pq-shadow-3: 0 24px 70px rgba(0, 0, 0, 0.5), 0 4px 14px rgba(0, 0, 0, 0.3);
+  --pq-shadow-glass: 0 30px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(var(--pq-ink-rgb) / 0.08);
+  --pq-text-shadow: 0 1px 22px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.55);
+
+  /* ── Motion ── */
+  --pq-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --pq-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --pq-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --pq-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --pq-dur-1: 140ms;
+  --pq-dur-2: 220ms;
+  --pq-dur-3: 320ms;
+  --pq-dur-4: 460ms;
+  --pq-dur-5: 640ms;
+
+  /* ── Focus ── */
+  --pq-focus-ring: 0 0 0 2px rgba(var(--pq-paper-rgb) / 0.9), 0 0 0 4px rgba(var(--pq-key-rgb) / 0.85),
+    0 0 16px rgba(var(--pq-key-rgb) / 0.4);
+
+  /* ── Z-index ── */
+  --pq-z-stage: 5;
+  --pq-z-dialogue: 20;
+  --pq-z-wait: 24;
+  --pq-z-choice: 40;
+  --pq-z-title: 50;
+  --pq-z-topbar: 60;
+  --pq-z-modal: 80;
+  --pq-z-credits: 90;
+
+  /* ── Layout ── */
+  --pq-gutter: clamp(20px, 4.5vw, 76px);
+  --pq-dialogue-max: 1180px;
+  --pq-blur: 18px;
+}
+
+/* Reduced motion: collapse durations and disable ambient loops. */
+:root[data-pq-motion='reduced'] {
+  --pq-dur-1: 1ms;
+  --pq-dur-2: 1ms;
+  --pq-dur-3: 1ms;
+  --pq-dur-4: 1ms;
+  --pq-dur-5: 1ms;
+}

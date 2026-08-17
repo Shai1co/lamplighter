@@ -1,0 +1,103 @@
+{
+  "id": "lumen",
+  "title": "Lumen",
+  "subtitle": "A long night, in someone else's words",
+  "author": "Picture Quest",
+  "synopsis": "You are a Lantern: a human who lends their voice to LUMEN, an AI companion for people awake through hard nights. A panel of soft light feeds you the perfect thing to say. You can read it, or you can say your own words instead — trading the machine's coherence for something a stranger might actually feel. Tonight there is one caller. Her name is Noor. This morning they demolished a building she designed, and it is 3 a.m., and dawn is a long way off.",
+  "entry": "prologue",
+  "cover": "title_key",
+  "credits": [
+    "Lumen",
+    "A Picture Quest story",
+    "",
+    "Written by Picture Quest",
+    "In the melancholy tradition of the late-night proxy",
+    "",
+    "For anyone who has ever answered the phone at 3 a.m.,",
+    "and for anyone who wished someone would."
+  ],
+  "artStyle": "Painterly semi-realistic cinematic key art in the mood of a Pacific-Northwest night. Muted teal-and-amber palette; deep blue-black shadows; a single warm practical light source; soft volumetric haze and gentle bloom; shallow depth of field; fine filmic grain. Restrained, melancholy, unhurried — the composure of an Edward Hopper night piece. Consistent character identity, wardrobe, and lighting across every frame. Absolutely no text, no lettering, no UI, no logos, no borders, no watermark.",
+  "theme": {
+    "key": "#7db4c8",
+    "accent": "#e0a46b",
+    "ink": "#e8eef2",
+    "paper": "#0b1116",
+    "grade": {
+      "lift": [-0.012, 0.008, 0.03],
+      "gamma": [1.0, 0.98, 0.95],
+      "gain": [1.03, 1.0, 0.93],
+      "splitTone": 0.36,
+      "contrast": 1.08,
+      "saturation": 0.9
+    },
+    "bloom": 0.9,
+    "vignette": 0.46,
+    "grain": 0.5
+  },
+  "characters": {
+    "noor": {
+      "name": "Noor",
+      "color": "#e0a46b",
+      "description": "A woman in her early forties, South Asian, warm brown skin with fine lines at the eyes; dark shoulder-length hair loosely tied back with a few threads of early silver; wearing a soft charcoal wool cardigan over a slate-blue blouse. An architect's quiet precision in how she holds herself. Lit by a single warm amber desk lamp against a cool blue-black night; shallow depth of field, painterly portrait framing from the chest up, facing slightly off-camera to the left.",
+      "defaultPose": "tired",
+      "home": "right",
+      "scale": 1.0,
+      "poses": {
+        "neutral": {
+          "prompt": "Portrait of Noor, a South Asian woman in her early forties, dark hair loosely tied back with a few silver threads, charcoal wool cardigan over a slate-blue blouse. Composed and guarded, jaw faintly set, looking slightly off-camera to the left. Single warm amber desk lamp against a cool blue-black night; soft volumetric haze; shallow depth of field; painterly semi-realistic, filmic grain. Chest-up portrait framing, no text, no UI, no border."
+        },
+        "tired": {
+          "prompt": "Portrait of Noor, the same South Asian woman in her early forties, dark hair with silver threads loosely tied back, charcoal cardigan over slate-blue blouse. Weary at the end of a long night, eyes shadowed and heavy, one hand resting against her temple, gaze lowered. Single warm amber lamp against cool blue-black darkness; gentle haze; shallow depth of field; painterly semi-realistic, filmic grain. Chest-up portrait framing, consistent identity, no text, no UI, no border."
+        },
+        "tearful": {
+          "prompt": "Portrait of Noor, the same South Asian woman in her early forties, silver-threaded dark hair loosely tied back, charcoal cardigan over slate-blue blouse. Eyes glassed with unshed tears, chin lifted in careful composure, holding herself together. Warm amber lamp catching the wet shine of her eyes against cool blue-black night; soft haze; shallow depth of field; painterly semi-realistic, filmic grain. Chest-up portrait framing, consistent identity, no text, no UI, no border."
+        },
+        "faint-smile": {
+          "prompt": "Portrait of Noor, the same South Asian woman in her early forties, silver-threaded dark hair loosely tied back, charcoal cardigan over slate-blue blouse. The smallest, tiredest smile, features softened, a little warmth returning to the eyes, a breath of relief. Warm amber lamp against a lightening blue-grey pre-dawn; gentle haze; shallow depth of field; painterly semi-realistic, filmic grain. Chest-up portrait framing, consistent identity, no text, no UI, no border."
+        }
+      }
+    }
+  },
+  "backgrounds": {
+    "ops_room": {
+      "prompt": "A dim overnight operations booth for an AI companion service, deep night. One occupied desk washed in warm amber monitor glow; a translucent glass partition catching soft reflections; beyond it a wall of floor-to-ceiling windows with city rain streaking the glass and blurred teal-and-amber lights bleeding through. Rows of empty chairs receding into blue-black darkness; volumetric haze; a single practical light source; cinematic, painterly semi-realistic, shallow depth of field, filmic grain. Landscape composition, no people, no text, no UI, no border.",
+      "parallax": 0.05,
+      "focus": 0.5
+    },
+    "memory_atrium": {
+      "prompt": "The light-filled atrium of a small public reading room, remembered rather than seen — softly overexposed at the edges like a memory. A tall north-facing clerestory of pale oak and glass; long shafts of amber late-afternoon light falling across a warm oak floor and low shelves; dust motes suspended in the beams; utterly quiet and reverent. Muted teal shadows warmed by golden light; painterly semi-realistic, gentle bloom, shallow depth of field, dreamlike haze, filmic grain. Landscape composition, no people, no text, no UI, no border.",
+      "parallax": 0.06,
+      "focus": 0.62
+    },
+    "window_rain": {
+      "prompt": "A city seen through a rain-streaked window at deep night. Blurred amber streetlights and teal signage bleeding through rivulets of water on dark glass; a faint reflection of a dim interior; melancholy, still, cinematic bokeh. Cool blue-black palette with warm points of light; painterly semi-realistic, shallow depth of field, soft bloom, filmic grain. Landscape composition, no people, no text, no UI, no border.",
+      "parallax": 0.04,
+      "focus": 0.72
+    },
+    "window_dawn": {
+      "prompt": "The same city window at first light, the rain ending. A pale gold-and-grey dawn rising over wet rooftops; the glass clearing as the last droplets slide down; thin mist lifting; a quiet, cold-warm gradient of hope. Soft teal shadows giving way to first amber sun; painterly semi-realistic, gentle bloom, shallow depth of field, filmic grain. Landscape composition, no people, no text, no UI, no border.",
+      "parallax": 0.04,
+      "focus": 0.72
+    }
+  },
+  "cg": {
+    "title_key": {
+      "prompt": "Cinematic cover key art: a lone figure in silhouette seated at a glowing amber console, seen from behind, before a towering wall of rain-streaked night windows that scatter the city into teal-and-amber bokeh. At the figure's left hand, a faint translucent panel of soft light hovers — the suggestion of a voice that is not their own. Vast, quiet, melancholy, painterly semi-realistic; deep blue-black shadows, warm practical glow, volumetric haze, gentle bloom, filmic grain. Room left in the composition for a title, but no text, no lettering, no UI, no border, no watermark."
+    }
+  },
+  "music": {
+    "night_theme": { "synth": "pad", "loop": true, "volume": 0.5 }
+  },
+  "ambience": {
+    "room_hum": { "synth": "hum", "loop": true, "volume": 0.35 },
+    "rain": { "synth": "rain", "loop": true, "volume": 0.45 }
+  },
+  "sfx": {
+    "chime": { "synth": "chime", "volume": 0.6 },
+    "click": { "synth": "click", "volume": 0.5 }
+  },
+  "vars": {
+    "trust": 0,
+    "coherence": 3
+  }
+}

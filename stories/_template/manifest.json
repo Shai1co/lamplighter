@@ -1,0 +1,85 @@
+{
+  "id": "_template",
+  "title": "New Story",
+  "subtitle": "A starter you can make your own",
+  "author": "Your name here",
+  "synopsis": "This is the starter template. Copy this folder (or run `npm run new-story <id> \"Title\"`), then edit manifest.json and story.pq. Every field below is documented; every directive is demonstrated in story.pq. It runs immediately, even before you generate any art — missing textures fall back to tasteful procedural placeholders built from the theme colors.",
+  "entry": "start",
+  "cover": "title_key",
+  "credits": [
+    "New Story",
+    "",
+    "Written by you",
+    "Made with Picture Quest"
+  ],
+  "artStyle": "Replace this with a strong, specific art-director sentence. It is prepended to every asset prompt to keep your art cohesive — describe palette, lighting, rendering style, framing, and always end with: no text, no UI, no border, no watermark. Example: 'Soft painterly illustration, warm neutral palette, gentle diffuse light, shallow depth of field, consistent character identity; no text, no UI, no border, no watermark.'",
+  "theme": {
+    "key": "#8aa6b8",
+    "accent": "#c8a27a",
+    "ink": "#eef1f4",
+    "paper": "#12161b",
+    "grade": {
+      "lift": [0.0, 0.0, 0.01],
+      "gamma": [1.0, 1.0, 1.0],
+      "gain": [1.0, 1.0, 0.98],
+      "splitTone": 0.2,
+      "contrast": 1.04,
+      "saturation": 0.95
+    },
+    "bloom": 0.7,
+    "vignette": 0.4,
+    "grain": 0.4
+  },
+  "characters": {
+    "guide": {
+      "name": "Guide",
+      "color": "#c8a27a",
+      "description": "Describe your character once, here, in detail: age, features, hair, wardrobe, and lighting. This description is reused across every pose so the same person is recognizable in each expression. Keep wardrobe and lighting constant; change only the expression per pose.",
+      "defaultPose": "neutral",
+      "home": "center",
+      "scale": 1.0,
+      "poses": {
+        "neutral": {
+          "prompt": "Portrait of the Guide (restate the character description here), calm and composed, facing slightly off-camera. Soft diffuse light; shallow depth of field; painterly, chest-up portrait framing. No text, no UI, no border."
+        },
+        "happy": {
+          "prompt": "Portrait of the Guide (restate the character description here), a warm open smile, eyes bright. Soft diffuse light; shallow depth of field; painterly, chest-up portrait framing, consistent identity. No text, no UI, no border."
+        },
+        "sad": {
+          "prompt": "Portrait of the Guide (restate the character description here), downcast and quiet, gaze lowered. Soft diffuse light; shallow depth of field; painterly, chest-up portrait framing, consistent identity. No text, no UI, no border."
+        }
+      }
+    }
+  },
+  "backgrounds": {
+    "room": {
+      "prompt": "Describe your first location as a landscape scene with no people. Example: a quiet interior at evening, one warm lamp, soft shadows, gentle haze, painterly, shallow depth of field. No text, no UI, no border.",
+      "parallax": 0.05,
+      "focus": 0.5
+    },
+    "outside": {
+      "prompt": "Describe your second location as a landscape scene with no people. Example: a wide exterior under an open sky, soft light, distant horizon, painterly, atmospheric depth. No text, no UI, no border.",
+      "parallax": 0.06,
+      "focus": 0.6
+    }
+  },
+  "cg": {
+    "title_key": {
+      "prompt": "Your cover / key art. One striking image that captures the mood of the whole story, with room left for a title. No people required. No text, no UI, no border, no watermark."
+    }
+  },
+  "music": {
+    "theme": { "synth": "pad", "loop": true, "volume": 0.5 }
+  },
+  "ambience": {
+    "room_tone": { "synth": "hum", "loop": true, "volume": 0.3 }
+  },
+  "sfx": {
+    "chime": { "synth": "chime", "volume": 0.6 },
+    "click": { "synth": "click", "volume": 0.5 }
+  },
+  "vars": {
+    "mood": 0,
+    "trust": 0
+  }
+}

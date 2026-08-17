@@ -1,0 +1,115 @@
+/* Picture Quest — minimal modern reset (scoped to what the UI actually uses). */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--pq-paper, #0d1418);
+  color: var(--pq-ink, #e8eef2);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* ── App shell: full-viewport stage with the DOM UI overlaid ── */
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--pq-paper, #0d1418);
+}
+#stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#ui {
+  position: absolute;
+  inset: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+  font-weight: inherit;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+input[type='range'] {
+  margin: 0;
+  width: 100%;
+  background: none;
+}
+
+:where(button, a, input, [tabindex]):focus {
+  outline: none;
+}
+
+/* Custom, accessible focus ring — applied only for keyboard users. */
+:where(button, a, [tabindex], input):focus-visible {
+  outline: none;
+  box-shadow: var(--pq-focus-ring);
+  border-radius: var(--pq-r-2);
+}
+
+::selection {
+  background: rgba(var(--pq-key-rgb, 125 180 200) / 0.3);
+  color: var(--pq-ink, #e8eef2);
+}
+
+/* Visually-hidden but screen-reader-available. */
+.pq-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
