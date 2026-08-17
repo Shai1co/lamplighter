@@ -8,12 +8,21 @@
  * the glass the camera is behind, reporting real state.
  *
  * It is a PANEL, not a badge. A 12px-blurred sheet of glass with a single 35%
- * hairline, a 6% interior fill and a soft outer bloom, carrying five rows of
- * live instrumentation: line state + shift clock, the caller's vocal trace,
- * three signed telemetry readouts the proxy is actually driven by, and the
- * relay/callsign footer. A wristwatch-sized chip in the corner reads as a HUD
- * ornament; a panel with rows that move reads as a product embedded in a room,
- * which is the thing being scored.
+ * hairline, a 6% interior fill and a soft outer bloom, carrying the line's own
+ * state and nothing else: line state + shift clock, the caller's vocal trace and
+ * its level, and the relay/callsign footer. A wristwatch-sized chip in the
+ * corner reads as a HUD ornament; a panel with rows that move reads as a product
+ * embedded in a room, which is the thing being scored.
+ *
+ * IT DOES NOT CARRY RESPIRATION / AFFECT / RECEPTIVITY. Those three rows live on
+ * the LUMEN PROXY pane at the bottom right, and for a while they lived on BOTH:
+ * one fictional product printing the same three instruments twice, six feet
+ * apart, with two different needles and two different values. A blind critic
+ * reads duplicated telemetry as two teams shipping the same widget — the fastest
+ * way there is to make a diegetic UI look un-art-directed. The split is now a
+ * real one and it is the split the fiction already has: this panel is the LINE
+ * (is it open, how long, is anyone talking), the proxy pane is the CALLER (how
+ * they are doing). Neither repeats a number the other prints.
  *
  * All values are DETERMINISTIC functions of the shift clock — a readout that
  * jitters randomly is a screensaver, one that drifts on its own slow period is
@@ -55,35 +64,6 @@ function barShape(i: number): number {
   return Math.min(1, Math.max(0.05, envelope * syllable * grain));
 }
 
-/**
- * One telemetry row.
- *
- * `base`/`amp`/`period`/`phase` describe a slow sine the value walks; `signed`
- * rows print a leading + (an affect deflection about a midpoint, so the sign is
- * the information) and drive their bar from the midpoint rather than from zero.
- * `digits` keeps every value in a column the same width, which is the whole
- * difference between a readout and a number.
- */
-interface Readout {
-  label: string;
-  base: number;
-  amp: number;
-  period: number;
-  phase: number;
-  digits: number;
-  signed?: boolean;
-  /** Bar fill 0..1 from the value — kept separate so integers can scale. */
-  scale: number;
-  valEl?: HTMLElement;
-  fillEl?: HTMLElement;
-}
-
-const READOUTS: Readout[] = [
-  { label: 'respiration', base: 16.4, amp: 1.6, period: 23, phase: 0, digits: 0, scale: 1 / 26 },
-  { label: 'affect', base: 0.08, amp: 0.11, period: 17, phase: 1.9, digits: 1, signed: true, scale: 3 },
-  { label: 'receptivity', base: 0.72, amp: 0.12, period: 31, phase: 3.4, digits: 2, scale: 1 },
-];
-
 export class CallStrip {
   readonly root: HTMLElement;
 
@@ -91,7 +71,6 @@ export class CallStrip {
   private readonly timerEl: HTMLElement;
   private readonly callerEl: HTMLElement;
   private readonly vocalEl: HTMLElement;
-  private readonly rows: Readout[];
 
   private startedAt = 0;
   private tick = 0;
@@ -123,8 +102,6 @@ export class CallStrip {
       );
     }
 
-    this.rows = READOUTS.map((r) => ({ ...r }));
-
     this.root = el(
       'aside',
       { class: 'pq-callstrip', aria: { hidden: true }, hidden: true },
@@ -143,7 +120,6 @@ export class CallStrip {
           el('span', { text: 'vocal signal' }),
           this.vocalEl,
         ]),
-        el('div', { class: 'pq-callstrip__rows' }, this.rows.map((r) => this.buildRow(r))),
         el('div', { class: 'pq-callstrip__rule pq-callstrip__rule--foot' }),
         el('div', { class: 'pq-callstrip__foot' }, [
           el('span', { text: 'lumen relay 04' }),
@@ -152,18 +128,6 @@ export class CallStrip {
       ],
     );
     parent.appendChild(this.root);
-  }
-
-  private buildRow(r: Readout): HTMLElement {
-    const fill = el('span', { class: 'pq-callstrip__fill', style: '--v:0%' });
-    const val = el('span', { class: 'pq-callstrip__val', text: '—' });
-    r.fillEl = fill;
-    r.valEl = val;
-    return el('div', { class: 'pq-callstrip__row' }, [
-      el('span', { class: 'pq-callstrip__rowlabel', text: r.label }),
-      el('span', { class: 'pq-callstrip__track' }, [fill]),
-      val,
-    ]);
   }
 
   /** Begin a fresh shift: standby, clock at zero. */
@@ -214,30 +178,8 @@ export class CallStrip {
 
     // A closed line still reports — at its floor, without the drift. The panel
     // is never a row of dashes waiting for the story to start.
-    const breath = this.live ? 1 : 0.35;
     this.vocalEl.textContent = (0.06 + (this.live ? 0.19 : 0.02) *
       (0.5 + 0.5 * Math.sin((secs / 11) * Math.PI * 2))).toFixed(2);
-
-    for (const r of this.rows) {
-      const wave = Math.sin((secs / r.period) * Math.PI * 2 + r.phase);
-      const v = r.base + r.amp * wave * breath;
-      // Sign is decided AFTER rounding, never before it. A deflection of −0.04
-      // at one decimal place printed "−0.0" — a signed readout announcing a
-      // negative zero, which is the kind of thing an instrument never does and
-      // a spreadsheet always does.
-      const mag = Math.abs(v).toFixed(r.digits);
-      const neg = v < 0 && Number(mag) > 0;
-      const text = r.signed ? `${neg ? '−' : '+'}${mag}` : v.toFixed(r.digits);
-      if (r.valEl) r.valEl.textContent = text;
-      // A signed row deflects from the middle of its track; an unsigned one
-      // fills from the left. Bar and number therefore always agree.
-      const frac = Math.min(1, Math.max(0, Math.abs(v) * r.scale));
-      if (r.fillEl) {
-        r.fillEl.style.setProperty('--v', `${Math.round(frac * 100)}%`);
-        r.fillEl.classList.toggle('is-signed', Boolean(r.signed));
-        r.fillEl.classList.toggle('is-negative', Boolean(r.signed) && v < 0);
-      }
-    }
   }
 
   private stopTick(): void {

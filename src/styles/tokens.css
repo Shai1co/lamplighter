@@ -132,6 +132,16 @@
   --pq-fs-xl: clamp(1.5rem, 1.05rem + 1.7vw, 2.35rem);
   --pq-fs-2xl: clamp(2.1rem, 1.3rem + 3.4vw, 3.6rem);
   --pq-fs-hero: clamp(3rem, 1.4rem + 7vw, 7rem);
+  /* ── The title lockup ───────────────────────────────────────────────────────
+     The wordmark and the line under it are ONE block, and a block whose two
+     halves are set to two unrelated measures is the thing that reads as two
+     elements that happen to be stacked. "Lamplighter", as fitted below (roman +
+     italic, hand-kerned at the seam), sets to a fixed 4.35× its own type size,
+     so the tagline's measure is derived from the same token rather than guessed
+     in ems of a different font — the two edges then agree at every viewport
+     width instead of at exactly one. */
+  --pq-wordmark: clamp(2.6rem, 1.2rem + 5.6vw, 6.7rem);
+  --pq-lockup: calc(var(--pq-wordmark) * 4.298);
 
   --pq-lh-tight: 1.12;
   --pq-lh-snug: 1.32;
@@ -255,8 +265,23 @@
      the reading surface is the widest thing in the frame and reads as the
      bottom of the picture rather than as a box inset into it. */
   --pq-dialogue-gutter: clamp(24px, 4.6875vw, 90px);
-  --pq-name-col: clamp(96px, 16.40625vw, 315px);
-  --pq-name-gap: clamp(18px, 3.385vw, 65px);
+  /* ── The void between the plate and the prose ──────────────────────────────
+     315 + 65 put the prose column on x=470 — 380px clear of a nameplate that
+     ends around x=222. Nothing lives in that gap, and a 260px hole between two
+     elements that are supposed to be one two-column set does not read as a
+     grid: it reads as a caption that happened to centre itself, which is
+     exactly the note that came back ("the name and the sentence are two
+     unrelated elements"). It is worth being precise about why: the eye reads a
+     column relationship from PROXIMITY first and alignment second, and at a
+     quarter of the frame's width the two columns are simply not near each
+     other.
+     Eliza sets its speaker on x=93 and opens its prose on x=345 — a 250px
+     column carrying a ~130px name, i.e. the gap is about the width of the name
+     itself. 180 + 70 lands ours on x=340 against a gutter of 90, which is the
+     same proportional set, and the measure below is unchanged so the prose
+     simply gains 130px of run rather than moving. */
+  --pq-name-col: clamp(78px, 9.375vw, 180px);
+  --pq-name-gap: clamp(16px, 3.646vw, 70px);
   --pq-dialogue-measure: min(1050px, 100%);
   /* ── Where the prose SITS ───────────────────────────────────────────────────
      The floor under the reading block, and the most consequential number in the
@@ -316,6 +341,56 @@
   --pq-relay-val: 40px;
   --pq-proxy-w: clamp(324px, 27.3vw, 524px);
   --pq-proxy-bottom: clamp(146px, 19.63vh, 212px);
+
+  /* ── The implied glass plane ──────────────────────────────────────────────
+   *
+   * Both right-column panes are etched onto ONE sheet of glass hanging in the
+   * room, and until now neither of them said so. They were axis-aligned
+   * rectangles with perfectly vertical edges and perfectly horizontal rules,
+   * parked over a photograph taken with a real lens — which is the difference a
+   * blind critic actually names when it says a UI reads as "overlaid HTML".
+   * Eliza's proxy glass wraps: its verticals converge, its rules bow, and every
+   * panel on it agrees about where the vanishing point is.
+   *
+   * Three tokens, and the discipline is that all three panes share them so the
+   * plane is ONE plane and not two panels each doing their own thing:
+   *   • a long 1400px perspective — a wide lens, so the convergence is a couple
+   *     of pixels over a 330px pane rather than a video-game HUD tilt;
+   *   • rotateY(1.35deg), turning the OUTBOARD (right) edge away from camera,
+   *     because the sheet curves around the viewer and the right side of it is
+   *     further round. On a 330px pane that is ~3.8px of taper — felt, not seen;
+   *   • rotateX(-0.5deg), so the panes lean back a hair the way a sheet hung in
+   *     front of a desk does rather than standing perfectly plumb.
+   *
+   * …plus a Z SPLIT, which is what makes it read as depth rather than as skew.
+   * The relay pane sits 7px behind the plane and the proxy pane 7px in front of
+   * it, so at this perspective they scale 0.995 and 1.005 — a 1–2px parallax
+   * offset between the two layers, the same cue that separates two sheets of
+   * real glass at arm's length. Two panes on the EXACT same plane are a
+   * stylesheet; two panes a centimetre apart are a product.
+   *
+   * transform-origin is pinned to the right edge on both, so the taper opens
+   * INBOARD (toward the picture) and neither pane's outer arris can drift off
+   * the --pq-chrome-margin the hamburger also terminates on. */
+  --pq-glass-plane: perspective(1400px) rotateY(1.35deg) rotateX(-0.5deg);
+  --pq-glass-far: var(--pq-glass-plane) translateZ(-7px);
+  --pq-glass-near: var(--pq-glass-plane) translateZ(7px);
+  /* …and the curvature, which is what the skew cannot say on its own. A skewed
+     rectangle is still a FLAT plane held at an angle; what reads as a curved
+     sheet is what the light does across it — a cylinder bent away from the
+     viewer catches a soft band of the room down its inboard third and falls
+     off toward its outboard edge. Both panes lay this over their own sheen at
+     the same rake, so the frame contains one curved sheet rather than two
+     independently-shaded cards. Ceiling is 2.8% white / 5% black: a shading
+     cue, never a gradient anybody is meant to notice. */
+  --pq-glass-curve: linear-gradient(
+    92deg,
+    rgba(255, 255, 255, 0.028) 0%,
+    rgba(255, 255, 255, 0.012) 34%,
+    rgba(0, 0, 0, 0) 62%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+
   --pq-blur: 18px;
   /* Master strength of the room grade's power windows (see .pq-roomgrade).
      1 = the Lumen ops-room tuning; 0 retires them entirely for a plate whose
@@ -385,6 +460,32 @@
      now running off the bottom of the FRAME rather than stopping in the middle
      of it — is the length at which the glass stops having a bottom. */
   --pq-panel-fade: 104px;
+  /* ── Settings column: the machined grid ──────────────────────────────────
+     The panel was hand-placed — the value column drifted a few pixels row to
+     row, the tracks stopped wherever the widest readout happened to leave them,
+     and the air above VISUALS was not the air above AUDIO. Five numbers, and
+     every row in the column is derived from them, so the rhythm is a GRID
+     rather than a set of individually plausible gaps:
+       • --pq-set-val   the numeric column, a FIXED box (not min-width in ems).
+                        This is what puts 45 CPS / 90% / 70% / 85% / 50% on one
+                        vertical AND stops all four tracks on one vertical — a
+                        min-width lets the widest readout push its own track
+                        short and the other three long.
+       • --pq-set-gap   track → readout.
+       • --pq-set-row   the height of a track row, and therefore the line box
+                        the readout is set on: the number is centred on the rail
+                        by construction rather than by inheritance.
+       • --pq-set-lead / --pq-set-follow  the section rhythm: 40px of air before
+                        every small-caps eyebrow (24 to the rule, 16 from the
+                        rule to the caps) and 16px after it. Every section, the
+                        same, regardless of whether the row above it ended in a
+                        slider or a toggle. */
+  --pq-set-val: 58px;
+  --pq-set-gap: 20px;
+  --pq-set-row: 18px;
+  --pq-set-lead: 24px;
+  --pq-set-follow: 16px;
+
   /* Inner gutter of the transcript pane. Left and right are the SAME number:
      the previous set ran 44px of hanging indent on the left against 22px on the
      right, so every long line ran within a rail's width of the glass edge. */

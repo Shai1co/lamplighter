@@ -26,7 +26,7 @@
  * carries the position.
  */
 import type { ChoiceKind } from '../core/types';
-import { clear, el, icon, Icons, overlayShell } from './dom';
+import { clear, el, icon, Icons, overlayShell, smartQuotes } from './dom';
 
 export interface BacklogEntry {
   name: string | null;
@@ -175,7 +175,7 @@ export class Backlog {
     // The shift stamp, on every entry — it is the right-hand tab stop that makes
     // the column scan as a log instead of as a wall of paragraphs.
     row.appendChild(el('span', { class: 'pq-backlog__time', text: stampFor(index) }));
-    row.appendChild(el('p', { class: 'pq-backlog__line', text: e.text }));
+    row.appendChild(el('p', { class: 'pq-backlog__line', text: smartQuotes(e.text) }));
     this.scroll.appendChild(row);
     if (autoscroll) this.scroll.scrollTop = this.scroll.scrollHeight;
     this.syncFades();

@@ -77,6 +77,8 @@ export class UILayer implements IUILayer {
   private choiceOptions: ResolvedChoice[] = [];
   private choiceEls: HTMLElement[] = [];
   private waitActive = false;
+  /** Who is currently on stage — drives `.has-cast`. See the subscription. */
+  private readonly cast = new Set<string>();
   private narratorLabel: string | undefined;
   private creditsActive = false;
   private creditsDone = false;
@@ -251,6 +253,36 @@ export class UILayer implements IUILayer {
     this.unsubs.push(
       this.bus.on('scene:bg', (p) => {
         this.pq.dataset.pqBg = p.id;
+      }),
+    );
+
+    /* …and WHO is on it, which is the other half of the same mechanism.
+     *
+     * The ops room is two compositions, not one. With a speaker on stage the
+     * frame is a close two-hander and the foreground is a laptop lid between
+     * her and the lens — the thing that occludes her torso and spills cool
+     * light up onto her jaw. With nobody on stage the same lid is a black
+     * quadrant covering the bottom-right third of an establishing shot, with
+     * no object in frame to explain it and nothing behind it to see: the "dead
+     * lower-right / undifferentiated darkness" note, exactly.
+     *
+     * A foreground element that only exists to sit in front of a figure has to
+     * be conditional on there BEING a figure. One class on the frame root,
+     * maintained the same way `data-pq-bg` is, and the room grade selects the
+     * right composition off it (see `.pq:not(.has-cast) .pq-roomgrade::after`).
+     */
+    this.unsubs.push(
+      this.bus.on('char:enter', (p) => {
+        this.cast.add(p.char);
+        this.pq.classList.add('has-cast');
+      }),
+      this.bus.on('char:exit', (p) => {
+        this.cast.delete(p.char);
+        this.pq.classList.toggle('has-cast', this.cast.size > 0);
+      }),
+      this.bus.on('runtime:ready', () => {
+        this.cast.clear();
+        this.pq.classList.remove('has-cast');
       }),
     );
 

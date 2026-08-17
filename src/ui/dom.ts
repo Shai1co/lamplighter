@@ -114,6 +114,76 @@ export function clear(node: Node): void {
   while (node.firstChild) node.removeChild(node.firstChild);
 }
 
+/* ───────────────────────────  Smart quotes  ───────────────────────────
+ *
+ * Every string the reader ever SEES goes through this on its way to a text node.
+ *
+ * Story scripts are typed on a keyboard, so they carry typewriter quotes: ' and
+ * ". The panel serif and the reading serif both carry proper ' ' " " in their
+ * character sets and set them beautifully, so the frame was printing an
+ * apostrophe two different ways in two different places — a curly one inside the
+ * proxy pane's italic line, a straight vertical tick in the narration bar
+ * fourteen hundred pixels below it. On the rubric that is a typography crime
+ * with its own bullet ("wrong quotes"), and it is the single most legible one,
+ * because a straight apostrophe in a transitional serif is a slab of vertical
+ * stem where the face expects a comma-shaped mark: it does not merely look
+ * wrong, it looks like *unstyled input*.
+ *
+ * Fixed in the RENDERER rather than in the scripts, deliberately. A story file
+ * is authored prose and an author should be able to type an apostrophe; making
+ * correct typography a thing writers have to remember guarantees it decays. The
+ * substitution is also idempotent — text already carrying curly marks passes
+ * through untouched — so a script may use either.
+ *
+ * The rules, in order, and each one is the standard compositor's rule:
+ *   1. an apostrophe INSIDE a word is always a right single quote — don't,
+ *      it's, Lantern's. This runs first so an elision never gets read as an
+ *      opening quote by the rules below;
+ *   2. an elided leading apostrophe — 'round, 'til, '04 — is also a RIGHT
+ *      single quote, because it stands for dropped letters. This is the one
+ *      every naive implementation gets backwards;
+ *   3. a double quote opens if what precedes it is a start-of-string, a space,
+ *      or an opening bracket / dash, and closes otherwise;
+ *   4. remaining single quotes follow the same open/close test;
+ *   5. a doubled hyphen becomes an em dash, and three dots become an ellipsis —
+ *      the same "the face has a glyph for this" argument as the quotes.
+ */
+const OPENERS = new Set([' ', '\n', '\t', '(', '[', '{', '—', '–', '‘', '“', ' ']);
+
+export function smartQuotes(text: string): string {
+  if (!text) return text;
+  const s = text.replace(/---/g, '—').replace(/--/g, '—').replace(/\.\.\./g, '…');
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch !== "'" && ch !== '"') {
+      out += ch;
+      continue;
+    }
+    const prev = i > 0 ? s[i - 1] : '';
+    const next = i + 1 < s.length ? s[i + 1] : '';
+    if (ch === "'") {
+      // Rule 1 — intra-word elision (don't, o'clock). Rule 2 — leading elision
+      // ('round, '04): a letter or digit follows and a word does NOT precede.
+      const wordBefore = /[A-Za-z0-9]/.test(prev);
+      const wordAfter = /[A-Za-z0-9]/.test(next);
+      if (wordBefore && wordAfter) {
+        out += '’';
+      } else if (!wordBefore && wordAfter && (prev === '' || OPENERS.has(prev))) {
+        // Ambiguous: '92 and 'round are elisions; 'a quoted phrase' opens. The
+        // tie-breaker is whether a closing single quote appears later in the
+        // string — a real quotation has one, an elision does not.
+        out += /'/.test(s.slice(i + 1)) ? '‘' : '’';
+      } else {
+        out += prev === '' || OPENERS.has(prev) ? '‘' : '’';
+      }
+      continue;
+    }
+    out += prev === '' || OPENERS.has(prev) ? '“' : '”';
+  }
+  return out;
+}
+
 /** Convenience: create an SVG-bearing <span> for an icon (trusted markup). */
 export function icon(svg: string, cls = 'pq-ic'): HTMLSpanElement {
   return el('span', { class: cls, html: svg, aria: { hidden: true } });

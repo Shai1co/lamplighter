@@ -31,6 +31,20 @@ import {
   GLASS_FRAGMENT,
 } from './shaders';
 
+/**
+ * One soft ellipse of "this is the room, not the window", in the framed screen
+ * (0..1, y-up). `soft` is the shoulder width as a fraction of the radius — the
+ * shape has no straight edge anywhere by construction, so the fence can never
+ * print as a matte. See LIGHTFIELD_GLSL → pqInterior.
+ */
+export interface InteriorLobe {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  soft: number;
+}
+
 /** Where a scene's brightest practical should be thrown back onto the glass. */
 export interface ReflectionSpec {
   /** Screen-space position, 0..1 (y up). */
@@ -157,7 +171,22 @@ const RAIN_FIELD: Region = { cx: 0, cy: 0, cz: 0, hx: HALF_W, hy: HALF_H, hz: 0.
  * ~0.6s period, which leaves two or three streaks in frame at any instant —
  * enough to read as foreground, too few to read as a curtain.
  */
-const NEAR_RAIN: Region = { cx: -1.28, cy: 0, cz: 0.28, hx: 0.68, hy: 3.5, hz: 0.12 };
+/*
+ * …and then the frame acquired an INTERIOR (see setInteriorMask), and this box
+ * was sitting squarely inside it. At cx −1.28 the field lands on screen x
+ * 0.25–0.42, which is the lamp, the monitor bezel and the near end of the desk:
+ * every one of these streaks was falling in front of a prop that is on the
+ * camera's side of the glass. The fence would have deleted them, which is the
+ * right answer optically and a waste of nine draws.
+ *
+ * Moved to cx +1.6 — screen 0.66–0.75 — where the wall of window actually is.
+ * The parallax argument that earned this field is unchanged (it is still a
+ * metre and a half nearer the lens than the main plane and still shears against
+ * the plate as the camera drifts); it is simply now shearing against glass
+ * rather than across a lamp. Slightly narrower with it: the bay it crosses is
+ * narrower than the left edge it used to hug.
+ */
+const NEAR_RAIN: Region = { cx: 1.6, cy: 0, cz: 0.28, hx: 0.52, hy: 3.5, hz: 0.12 };
 /* Slightly steeper slant than the main field: closer rain shears more. */
 const NEAR_RAIN_WIND = 1.9;
 const RAIN_WIND = 1.4;
@@ -196,6 +225,13 @@ export class Weather {
   /** Screen-space occupancy of the speaker: (cx, cy, rx, ry), y-up 0..1. */
   private readonly uFigure: THREE.IUniform<THREE.Vector4>;
   private readonly uFigureAmt: THREE.IUniform<number>;
+  /** The room's own furniture, as up to three soft ellipses. See pqInterior. */
+  private readonly uInteriorA: THREE.IUniform<THREE.Vector4>;
+  private readonly uInteriorB: THREE.IUniform<THREE.Vector4>;
+  private readonly uInteriorC: THREE.IUniform<THREE.Vector4>;
+  private readonly uInteriorD: THREE.IUniform<THREE.Vector4>;
+  private readonly uInteriorSoft: THREE.IUniform<THREE.Vector4>;
+  private readonly uInteriorAmt: THREE.IUniform<number>;
 
   private readonly rnd = mulberry32(STAGE_SEED ^ 0x51ed270b);
   private readonly tweens = new Set<gsap.core.Tween>();
@@ -221,6 +257,15 @@ export class Weather {
     this.uLightRes = { value: new THREE.Vector2(1920, 1080) };
     this.uFigure = { value: new THREE.Vector4(0.5, 0.5, 0.001, 0.001) };
     this.uFigureAmt = { value: 0 };
+    // Zero radii ⇒ the lobe returns 0 ⇒ the fence is a no-op until a plate
+    // declares an interior. A story with no PLATE_INTERIOR entry keeps exactly
+    // the weather it had.
+    this.uInteriorA = { value: new THREE.Vector4(0, 0, 0, 0) };
+    this.uInteriorB = { value: new THREE.Vector4(0, 0, 0, 0) };
+    this.uInteriorC = { value: new THREE.Vector4(0, 0, 0, 0) };
+    this.uInteriorD = { value: new THREE.Vector4(0, 0, 0, 0) };
+    this.uInteriorSoft = { value: new THREE.Vector4(0.3, 0.3, 0.3, 0.3) };
+    this.uInteriorAmt = { value: 0 };
 
     // Field opacities are the PRE-jitter base: each drop then keeps 30–80% of it
     // (RAIN_DIFFUSE_PATCH), mean 0.55, so these carry the old effective density.
@@ -294,13 +339,40 @@ export class Weather {
         uLightRes: this.uLightRes,
         uFigure: this.uFigure,
         uFigureAmt: this.uFigureAmt,
+        uInteriorA: this.uInteriorA,
+        uInteriorB: this.uInteriorB,
+        uInteriorC: this.uInteriorC,
+        uInteriorD: this.uInteriorD,
+        uInteriorSoft: this.uInteriorSoft,
+        uInteriorAmt: this.uInteriorAmt,
       },
       vertexShader: GLASS_VERTEX,
       fragmentShader: GLASS_FRAGMENT,
     });
     this.glass = new THREE.Mesh(new THREE.PlaneGeometry(HALF_W * 2.4, HALF_H * 2.4), this.glassMat);
     this.glass.position.z = 0.2;
-    this.glass.renderOrder = 12;
+    /* 12 → 40, and this is the change that finally puts the speaker in a PLACE.
+     *
+     * The pass has always described itself as "the pane the camera is behind",
+     * and at renderOrder 12 it was not: character sprites sort at 20 + index and
+     * the glass has depthTest off, so every drop, every rivulet and the whole
+     * reflected practical were drawn BEHIND her and then painted over. The
+     * result is exactly the read the frame came back with — she floats in an
+     * undefined darkness, unattached to any surface, because the only surface
+     * the shot contains was demonstrably not in front of her.
+     *
+     * At 40 the pane is the last thing drawn in the scene, which is what it is:
+     * the nearest object to the lens. Her face and shoulder now carry a faint,
+     * CONTINUOUS film of what is on the glass — a couple of streaks, the sheet's
+     * own specular, the lamp's reflection, and the mullion crossing her arm —
+     * and the frame stops being a portrait composited onto a photograph and
+     * starts being a woman seen through a rain-streaked window.
+     *
+     * The consumers in GLASS_FRAGMENT were retuned for it in the same change:
+     * anything that now lands ON her is thinned, because a term calibrated to
+     * read through a feathered edge is far too strong once it is genuinely on
+     * top of a lit cheek. */
+    this.glass.renderOrder = 40;
     this.glass.frustumCulled = false;
     this.glass.visible = false;
     this.group.add(this.glass);
@@ -364,6 +436,12 @@ export class Weather {
       shader.uniforms.uLightRes = this.uLightRes;
       shader.uniforms.uFigure = this.uFigure;
       shader.uniforms.uFigureAmt = this.uFigureAmt;
+      shader.uniforms.uInteriorA = this.uInteriorA;
+      shader.uniforms.uInteriorB = this.uInteriorB;
+      shader.uniforms.uInteriorC = this.uInteriorC;
+      shader.uniforms.uInteriorD = this.uInteriorD;
+      shader.uniforms.uInteriorSoft = this.uInteriorSoft;
+      shader.uniforms.uInteriorAmt = this.uInteriorAmt;
       shader.vertexShader =
         RAIN_VERTEX_DECL + shader.vertexShader.replace('gl_PointSize = size;', RAIN_POINTSIZE_PATCH);
       shader.fragmentShader =
@@ -391,6 +469,29 @@ export class Weather {
   setFigureMask(cx: number, cy: number, rx: number, ry: number, amount: number): void {
     this.uFigure.value.set(cx, cy, Math.max(rx, 1e-4), Math.max(ry, 1e-4));
     this.uFigureAmt.value = THREE.MathUtils.clamp(amount, 0, 1);
+  }
+
+  /**
+   * Publish the room's own furniture as up to FOUR soft screen-space ellipses,
+   * so every system on this rig stops drawing weather over surfaces that are on
+   * the camera's side of the glass. Coordinates are the framed screen, 0..1,
+   * y-up — the same frame the light field is sampled in.
+   *
+   * Pass an empty list (or amount 0) to retire the fence entirely.
+   */
+  setInteriorMask(lobes: ReadonlyArray<InteriorLobe>, amount: number): void {
+    const slots = [this.uInteriorA, this.uInteriorB, this.uInteriorC, this.uInteriorD];
+    const soft = this.uInteriorSoft.value;
+    for (let i = 0; i < slots.length; i++) {
+      const lobe = lobes[i];
+      if (lobe) {
+        slots[i].value.set(lobe.cx, lobe.cy, Math.max(lobe.rx, 0), Math.max(lobe.ry, 0));
+        soft.setComponent(i, Math.max(lobe.soft, 0.02));
+      } else {
+        slots[i].value.set(0, 0, 0, 0);
+      }
+    }
+    this.uInteriorAmt.value = THREE.MathUtils.clamp(amount, 0, 1);
   }
 
   setLightField(map: THREE.Texture | null, refl: ReflectionSpec | null): void {

@@ -44,6 +44,9 @@ interface GradeUniforms {
   uAberration: { value: number };
   uFlash: { value: number };
   uGlitch: { value: number };
+  uFocus: { value: THREE.Vector4 };
+  uFieldBlur: { value: number };
+  uShadowBridge: { value: number };
   [key: string]: THREE.IUniform;
 }
 
@@ -81,7 +84,22 @@ const GRAIN_PX = 2.2;
  * highlights that survive across the frame, which is the same failure by
  * another route. 0.34 keeps the halo inside roughly a window's width.
  */
-const BLOOM_THRESHOLD = 0.93;
+/*
+ * …and then 0.93 turned out to be a gate with nothing behind it. The plates are
+ * baked with a print shoulder of their own (compressPracticals, ceiling 0.90 in
+ * sRGB ≈ 0.79 linear), so on the ops room NOTHING in the frame ever crossed
+ * 0.93 and the bloom pass was, arithmetically, switched off. A night interior
+ * whose practicals do not scatter has no air in it — every source is a flat
+ * shape with a hard edge — and that is half of what made the frame read as an
+ * upscaled still rather than a photograph of a lit room.
+ *
+ * 0.82 admits sRGB ≳ 233: the interior of the lamp shade, the hottest glyphs on
+ * the relay board and the two or three brightest discs of city bokeh, and
+ * nothing else. It is still a specular gate — the lit desktop (≈0.55 linear)
+ * and the atrium's upper midtones stay well outside it — it simply now has
+ * something on the far side of it.
+ */
+const BLOOM_THRESHOLD = 0.82;
 const BLOOM_RADIUS = 0.34;
 
 const v3 = (a?: [number, number, number], d = 0): THREE.Vector3 =>
@@ -103,6 +121,8 @@ export class PostFX {
   private grainSetting = 0.5;
   private themeGrain = 1;
   private themeBloom = 0.65;
+  private fieldBlur = 0;
+  private shadowBridge = 0;
 
   private flashTween: gsap.core.Tween | null = null;
   private glitchTween: gsap.core.Tween | null = null;
@@ -158,6 +178,12 @@ export class PostFX {
       uAberration: { value: 0.0016 },
       uFlash: { value: 0 },
       uGlitch: { value: 0 },
+      // Focal plane + peak defocus. Both are per-plate (Stage → PLATE_FOCUS);
+      // the defaults here are a wide-open focus that blurs nothing, so a story
+      // that declares no focal composition renders exactly as it did.
+      uFocus: { value: new THREE.Vector4(0.5, 0.5, 1, 1) },
+      uFieldBlur: { value: 0 },
+      uShadowBridge: { value: 0 },
     };
     this.grade = new ShaderPass({
       name: 'PQGrade',
@@ -208,6 +234,28 @@ export class PostFX {
     this.gradeU.uGrain.value = this.cinematic ? this.grainSetting * this.themeGrain * damp : 0;
   }
 
+  /**
+   * Declare the frame's focal composition: where the lens is focused in frame
+   * coordinates (centre + half-extents, 0..1) and how far out of focus the far
+   * edge is allowed to go, in UV. `blur` 0 retires the pass entirely.
+   *
+   * This is the DoF that actually prints — BokehPass's is stopped down to a
+   * whisper because its depth buffer cannot be trusted with alpha (see
+   * APERTURE). Here the "depth" is the composition itself, which for a painted
+   * plate is the only honest description of it anyway.
+   */
+  setFieldFocus(cx: number, cy: number, rx: number, ry: number, blur: number): void {
+    this.gradeU.uFocus.value.set(cx, cy, Math.max(rx, 1e-3), Math.max(ry, 1e-3));
+    this.fieldBlur = Math.max(0, blur);
+    this.gradeU.uFieldBlur.value = this.cinematic ? this.fieldBlur : 0;
+  }
+
+  /** How hard ungraded dark regions are pulled toward the room's teal (0..1). */
+  setShadowBridge(x: number): void {
+    this.shadowBridge = THREE.MathUtils.clamp(x, 0, 1);
+    this.gradeU.uShadowBridge.value = this.cinematic ? this.shadowBridge : 0;
+  }
+
   /** Focus the DoF on a world-space distance from the camera. */
   setFocus(distance: number): void {
     if (!this.cinematic) return;
@@ -247,6 +295,8 @@ export class PostFX {
     this.bokeh.enabled = settings.cinematic;
     this.grade.enabled = settings.cinematic;
     this.bloom.strength = settings.cinematic ? this.themeBloom : 0;
+    this.gradeU.uFieldBlur.value = settings.cinematic ? this.fieldBlur : 0;
+    this.gradeU.uShadowBridge.value = settings.cinematic ? this.shadowBridge : 0;
     this.refreshGrain();
   }
 

@@ -18,7 +18,7 @@
  * Owns a time-based typewriter with punctuation-aware cadence, skippable instantly.
  */
 import type { CharacterView } from '../core/types';
-import { clear, el } from './dom';
+import { clear, el, smartQuotes } from './dom';
 
 export interface ShowOptions {
   /** Characters per second. 0 (or reduced-motion) = instant. */
@@ -96,8 +96,14 @@ export class DialogueBox {
     return !this.root.hidden;
   }
 
-  show(speaker: CharacterView | null, text: string, opts: ShowOptions, onDone?: (natural: boolean) => void): void {
+  show(speaker: CharacterView | null, raw: string, opts: ShowOptions, onDone?: (natural: boolean) => void): void {
     this.stopRaf();
+    // Typography first, and BEFORE the typewriter is scheduled — the schedule is
+    // indexed by character, so substituting glyphs afterwards would slide every
+    // reveal time by however many "..." collapsed into "…". See smartQuotes():
+    // the reading serif has proper marks and the frame was printing straight
+    // ones, which is a named hard-fail on the rubric.
+    const text = smartQuotes(raw);
     this.full = text;
     this.tailAt = tailIndex(text);
     this.onDone = onDone ?? null;

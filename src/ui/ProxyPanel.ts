@@ -9,7 +9,7 @@
  * (vocal-signal waveform + affect meters) sells it as a product in the world.
  */
 import type { ResolvedChoice } from '../core/types';
-import { el, clear, Icons } from './dom';
+import { el, clear, Icons, smartQuotes } from './dom';
 
 export type SelectHandler = (index: number) => void;
 
@@ -117,7 +117,7 @@ export class ProxyPanel {
       [
         el('span', { class: 'pq-tile__num', text: index + 1, aria: { hidden: true } }),
         el('span', { class: 'pq-tile__scan', aria: { hidden: true } }),
-        el('span', { class: 'pq-tile__text', text: opt.text }),
+        el('span', { class: 'pq-tile__text', text: smartQuotes(opt.text) }),
         el('span', { class: 'pq-tile__cue', text: 'suggested', aria: { hidden: true } }),
       ],
     );
@@ -138,7 +138,7 @@ export class ProxyPanel {
         el('span', { class: 'pq-tile__quill', html: Icons.quill, aria: { hidden: true } }),
         el('span', { class: 'pq-tile__off' }, [
           el('span', { class: 'pq-tile__offlabel', text: 'say your own words' }),
-          el('span', { class: 'pq-tile__text', text: opt.text }),
+          el('span', { class: 'pq-tile__text', text: smartQuotes(opt.text) }),
         ]),
         el('span', { class: 'pq-tile__num pq-tile__num--off', text: index + 1, aria: { hidden: true } }),
       ],

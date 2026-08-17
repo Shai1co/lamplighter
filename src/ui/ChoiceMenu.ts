@@ -6,7 +6,7 @@
  * mechanic stays visually special.
  */
 import type { ResolvedChoice } from '../core/types';
-import { clear, el } from './dom';
+import { clear, el, smartQuotes } from './dom';
 import type { SelectHandler } from './ProxyPanel';
 
 export class ChoiceMenu {
@@ -48,7 +48,7 @@ export class ChoiceMenu {
         },
         [
           el('span', { class: 'pq-choice__num', text: i + 1, aria: { hidden: true } }),
-          el('span', { class: 'pq-choice__text', text: opt.text }),
+          el('span', { class: 'pq-choice__text', text: smartQuotes(opt.text) }),
         ],
       );
       this.listEl.appendChild(row);

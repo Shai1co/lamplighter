@@ -13,7 +13,7 @@
  * for data eyebrows, and a single story card carrying the art.
  */
 import type { StoryManifest } from '../core/types';
-import { clear, el, rgbTriplet } from './dom';
+import { clear, el, rgbTriplet, smartQuotes } from './dom';
 
 /** Slots the rail always shows — real stories first, the remainder dimmed. */
 const RAIL_SLOTS = 3;
@@ -36,6 +36,8 @@ export class TitleScreen {
   private readonly railEl: HTMLElement;
   private readonly menuEl: HTMLElement;
   private readonly plateEl: HTMLImageElement;
+  private readonly liftEl: HTMLImageElement;
+  private readonly clarityEl: HTMLImageElement;
   private readonly bokehEl: HTMLImageElement;
   private readonly h: TitleHandlers;
   private stories: StoryManifest[] = [];
@@ -53,6 +55,13 @@ export class TitleScreen {
         on: { error: (e: Event) => ((e.currentTarget as HTMLElement).hidden = true) },
       });
     this.plateEl = plate('pq-title__plate');
+    // Two colourist's power windows, both cut from the SAME plate and driven by
+    // the same drift keyframes so they stay in perfect register with it: one
+    // opens the exposure over the right/lower-right so the chairs, desks and wet
+    // floor that are painted there stop being one black value; the other adds
+    // local contrast over the desk still-life so the frame has a sharp plane.
+    this.liftEl = plate('pq-title__lift');
+    this.clarityEl = plate('pq-title__clarity');
     this.bokehEl = plate('pq-title__bokeh');
 
     this.root = el(
@@ -61,6 +70,8 @@ export class TitleScreen {
       [
         el('div', { class: 'pq-title__bg', aria: { hidden: true } }, [
           this.plateEl,
+          this.liftEl,
+          this.clarityEl,
           this.bokehEl,
           // Authored bokeh: three discrete depth layers of city lights sitting on a
           // horizon that rises out of the bottom edge, so the base of the frame is
@@ -74,12 +85,20 @@ export class TitleScreen {
           el('div', { class: 'pq-title__rain' }),
           // The one sharp plane in the shot: rain actually running on the pane.
           el('div', { class: 'pq-title__glass' }),
+          // The near partition post the story card is hung on, so the card has a
+          // piece of architecture to align to instead of floating on the plate.
+          el('div', { class: 'pq-title__mullion' }),
           el('div', { class: 'pq-title__lamp' }),
           el('div', { class: 'pq-title__scrim' }),
           // The desk practicals, re-lit ABOVE the scrim so the lamp, the monitor
           // and the mug survive the print-down and the lower-left reads as a room
           // rather than as a black corner.
           el('div', { class: 'pq-title__practicals' }),
+          // The monitor, drawn as an actual panel rather than as a glow: a lit
+          // rectangle on the plate's own screen coordinates plus the short throw
+          // it lays on the desk. A cool hotspot with no visible source is the
+          // one accent in the left half nothing in the room explains.
+          el('div', { class: 'pq-title__screen' }),
           // The dead middle of the frame, given something to be: reflected rain
           // on the glass plus dust drifting through the lamp's throw.
           el('div', { class: 'pq-title__motes' }),
@@ -157,7 +176,7 @@ export class TitleScreen {
   private applyBackdrop(): void {
     const story = this.stories[this.featured];
     const url = story ? (this.h.backdropUrl(story.id) ?? this.h.coverUrl(story.id)) : undefined;
-    for (const img of [this.plateEl, this.bokehEl]) {
+    for (const img of [this.plateEl, this.liftEl, this.clarityEl, this.bokehEl]) {
       if (url) {
         if (img.getAttribute('src') !== url) img.setAttribute('src', url);
         img.hidden = false;
@@ -208,6 +227,10 @@ export class TitleScreen {
     // Empty shelf space is summarized in one quiet ledger row so the rail
     // terminates on the menu baseline instead of repeating disabled chrome.
     const locked = Math.max(0, RAIL_SLOTS - this.stories.length);
+    // The ledger row is a FOOTER of the card above it, not a free-floating bar:
+    // the flag lets the rail square off the last card's bottom corners so the
+    // two share one frame. A detached micro-bar reads as unfinished layout.
+    this.railEl.classList.toggle('has-lock', locked > 0);
     if (locked > 0) this.railEl.appendChild(this.buildLockedSlot(locked));
   }
 
@@ -248,6 +271,12 @@ export class TitleScreen {
         // pass prints it back down onto the same teal night the backdrop is graded
         // to, so the card belongs to the frame instead of sitting on top of it.
         el('div', { class: 'pq-storycard__grade' }),
+        // The thumbnail's focal logic, drawn rather than downsampled: one warm
+        // light cluster with crisp practicals inside it, a stated horizon, the
+        // reflections that fall from it, and the same rain rake as the backdrop.
+        // At 494px a painted skyline resolves to mush unless something in it
+        // carries a hard edge.
+        el('div', { class: 'pq-storycard__spark' }),
         el('div', { class: 'pq-storycard__grain' }),
         el('div', { class: 'pq-storycard__glow' }),
       ],
@@ -271,7 +300,7 @@ export class TitleScreen {
         art,
         el('div', { class: 'pq-storycard__body' }, [
           el('h3', { class: 'pq-storycard__title', text: story.title }),
-          story.subtitle ? el('p', { class: 'pq-storycard__sub', text: story.subtitle }) : null,
+          story.subtitle ? el('p', { class: 'pq-storycard__sub', text: smartQuotes(story.subtitle) }) : null,
           el('div', { class: 'pq-storycard__foot' }, [
             story.author ? el('span', { class: 'pq-storycard__author', text: story.author }) : null,
             el('span', { class: 'pq-storycard__cta' }, [

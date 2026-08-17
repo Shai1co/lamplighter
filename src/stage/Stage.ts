@@ -142,6 +142,96 @@ function softenLocalContrast(
 }
 
 /**
+ * Local-contrast GAIN over a soft elliptical region, in place, on RGBA bytes.
+ *
+ * The inverse of `softenLocalContrast` and built on the same two separable box
+ * passes: `out = blur + (src - blur) · (1 + amount · w)`, where `w` is a soft
+ * elliptical window in plate UV. It is a classic unsharp mask, and it is the
+ * only instrument that can answer the note it exists for.
+ *
+ * That note: the desk vignette and the city bokeh were rendered at the SAME
+ * sharpness, so the frame had no focal statement — and softness applied
+ * uniformly across a picture does not read as depth of field, it reads as an
+ * upscale. The far half is now genuinely resolved away in the grade (see
+ * uFieldBlur), and the near half has to move the other way to meet it: a lamp
+ * rim, a mug lip, a headset band and a monitor bezel that are demonstrably
+ * CRISP are what make the softness beyond them read as a lens rather than as a
+ * rendering failure.
+ *
+ * Confined to the region and feathered to nothing at its boundary, so nothing
+ * anywhere acquires an edge; run once, at load, beside the practical shoulder.
+ */
+function crispenRegion(
+  px: Uint8ClampedArray,
+  w: number,
+  h: number,
+  amount: number,
+  radius: number,
+  region: { cx: number; cy: number; rx: number; ry: number; soft: number },
+): void {
+  if (amount <= 0 || radius < 1) return;
+  const n = w * h;
+  const src = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    src[i * 3] = px[i * 4];
+    src[i * 3 + 1] = px[i * 4 + 1];
+    src[i * 3 + 2] = px[i * 4 + 2];
+  }
+  const blur = Float32Array.from(src);
+  const tmp = new Float32Array(n * 3);
+  const win = radius * 2 + 1;
+
+  for (let pass = 0; pass < 2; pass++) {
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        for (let k = -radius; k <= radius; k++) {
+          sum += blur[(row + Math.min(w - 1, Math.max(0, k))) * 3 + c];
+        }
+        for (let x = 0; x < w; x++) {
+          tmp[(row + x) * 3 + c] = sum / win;
+          sum +=
+            blur[(row + Math.min(w - 1, x + radius + 1)) * 3 + c] -
+            blur[(row + Math.max(0, x - radius)) * 3 + c];
+        }
+      }
+    }
+    for (let x = 0; x < w; x++) {
+      for (let c = 0; c < 3; c++) {
+        let sum = 0;
+        for (let k = -radius; k <= radius; k++) {
+          sum += tmp[(Math.min(h - 1, Math.max(0, k)) * w + x) * 3 + c];
+        }
+        for (let y = 0; y < h; y++) {
+          blur[(y * w + x) * 3 + c] = sum / win;
+          sum +=
+            tmp[(Math.min(h - 1, y + radius + 1) * w + x) * 3 + c] -
+            tmp[(Math.max(0, y - radius) * w + x) * 3 + c];
+        }
+      }
+    }
+  }
+
+  const inner = Math.max(1 - region.soft, 0);
+  const outer = 1 + region.soft;
+  for (let y = 0; y < h; y++) {
+    const dv = ((y + 0.5) / h - region.cy) / Math.max(region.ry, 1e-4);
+    for (let x = 0; x < w; x++) {
+      const du = ((x + 0.5) / w - region.cx) / Math.max(region.rx, 1e-4);
+      const d = Math.sqrt(du * du + dv * dv);
+      if (d >= outer) continue;
+      const gain = 1 + amount * (1 - smoothstep(inner, outer, d));
+      const i = (y * w + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const b = blur[(y * w + x) * 3 + c];
+        px[i + c] = b + (src[(y * w + x) * 3 + c] - b) * gain;
+      }
+    }
+  }
+}
+
+/**
  * Tuning for the character "presence" treatment (see `toPresenceTexture`).
  * All coordinates are normalized image space, origin top-left.
  *
@@ -360,8 +450,18 @@ const PRESENCE = {
    * The ratio is a 2700K tungsten source normalised to red (1.00 : 0.67 : 0.36)
    * — the same fixture the room grade's practical is struck from, so the lamp
    * on the desk and the light on her face are demonstrably one bulb.
+   *
+   * 0.25 → 0.34. The note was that the lamp shade's interior was the brightest
+   * value in the frame and her face was not, which is a luminance HIERARCHY
+   * failure — the eye goes to the brightest thing and the brightest thing was a
+   * prop. It is fixed from both ends, because a face cannot simply be printed
+   * brighter without going chalky: the practical comes down 15% at the plate
+   * bake (see compressPracticals) and her lit planes come up here. The two
+   * moves together are worth about half a stop of separation, which is the
+   * amount asked for; either one alone would have been worth an eighth of it
+   * and would have cost either her skin or the room's key light.
    */
-  keyAmt: 0.25,
+  keyAmt: 0.34,
   keyR: 1.0,
   keyG: 0.67,
   keyB: 0.36,
@@ -375,6 +475,58 @@ const PRESENCE = {
   keyLumRollFrom: 0.62,
   keyLumRollTo: 0.95,
   keyRoll: 0.55,
+
+  /* ── The monitor ──────────────────────────────────────────────────────────
+   * Her frontal soft key had no source. The lamp above accounts for the warm
+   * side of her — camera-left, upper, falling off across the cheek — and it
+   * accounts for nothing at all about the soft fill on the front of her face,
+   * which was simply *there*, at an even level, from a direction the room does
+   * not contain. Unmotivated fill is the exact signature of a portrait lit in
+   * one place and composited into another, and it is what the frame was being
+   * called on.
+   *
+   * The room already owns the answer and the story insists on it: she is on a
+   * call, at a desk, in front of a relay screen — there is a lit panel eighteen
+   * inches from her chin at lower screen-left, and it is IN SHOT (the LUMEN
+   * RELAY board, painted into the plate). So the fill is given to it.
+   *
+   * A monitor is not a second key and must not be shaped like one. Three things
+   * separate a screen bounce from a lamp, and all three are in the weights:
+   *   • it comes from BELOW — spillRise runs zero across the crown and full by
+   *     the jaw, so it lights the underside of the chin, the throat and the
+   *     near shoulder, which is where anybody sitting at a screen catches it;
+   *   • it is DIM and it therefore lives in the MIDTONES and the shadow side. Its
+   *     luminance gate opens far lower than the key's (0.06 rather than 0.10)
+   *     and then rolls hard back off above 0.45, so it never touches a specular
+   *     the lamp already owns. A screen bounce that lands on a highlight is a
+   *     colour cast; one that lands on a shadow plane is light;
+   *   • it is COOL — the room key #7db4c8 peak-normalised to (0.63, 0.90, 1.00),
+   *     the same teal the glass, the rain, the split-tone and the relay board's
+   *     own emissive are all struck from. Not a fourth colour in the frame: the
+   *     grade, arriving on her face from the object that emits it.
+   *
+   * Applied as a per-channel GAIN alongside the key, for the same reason the key
+   * is — light scales what a surface reflects, and an additive fill lifts blacks,
+   * which is precisely the composited-plate tell this whole block exists to kill.
+   */
+  spillAmt: 0.2,
+  spillR: 0.63,
+  spillG: 0.9,
+  spillB: 1.0,
+  /** Direction ramp in u−cx: full at the screen side, gone across her far cheek.
+   *  Reaches further left and dies sooner than the key's — the panel is closer,
+   *  lower and much weaker than the lamp, so its throw is shorter. */
+  spillDirStart: -0.34,
+  spillDirEnd: 0.06,
+  /** The from-below ramp, in v. Zero at the crown, full by the jaw/shoulder. */
+  spillRiseStart: 0.24,
+  spillRiseEnd: 0.56,
+  /** Luminance gate — opens in the shadow planes, rolls off before the speculars. */
+  spillLumIn: 0.06,
+  spillLumFull: 0.3,
+  spillLumRollFrom: 0.45,
+  spillLumRollTo: 0.85,
+  spillRoll: 0.72,
 
   /* ── Backdrop falloff ─────────────────────────────────────────────────────
    * The matte says where the plate ENDS. It says nothing about what the plate
@@ -448,6 +600,87 @@ const PLATE_SCREENS: Record<string, PlateScreen> = {
   ops_room: { ox: 0.1698, oy: 0.4944, ux: 0.09375, uy: -0.0074, vx: 0.008854, vy: 0.13426, bw: 180, bh: 146 },
 };
 
+/* ── What is on THIS side of the glass ───────────────────────────────────────
+ *
+ * The weather rig draws rain, rivulets, a sheet and a mullion, and every one of
+ * those belongs to a plane the camera is BEHIND. The ops room puts a desk, a
+ * task lamp, a monitor, a mug and a headset between the lens and that plane,
+ * and until now the rig had no way to know: streaks fell across the lamp's own
+ * shade, rivulets tracked down the monitor bezel, and the frame's loudest note
+ * ("unmotivated rain over the whole picture") was the direct consequence.
+ *
+ * A figure can be projected every frame because it is an object in the scene
+ * graph. Furniture cannot — it is paint on a plate — so it is DECLARED here,
+ * beside the plate's other authored geometry, in the framed screen (0..1, y-up)
+ * the light field is already sampled in. Ellipses only: a rectangle of "no
+ * rain" has corners, and a corner in a weather field is a matte.
+ *
+ * The numbers are measured off a 1920×1080 capture of the framed plate, not off
+ * the texture — the plate is drawn at 1.3× overscan and slid by the framing
+ * bias, so texture coordinates and screen coordinates are two different things
+ * here (see computeFraming).
+ */
+interface InteriorSpec {
+  lobes: ReadonlyArray<{ cx: number; cy: number; rx: number; ry: number; soft: number }>;
+  amount: number;
+}
+
+const PLATE_INTERIORS: Record<string, InteriorSpec> = {
+  ops_room: {
+    lobes: [
+      // The desk vignette: lamp, shade, monitor, mug, headset and the desktop
+      // they sit on. Screen x 60→700, y 320→890 at 1920×1080.
+      { cx: 0.2, cy: 0.44, rx: 0.24, ry: 0.32, soft: 0.34 },
+      // The floor. Wide and flat and hung off the bottom edge, so the whole
+      // band below the horizon is room rather than window — the rig used to
+      // rain onto the carpet, which is the same error one storey down. The
+      // glass/floor junction sits at y≈740 (0.315 y-up), so the ellipse is
+      // centred low enough to be at full strength by the time it is under the
+      // desk line and to release into nothing at the junction itself: a streak
+      // on the far pane that dies where the floor begins is exactly what a
+      // window in a lit room does.
+      { cx: 0.5, cy: 0.02, rx: 0.9, ry: 0.3, soft: 0.35 },
+      // The chair back at the focal midline (the mass the ::before pass rims).
+      { cx: 0.49, cy: 0.375, rx: 0.1, ry: 0.24, soft: 0.4 },
+      // The wall and ceiling ABOVE the desk. This is the one the first pass
+      // missed and it is the most visible of the four: two streaks were falling
+      // down a flat dark partition at x≈0.08 and x≈0.15, well clear of any
+      // window, and a raindrop over an interior wall is the single most
+      // literal version of the note. The window wall does not begin until
+      // x≈0.36, so the lobe can be generous.
+      { cx: 0.12, cy: 0.84, rx: 0.28, ry: 0.3, soft: 0.42 },
+    ],
+    amount: 1,
+  },
+};
+
+/* ── Where the lens is focused ───────────────────────────────────────────────
+ *
+ * See PostFX.setFieldFocus. One ellipse per plate around the thing the camera
+ * is actually on — for the ops room the desk vignette, which is both the
+ * nearest object and the only lit one — plus how far out of focus the far edge
+ * is allowed to go, in UV (0.0042 ≈ 8px at 1920).
+ *
+ * `bridge` is the shadow-family unifier in the same grade (see uShadowBridge):
+ * how hard the band of ungraded murk between the warm pool and the teal city is
+ * pulled into the window's own shadow hue.
+ */
+interface FocusSpec {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  blur: number;
+  bridge: number;
+}
+
+const PLATE_FOCUS: Record<string, FocusSpec> = {
+  ops_room: { cx: 0.2, cy: 0.42, rx: 0.2, ry: 0.28, blur: 0.0042, bridge: 0.34 },
+  // A deep-focus daylit reading room: nothing to rack away from, and its murk
+  // is warm rather than green, so neither instrument applies.
+  memory_atrium: { cx: 0.5, cy: 0.5, rx: 1, ry: 1, blur: 0, bridge: 0 },
+};
+
 /** The board's three queue rows: line id, state, and whether the state is warm. */
 const CALL_ROWS: ReadonlyArray<readonly [string, string, boolean]> = [
   ['04-11', 'HOLD', true],
@@ -506,10 +739,24 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   // 1 — the panel ground. Not opaque: what shows through is the glow the painter
   // already put on this screen, which is now reading as the board's backlight
   // instead of as an absence of content.
+  //
+  // …but very nearly. This gradient is the fix for the frame's "amorphous glare
+  // blob" note, and it is a deliberate walk toward opacity: 0.82/0.74/0.60 →
+  // 0.90/0.89/0.92. The painting puts a soft unshaped flare across this monitor,
+  // and at 60% transmission on the bottom band it was landing squarely on the
+  // vocal trace — the one instrument on this board with fine structure in it.
+  // Half the strokes dissolved into it, and a waveform that is legible for
+  // thirteen bars and a smear for the other thirteen does not read as glare, it
+  // reads as the renderer failing.
+  //
+  // The remaining ~10% still carries the painter's own backlight (which is the
+  // reason this was never opaque), and the board supplies the rest of its glow
+  // itself, from its own radial. The reflection is not deleted — it is moved to
+  // where the geometry actually puts it and given an EDGE. See step 5.
   const ground = ctx.createLinearGradient(0, 0, 0, bh);
-  ground.addColorStop(0, 'rgba(7, 21, 26, 0.82)');
-  ground.addColorStop(0.6, 'rgba(6, 17, 22, 0.74)');
-  ground.addColorStop(1, 'rgba(5, 13, 17, 0.6)');
+  ground.addColorStop(0, 'rgba(7, 21, 26, 0.9)');
+  ground.addColorStop(0.6, 'rgba(6, 17, 22, 0.89)');
+  ground.addColorStop(1, 'rgba(5, 13, 17, 0.92)');
   ctx.fillStyle = ground;
   ctx.fillRect(0, 0, bw, bh);
 
@@ -586,19 +833,128 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
     ctx.fillRect(x0 + t * (span - 2), mid - amp, 2, amp * 2);
   }
 
+  // 5 — the lamp, reflected in the panel glass. A SHAPE, not a haze.
+  //
+  // There is a shaded desk lamp two feet to the left of this monitor and it is
+  // in shot, so the screen must show it — a lit panel with no reflection on it
+  // is the flattest object a night interior can contain. What it must NOT show
+  // is what it was showing: a soft amorphous bloom with no boundary, spread
+  // across the lower half and eating the vocal trace. Read at a glance that is
+  // not a reflection, it is a rendering smear, and the difference between the
+  // two is entirely the EDGE.
+  //
+  // So the reflection is drawn as the object it is a reflection of: the shade's
+  // elliptical mouth, seen at a rake, as a narrow parallelogram with a hard
+  // leading edge and a short falloff behind it. It is put in the upper-left
+  // corner — the corner nearest the lamp, which is where the geometry actually
+  // puts it, and the one region of this board with no type in it. Kept under
+  // 6% so it never competes with the queue rows it passes beside.
+  ctx.shadowBlur = 0;
+  ctx.save();
+  ctx.beginPath();
+  // The sliver: leading edge crisp on the lamp side, trailing edge released.
+  ctx.moveTo(-4, 30);
+  ctx.lineTo(34, -6);
+  ctx.lineTo(52, -6);
+  ctx.lineTo(-4, 47);
+  ctx.closePath();
+  ctx.clip();
+  const flare = ctx.createLinearGradient(-4, 30, 46, -4);
+  flare.addColorStop(0, 'rgba(246, 206, 150, 0.0)');
+  flare.addColorStop(0.42, 'rgba(246, 206, 150, 0.055)');
+  flare.addColorStop(1, 'rgba(246, 206, 150, 0.012)');
+  ctx.fillStyle = flare;
+  ctx.fillRect(-8, -8, bw + 16, bh + 16);
+  ctx.restore();
+
   ctx.restore();
 }
 
-/**
- * Re-bake a background plate with its screen prop, once, at load.
+/* ── The practical's shoulder ────────────────────────────────────────────────
  *
- * Returns the source texture untouched whenever there is nothing to do or the
- * pixels can't be read (no 2D context, a tainted cross-origin canvas) — the
- * stage must never fail to draw because a prop could not be painted.
+ * The interior of the lamp shade was the brightest value in the frame, and the
+ * speaker's face was not. That is a luminance HIERARCHY failure and it is worth
+ * more than it sounds: the eye lands on the brightest thing first and holds
+ * there, so every frame opened on a prop in the left third and had to be
+ * actively dragged back to the person the scene is about.
+ *
+ * The fix belongs on the PLATE, not in the composite grade, and the distinction
+ * is the whole design of this function. GRADE_FRAGMENT already carries a print
+ * shoulder; tightening it would have knocked the lamp down and taken her lit
+ * cheek with it, because the grade sees one image and cannot tell a practical
+ * from a face. Baked into the background plate at load, the compression can only
+ * ever touch the painted room — the portrait plate is a separate texture on a
+ * separate plane and never passes through here at all. So the lamp comes down
+ * and the face does not.
+ *
+ * Shaped as an exponential shoulder rather than a clip, for the same reason the
+ * grade's is: a clip flattens a falloff into a slab, which is the thing that
+ * made the shade read as a blown JPEG in the first place. KNEE 0.62 / CEIL 0.90
+ * is deliberately a very high knee — at L = 0.70 (the lamp-lit desk pool) it
+ * takes 1.5%, i.e. nothing; at L = 0.85 it takes 9%; at L = 1.0, which is the
+ * shade's interior and essentially nothing else in this painting, it takes 17%.
+ * The brief asked for ~15% off the hotspot and no cost anywhere else, and a
+ * shoulder is the only instrument that can bill exactly the top of the range.
+ *
+ * Applied as a RATIO across the three channels, never per-channel — a
+ * per-channel knee compresses whichever channel is highest and therefore walks
+ * a tungsten highlight toward white, which is precisely backwards for a shade
+ * that should be going amber as it falls off. What it pulls down it also warms
+ * by the amount it pulled, on the same discipline.
+ */
+const PRACTICAL_KNEE = 0.62;
+const PRACTICAL_CEIL = 0.9;
+
+/**
+ * The plate's near, sharp half — the region `crispenRegion` bites on, in the
+ * plate's OWN uv (y down), plus how hard and at what radius.
+ *
+ * 4px at 1920 is an EDGE radius, not a form-shadow one: it crispens the lamp
+ * rim, the mug lip, the headset band and the monitor bezel and leaves the
+ * lighting on the desktop exactly as painted. 0.34 is the point at which those
+ * edges read as decided against the newly-resolved city behind them without the
+ * halo an unsharp mask starts printing past about 0.45.
+ */
+const PLATE_CRISP: Record<
+  string,
+  { amount: number; radius: number; cx: number; cy: number; rx: number; ry: number; soft: number }
+> = {
+  ops_room: { amount: 0.34, radius: 0.0021, cx: 0.175, cy: 0.62, rx: 0.19, ry: 0.27, soft: 0.35 },
+};
+
+function compressPracticals(px: Uint8ClampedArray): void {
+  const span = PRACTICAL_CEIL - PRACTICAL_KNEE;
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i] / 255;
+    const g = px[i + 1] / 255;
+    const b = px[i + 2] / 255;
+    const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    if (l <= PRACTICAL_KNEE) continue;
+    const rolled = PRACTICAL_KNEE + span * (1 - Math.exp(-(l - PRACTICAL_KNEE) / span));
+    const k = rolled / l;
+    // …and the warmth it owes back, scaled by how far it was pulled.
+    const warm = 1 - k;
+    px[i] = Math.min(255, r * k * (1 + warm * 0.06) * 255);
+    px[i + 1] = Math.min(255, g * k * (1 - warm * 0.01) * 255);
+    px[i + 2] = Math.min(255, b * k * (1 - warm * 0.12) * 255);
+  }
+}
+
+/**
+ * Re-bake a background plate, once, at load: its practicals are given a print
+ * shoulder (see compressPracticals) and, where the plate declares one, its
+ * screen prop is painted on (see drawCallBoard).
+ *
+ * Order is load-bearing. The shoulder runs on the PAINTING only; the call board
+ * is drawn afterwards because it is an emissive UI element with its own measured
+ * levels, and compressing it would undo the exposure it was tuned to.
+ *
+ * Returns the source texture untouched whenever the pixels can't be read (no 2D
+ * context, a tainted cross-origin canvas) — the stage must never fail to draw
+ * because a prop could not be painted.
  */
 function paintPlateScreen(id: string, src: THREE.Texture): THREE.Texture {
   const spec = PLATE_SCREENS[id];
-  if (!spec) return src;
   const img = src.image as (CanvasImageSource & { width?: number; height?: number }) | undefined;
   const w = Math.floor(img?.width ?? 0);
   const h = Math.floor(img?.height ?? 0);
@@ -611,7 +967,25 @@ function paintPlateScreen(id: string, src: THREE.Texture): THREE.Texture {
   if (!ctx) return src;
   try {
     ctx.drawImage(img, 0, 0, w, h);
-    drawCallBoard(ctx, spec, w, h);
+    const frame = ctx.getImageData(0, 0, w, h);
+    compressPracticals(frame.data);
+    // …and then the near half is crispened, BEFORE the board is drawn. The
+    // board is 12px type on a 180px panel and is emissive by construction; an
+    // unsharp mask over it would put a halo round every glyph, which is the one
+    // artefact that reads as composited rather than painted.
+    const crisp = PLATE_CRISP[id];
+    if (crisp) {
+      crispenRegion(
+        frame.data,
+        w,
+        h,
+        crisp.amount,
+        Math.max(1, Math.round(w * crisp.radius)),
+        crisp,
+      );
+    }
+    ctx.putImageData(frame, 0, 0);
+    if (spec) drawCallBoard(ctx, spec, w, h);
   } catch {
     return src;
   }
@@ -686,6 +1060,11 @@ export class Stage implements IStage {
   private framingY = 0;
   /** Scratch for the per-frame figure-mask projection — never allocate in a loop. */
   private readonly figureProbe = new THREE.Vector3();
+  /** The current plate's declared focal composition (see PLATE_FOCUS). */
+  private plateFocus: FocusSpec | null = null;
+  /** Last published speaker footprint (cx, cy, rx, ry), or null when the stage
+   *  is empty — the other half of what the focal plane is computed from. */
+  private figureFocus: { cx: number; cy: number; rx: number; ry: number } | null = null;
 
   private readonly unsub: Array<() => void> = [];
 
@@ -933,6 +1312,16 @@ export class Stage implements IStage {
     this.computeFraming(plate);
     this.applyLayers(textures.length === 0 ? [plate] : textures, parallax);
     this.updateLightField(plate);
+    // What in this room is on the camera's side of the glass, and where the
+    // lens is focused on it. Both are properties of the PLATE, so both are
+    // republished with it — a scene change re-aims the weather fence and the
+    // depth of field together, or retires them for a plate that declares
+    // neither. See PLATE_INTERIORS / PLATE_FOCUS.
+    const interior = PLATE_INTERIORS[id];
+    this.weather.setInteriorMask(interior?.lobes ?? [], interior?.amount ?? 0);
+    this.plateFocus = PLATE_FOCUS[id] ?? null;
+    this.applyFieldFocus();
+    this.postfx.setShadowBridge(this.plateFocus?.bridge ?? 0);
 
     this.refreshFocus();
     void this.transitions.play(transition ?? (this.hasBackground ? 'dissolve' : 'crossfade'));
@@ -1135,6 +1524,46 @@ export class Stage implements IStage {
       // Halved along with the radius: a tight specular, not a lens smudge.
       amount: best > 0.02 ? 0.05 : 0,
     });
+  }
+
+  /**
+   * Resolve the frame's focal plane and hand it to the grade.
+   *
+   * The plate declares where the camera is focused when the room is empty — for
+   * the ops room, the desk vignette, which is both the nearest object and the
+   * only lit one. The moment a speaker walks into it that stops being true, and
+   * a rack focus that stays on the furniture while a face is on screen is worse
+   * than no depth of field at all: it is the wrong depth of field, and the one
+   * thing the frame must never soften is the person the scene is about.
+   *
+   * A speaker does not simply MOVE the focal plane, though, because the desk is
+   * still in shot and still painted crisp. Both are on the near plane; what is
+   * far is the city behind them. So the two ellipses are UNIONED — the near
+   * plane, described by everything that is actually on it — and only what lies
+   * outside both is resolved away. With nobody on stage the union collapses back
+   * to the plate's own ellipse and the wide shot keeps its full separation.
+   */
+  private applyFieldFocus(): void {
+    const p = this.plateFocus;
+    if (!p || p.blur <= 0) {
+      this.postfx.setFieldFocus(p?.cx ?? 0.5, p?.cy ?? 0.5, p?.rx ?? 1, p?.ry ?? 1, 0);
+      return;
+    }
+    const f = this.figureFocus;
+    if (!f) {
+      this.postfx.setFieldFocus(p.cx, p.cy, p.rx, p.ry, p.blur);
+      return;
+    }
+    // A portrait is read at the eyes, which sit above the centroid of its quad,
+    // and its plate is much taller than it is wide — so the figure's own ellipse
+    // is padded a little rather than taken raw.
+    const fx = f.rx * 1.15;
+    const fy = f.ry * 1.05;
+    const lo = Math.min(p.cx - p.rx, f.cx - fx);
+    const hi = Math.max(p.cx + p.rx, f.cx + fx);
+    const bo = Math.min(p.cy - p.ry, f.cy - fy);
+    const to = Math.max(p.cy + p.ry, f.cy + fy);
+    this.postfx.setFieldFocus((lo + hi) * 0.5, (bo + to) * 0.5, (hi - lo) * 0.5, (to - bo) * 0.5, p.blur);
   }
 
   /**
@@ -1361,6 +1790,10 @@ export class Stage implements IStage {
     if (!best || presence <= 0.01) {
       this.weather.setFigureMask(0.5, 0.5, 1e-4, 1e-4, 0);
       this.contactShadow.visible = false;
+      if (this.figureFocus) {
+        this.figureFocus = null;
+        this.applyFieldFocus();
+      }
       return;
     }
     const cam = this.camera.camera;
@@ -1377,13 +1810,19 @@ export class Stage implements IStage {
     const cx = v.x * 0.5 + 0.5;
     const cy = v.y * 0.5 + 0.5;
     v.set(b.x + b.hx, b.y + b.hy, CHAR_Z).project(cam);
-    this.weather.setFigureMask(
-      cx,
-      cy,
-      Math.abs(v.x * 0.5 + 0.5 - cx),
-      Math.abs(v.y * 0.5 + 0.5 - cy),
-      presence,
-    );
+    const rx = Math.abs(v.x * 0.5 + 0.5 - cx);
+    const ry = Math.abs(v.y * 0.5 + 0.5 - cy);
+    this.weather.setFigureMask(cx, cy, rx, ry, presence);
+    // The focal plane follows her. Only republished when the footprint has
+    // actually moved by a pixel or so — the uniform is cheap, but the union
+    // arithmetic behind it is not worth running sixty times a second for a
+    // figure that is only breathing.
+    const prev = this.figureFocus;
+    if (!prev || Math.abs(prev.cx - cx) > 0.002 || Math.abs(prev.cy - cy) > 0.002 ||
+        Math.abs(prev.rx - rx) > 0.004 || Math.abs(prev.ry - ry) > 0.004) {
+      this.figureFocus = { cx, cy, rx, ry };
+      this.applyFieldFocus();
+    }
   }
 
   /* ───────────────────────────  settings / resize  ─────────────────────────── */
@@ -1529,6 +1968,9 @@ export class Stage implements IStage {
       // plate can miss this (or the key).
       const shadeRow =
         1 - PRESENCE.shadeAmt * smoothstep(PRESENCE.shadeStart, PRESENCE.shadeEnd, v);
+      // The monitor throws from BELOW — see PRESENCE.spill*. Constant across the
+      // row, like every other vertical weight here.
+      const spillRise = smoothstep(PRESENCE.spillRiseStart, PRESENCE.spillRiseEnd, v);
       const row = y * w * 4;
       for (let x = 0; x < w; x++) {
         const u = (x + 0.5) / w;
@@ -1548,15 +1990,31 @@ export class Stage implements IStage {
         // actually falls on.
         const keyDir =
           1 - smoothstep(PRESENCE.keyDirStart, PRESENCE.keyDirEnd, dx);
+        // …and the relay screen's own throw, from lower camera-left. Shares the
+        // key's construction exactly — direction × surface × presence × torso —
+        // and differs only in where each of those is aimed. See PRESENCE.spill*.
+        const spillDir =
+          1 - smoothstep(PRESENCE.spillDirStart, PRESENCE.spillDirEnd, dx);
         let key = 0;
-        if (keyDir > 0 && shadeRow > 0) {
+        let spill = 0;
+        if ((keyDir > 0 || spillDir * spillRise > 0) && shadeRow > 0) {
           const lum = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
-          const surf =
-            smoothstep(PRESENCE.keyLumIn, PRESENCE.keyLumFull, lum) *
-            (1 -
-              PRESENCE.keyRoll *
-                smoothstep(PRESENCE.keyLumRollFrom, PRESENCE.keyLumRollTo, lum));
-          key = PRESENCE.keyAmt * keyDir * surf * a * shadeRow;
+          if (keyDir > 0) {
+            const surf =
+              smoothstep(PRESENCE.keyLumIn, PRESENCE.keyLumFull, lum) *
+              (1 -
+                PRESENCE.keyRoll *
+                  smoothstep(PRESENCE.keyLumRollFrom, PRESENCE.keyLumRollTo, lum));
+            key = PRESENCE.keyAmt * keyDir * surf * a * shadeRow;
+          }
+          if (spillDir > 0 && spillRise > 0) {
+            const surfC =
+              smoothstep(PRESENCE.spillLumIn, PRESENCE.spillLumFull, lum) *
+              (1 -
+                PRESENCE.spillRoll *
+                  smoothstep(PRESENCE.spillLumRollFrom, PRESENCE.spillLumRollTo, lum));
+            spill = PRESENCE.spillAmt * spillDir * spillRise * surfC * a * shadeRow;
+          }
         }
         // Backdrop falloff — see PRESENCE.backdrop*. Folded into `shade`, so
         // the key wash above and the torso dissolve below all scale with it and
@@ -1591,17 +2049,23 @@ export class Stage implements IStage {
           PRESENCE.rimCoolDirMin +
           (1 - PRESENCE.rimCoolDirMin) * (1 - smoothstep(-0.06, 0.22, dx));
         const cool = PRESENCE.rimCoolAmt * coolBand * coolDir * shadeRow;
+        // Both sources are gains on the same surface, so they SUM inside the
+        // multiplier rather than compounding: two lights on a cheek add their
+        // contributions, they do not multiply each other's.
         px[i] = Math.min(
           255,
-          px[i] * shade * (1 + key * PRESENCE.keyR) + lift * PRESENCE.rimR + cool * PRESENCE.rimCoolR,
+          px[i] * shade * (1 + key * PRESENCE.keyR + spill * PRESENCE.spillR) +
+            lift * PRESENCE.rimR + cool * PRESENCE.rimCoolR,
         );
         px[i + 1] = Math.min(
           255,
-          px[i + 1] * shade * (1 + key * PRESENCE.keyG) + lift * PRESENCE.rimG + cool * PRESENCE.rimCoolG,
+          px[i + 1] * shade * (1 + key * PRESENCE.keyG + spill * PRESENCE.spillG) +
+            lift * PRESENCE.rimG + cool * PRESENCE.rimCoolG,
         );
         px[i + 2] = Math.min(
           255,
-          px[i + 2] * shade * (1 + key * PRESENCE.keyB) + lift * PRESENCE.rimB + cool * PRESENCE.rimCoolB,
+          px[i + 2] * shade * (1 + key * PRESENCE.keyB + spill * PRESENCE.spillB) +
+            lift * PRESENCE.rimB + cool * PRESENCE.rimCoolB,
         );
         px[i + 3] *= a;
       }
