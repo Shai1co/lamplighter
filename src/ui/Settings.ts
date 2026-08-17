@@ -8,11 +8,24 @@
  * The column is the panel's only scroller and is masked at its ends, so a row that
  * runs past the glass dissolves into it instead of being guillotined mid-control —
  * a half-cut toggle at a panel border is the single loudest "unfinished web modal"
- * tell there is. A hairline ▼ rides the bottom fade and retracts at the end.
+ * tell there is.
+ *
+ * Below the column sits a FOOT RAIL, outside the scroller and outside the mask: it
+ * carries the ▼ affordance and the reset action. The ▼ used to float over the
+ * column's last row, which put a glyph directly on top of body copy that was itself
+ * being cropped by the panel edge — two crimes in one 30px square. A rail also
+ * shortens the column by the height of the reset row, which is what lets the whole
+ * of Settings sit inside the glass without scrolling at 1080p.
  */
 import type { AppHost, Settings } from '../core/types';
 import { DEFAULT_SETTINGS } from '../core/types';
 import { clear, el, icon, Icons, overlayShell } from './dom';
+
+/** A parsed readout: figures and an optional tracked unit suffix. */
+interface Readout {
+  n: string;
+  unit?: string;
+}
 
 export class SettingsPanel {
   readonly overlay: HTMLElement;
@@ -40,14 +53,30 @@ export class SettingsPanel {
     // Scoped type hierarchy (display-optical title, tracked accent eyebrow) lives
     // on the panel so the shared modal shell stays untouched for other screens.
     this.panel.classList.add('pq-modal__panel--set');
+    // Loosens the shell's frame gutter for THIS overlay only: Settings carries more
+    // rows than any other modal and the 76px gutter was capping the glass ~90px
+    // short of what the content needs.
+    this.overlay.classList.add('pq-modal--set');
     // Hand scrolling to the column below: exactly ONE scroller in the panel, and
     // it is the one carrying the dissolve.
     this.body.classList.add('pq-modal__body--flush');
     this.scroll = el('div', { class: 'pq-set' });
     this.scroll.addEventListener('scroll', () => this.syncFades(), { passive: true });
     this.body.appendChild(this.scroll);
+    // Foot rail — below the column and below its dissolve, so the ▼ can never
+    // land on type. Reset lives here too rather than as a row inside the scroller.
     this.cue = icon(Icons.chevron, 'pq-set__cue');
-    this.panel.appendChild(this.cue);
+    this.panel.appendChild(
+      el('div', { class: 'pq-set__rail' }, [
+        this.cue,
+        el('button', {
+          class: 'pq-set__reset',
+          type: 'button',
+          text: 'Reset to defaults',
+          on: { click: () => this.resetDefaults() },
+        }),
+      ]),
+    );
     parent.appendChild(this.overlay);
   }
 
@@ -85,7 +114,6 @@ export class SettingsPanel {
     clear(this.scroll);
     this.scroll.classList.toggle('is-entering', this.entering);
     const s = this.current;
-    const d = DEFAULT_SETTINGS;
 
     const group = (title: string, rows: HTMLElement[]): HTMLElement =>
       el('section', { class: 'pq-set__group' }, [
@@ -95,47 +123,28 @@ export class SettingsPanel {
 
     for (const node of [
       group('Text', [
-        this.slider('Text speed', s.textSpeed, 0, 100, 5, d.textSpeed, (v) => this.change({ textSpeed: v }), (v) =>
-          v <= 0 ? 'Instant' : `${v} cps`,
+        this.slider('Text speed', s.textSpeed, 0, 100, 5, (v) => this.change({ textSpeed: v }), (v) =>
+          v <= 0 ? { n: 'Instant' } : { n: String(v), unit: 'cps' },
         ),
         this.toggle('Auto-advance', s.autoAdvance, (v) => this.change({ autoAdvance: v }),
           'Advance dialogue automatically once a line finishes.'),
       ]),
       group('Audio', [
-        this.slider('Master volume', pct(s.masterVolume), 0, 100, 1, pct(d.masterVolume), (v) =>
+        this.slider('Master volume', pct(s.masterVolume), 0, 100, 1, (v) =>
           this.change({ masterVolume: v / 100 }), fmtPct),
-        this.slider('Music', pct(s.musicVolume), 0, 100, 1, pct(d.musicVolume), (v) =>
+        this.slider('Music', pct(s.musicVolume), 0, 100, 1, (v) =>
           this.change({ musicVolume: v / 100 }), fmtPct),
-        this.slider('Effects', pct(s.sfxVolume), 0, 100, 1, pct(d.sfxVolume), (v) =>
+        this.slider('Effects', pct(s.sfxVolume), 0, 100, 1, (v) =>
           this.change({ sfxVolume: v / 100 }), fmtPct),
       ]),
       group('Visuals', [
         this.toggle('Cinematic', s.cinematic, (v) => this.change({ cinematic: v }),
           'Bloom, depth of field and per-story color grade.'),
-        this.slider('Film grain', pct(s.grain), 0, 100, 1, pct(d.grain), (v) =>
+        this.slider('Film grain', pct(s.grain), 0, 100, 1, (v) =>
           this.change({ grain: v / 100 }), fmtPct),
         this.toggle('Reduced motion', s.reducedMotion, (v) => this.change({ reducedMotion: v }),
           'Calms camera drift, shake and heavy motion.'),
         this.toggle('Fullscreen', s.fullscreen, (v) => this.onFullscreen(v)),
-      ]),
-      el('div', { class: 'pq-set__foot' }, [
-        el('button', {
-          class: 'pq-btn pq-btn--ghost',
-          type: 'button',
-          text: 'Reset to defaults',
-          on: {
-            click: () => {
-              this.current = { ...DEFAULT_SETTINGS };
-              this.selfEdit = true;
-              try {
-                this.commit(this.current);
-              } finally {
-                this.selfEdit = false;
-              }
-              this.render();
-            },
-          },
-        }),
       ]),
     ]) {
       this.scroll.appendChild(node);
@@ -147,9 +156,16 @@ export class SettingsPanel {
     requestAnimationFrame(() => this.syncFades());
   }
 
-  /** Retract each end-of-column dissolve when there is nothing beyond it. */
+  /**
+   * Retract each end-of-column dissolve when there is nothing beyond it.
+   *
+   * The overflow threshold is deliberately slack (8px, not 1): the column is tuned
+   * to fit inside the glass at 1080p, and a sub-pixel layout rounding must not arm
+   * a 48px dissolve over content that is in fact entirely visible — that reads as
+   * the panel cropping a row it isn't cropping.
+   */
   private syncFades(): void {
-    const overflow = this.scroll.scrollHeight > this.scroll.clientHeight + 2;
+    const overflow = this.scroll.scrollHeight > this.scroll.clientHeight + 8;
     const end =
       !overflow || this.scroll.scrollTop + this.scroll.clientHeight >= this.scroll.scrollHeight - 6;
     this.scroll.dataset.overflow = overflow ? '1' : '0';
@@ -174,11 +190,12 @@ export class SettingsPanel {
   /**
    * Slider — a drawn instrument, not a styled `<input type=range>`.
    *
-   * The rail beneath carries the whole picture: a 2px hairline, an accent-lit
-   * filled run with its own bloom, and a tick at the shipped default so the
-   * player can see how far they have moved from it. The input itself is
-   * transparent except for its thumb, which is a hollow ring — a filled white
-   * ball is the stock UA control and reads as one in a still frame.
+   * The rail beneath carries the whole picture: a 2px hairline for the unspent
+   * run and an accent-lit filled run with its own bloom. The default-value tick
+   * that used to hang under the rail is GONE: at 1× it rendered as a 1px stub
+   * dangling off the bottom of the thumb, which reads as a rendering artifact
+   * rather than as a graduation, and every capture had one under every slider.
+   * The input itself is transparent except for its thumb.
    */
   private slider(
     label: string,
@@ -186,17 +203,13 @@ export class SettingsPanel {
     min: number,
     max: number,
     step: number,
-    def: number,
     onInput: (v: number) => void,
-    fmt: (v: number) => string,
+    fmt: (v: number) => Readout,
   ): HTMLElement {
     const at = (v: number): string => `${((v - min) / (max - min)) * 100}%`;
-    const val = el('span', { class: 'pq-field__val', text: fmt(value) });
+    const val = readout(fmt(value));
     const fill = el('span', { class: 'pq-range__fill', aria: { hidden: true } });
-    const rail = el('span', { class: 'pq-range__rail', aria: { hidden: true } }, [
-      fill,
-      el('span', { class: 'pq-range__tick', aria: { hidden: true } }),
-    ]);
+    const rail = el('span', { class: 'pq-range__rail', aria: { hidden: true } }, [fill]);
 
     const input = el('input', {
       class: 'pq-range',
@@ -206,7 +219,7 @@ export class SettingsPanel {
       on: {
         input: (e: Event) => {
           const v = Number((e.target as HTMLInputElement).value);
-          val.textContent = fmt(v);
+          fillReadout(val, fmt(v));
           wrap.style.setProperty('--pq-fill', at(v));
           onInput(v);
         },
@@ -215,7 +228,6 @@ export class SettingsPanel {
 
     const wrap = el('div', { class: 'pq-range-wrap' }, [rail, input]);
     wrap.style.setProperty('--pq-fill', at(value));
-    wrap.style.setProperty('--pq-tick', at(def));
 
     return el('div', { class: 'pq-field pq-field--slider' }, [
       el('div', { class: 'pq-field__head' }, [
@@ -262,6 +274,17 @@ export class SettingsPanel {
     ]);
   }
 
+  private resetDefaults(): void {
+    this.current = { ...DEFAULT_SETTINGS };
+    this.selfEdit = true;
+    try {
+      this.commit(this.current);
+    } finally {
+      this.selfEdit = false;
+    }
+    this.render();
+  }
+
   destroy(): void {
     window.clearTimeout(this.enterTimer);
     this.overlay.remove();
@@ -271,6 +294,32 @@ export class SettingsPanel {
 function pct(v: number): number {
   return Math.round(v * 100);
 }
-function fmtPct(v: number): string {
-  return `${v}%`;
+function fmtPct(v: number): Readout {
+  return { n: String(v), unit: '%' };
+}
+
+/**
+ * One readout style for every value in the panel: tabular figures carrying the
+ * number, a tracked small-caps span carrying the unit. Split into two spans so
+ * "45 cps" and "90%" set their figures at the same weight and colour and their
+ * units at the same (quieter) one — three values that each invented their own
+ * typography is what made the column read as a form rather than an instrument.
+ */
+function readout(r: Readout): HTMLElement {
+  const node = el('span', { class: 'pq-field__val' });
+  fillReadout(node, r);
+  return node;
+}
+
+function fillReadout(node: HTMLElement, r: Readout): void {
+  clear(node);
+  node.appendChild(el('span', { class: 'pq-field__num', text: r.n }));
+  if (r.unit) {
+    node.appendChild(
+      el('span', {
+        class: r.unit === '%' ? 'pq-field__unit pq-field__unit--tight' : 'pq-field__unit',
+        text: r.unit,
+      }),
+    );
+  }
 }

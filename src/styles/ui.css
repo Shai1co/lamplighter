@@ -2333,12 +2333,19 @@
     ),
     /* Lens vignette. Struck in true black rather than paper so it darkens the
        room's own values instead of tinting them — the corners fall away and the
-       eye is walked to the glass in the middle of the frame. */
+       eye is walked to the glass in the middle of the frame.
+       The radii matter more than the stops: at 118%×96% the frame's own corner
+       only reached ~72% along the ramp, so the deepest stop was never actually
+       painted anywhere in the picture and a "vignette" that stops at 0.22 is
+       indistinguishable from none. 88%×74% lands the corner at ~90% of the ramp.
+       The transparent plateau is pushed out to 36% to match, which keeps the desk
+       practical low-left and the speaker high-right — the two things the eye is
+       supposed to still find behind the glass — inside the untouched zone. */
       radial-gradient(
-        118% 96% at 50% 48%,
-        rgba(0, 0, 0, 0) 34%,
-        rgba(0, 0, 0, 0.13) 68%,
-        rgba(0, 0, 0, 0.32) 100%
+        88% 74% at 50% 48%,
+        rgba(0, 0, 0, 0) 36%,
+        rgba(0, 0, 0, 0.16) 66%,
+        rgba(0, 0, 0, 0.44) 100%
       );
   /* brightness 0.86 → 0.96: the flat global stop-down is what killed the
      speaker's silhouette, the rain on the pane and the lamp all at once. The
@@ -3122,25 +3129,90 @@
 
 /* ══════════════════════════════  Settings  ══════════════════════════════ */
 
-/* Scoped type hierarchy. The eyebrow is struck in the same tracked accent caps as
-   the section rules below it, so PREFERENCES / TEXT / AUDIO / VISUALS are visibly
-   one rank of the system rather than three unrelated small-caps decisions; the
-   title takes a display optical size so the serif thins its hairlines the way a
-   masthead cut does at 35px instead of wearing its text-size weight. */
+/* Scoped type hierarchy. The eyebrow is struck in the same tracked caps as the
+   section rules below it, so PREFERENCES / TEXT / AUDIO / VISUALS are visibly one
+   rank of the system rather than three unrelated small-caps decisions; the title
+   takes a display optical size so the serif thins its hairlines the way a masthead
+   cut does at 44px instead of wearing its text-size weight.
+   Struck in pane-white at 50% rather than the key colour: a teal eyebrow, three
+   teal section rules, teal fills and teal thumbs put five different intensities of
+   the same accent in one 560px column. The accent now belongs to the CONTROLS
+   only, and the labelling is one quiet cool grey. */
 .pq-modal__panel--set .pq-modal__kicker {
   font-size: 10px;
   letter-spacing: 0.3em;
-  color: rgba(var(--pq-key-rgb) / 0.55);
+  color: rgba(var(--pq-pane-rgb) / 0.5);
 }
 .pq-modal__panel--set .pq-modal__title {
-  font-variation-settings: 'opsz' 120, 'SOFT' 0, 'WONK' 0;
-  letter-spacing: -0.01em;
+  font-size: 44px;
+  line-height: 1.04;
+  font-variation-settings: 'opsz' 144, 'SOFT' 0, 'WONK' 0;
+  letter-spacing: -0.015em;
 }
-/* Settings carries more rows than any other modal. A slightly taller cap buys back
-   two full rows of column before the dissolve has to do any work — the panel still
-   floats clear of the frame edge by a comfortable margin at 1080p. */
+.pq-modal__panel--set .pq-modal__head {
+  padding: 20px var(--pq-5) 16px;
+}
+/* Full-bleed header rule. The shared etched rule is inset and faded at both ends,
+   which is right for a small dialog; under a 44px masthead it evaporates and the
+   display type floats with nothing under it. Here it runs the full width of the
+   pane at a flat 10% white — an architectural line stating where the header ends
+   and the instrument column begins. */
+.pq-modal__panel--set .pq-modal__head::after {
+  left: 0;
+  right: 0;
+  background: rgba(255 255 255 / 0.1);
+}
+/* ── The glass itself ──
+   Settings is the panel with the most negative space behind its type, so it is the
+   panel that exposed how thin the shared fill was: the city's window blobs were
+   printing straight through it as a soft rectangle to the right of the masthead —
+   a "ghost box" with no object casting it, which is a texture bug, not depth.
+   Three changes fix the material: a denser, cooler base (0.6 rather than 0.5, in a
+   near-black that is a stop below the paper token), a real frost at 24px so what
+   transmits is LUMINANCE rather than shapes, and a specular top arris at 12% white
+   so the pane has a lit edge. Grain is laid inside it by ::before below. */
 .pq-modal__panel--set {
-  max-height: min(88vh, 904px);
+  /* Sized so the WHOLE of Settings sits inside the glass at 1080p — header, three
+     cards and the foot rail, with nothing to scroll and nothing to dissolve. The
+     dissolve and the ▼ stay wired for shorter viewports; they simply have no work
+     to do at the size the game is captured and shipped at. */
+  max-height: min(93vh, 984px);
+  background: linear-gradient(180deg, rgba(var(--pq-lamp-rgb) / 0.05), rgba(var(--pq-lamp-rgb) / 0) 18%),
+    linear-gradient(180deg, rgba(var(--pq-pane-rgb) / 0.045), rgba(var(--pq-pane-rgb) / 0) 30%),
+    rgba(8, 12, 14, 0.6);
+  backdrop-filter: blur(24px) saturate(1.22);
+  -webkit-backdrop-filter: blur(24px) saturate(1.22);
+  box-shadow: inset 0 1px 0 rgba(255 255 255 / 0.12);
+}
+.pq-modal__panel--set:focus,
+.pq-modal__panel--set:focus-visible {
+  box-shadow: inset 0 1px 0 rgba(255 255 255 / 0.12);
+}
+/* Emulsion inside the pane. The frame grain sits above the whole composite, but a
+   sheet of glass that is itself perfectly smooth under it still reads as a vector
+   rectangle; a fine plate laid *within* the panel gives the material its own tooth.
+   Kept under the content (z-index 0 against the relative header/body/rail) so it
+   textures the glass, not the type. */
+.pq-modal__panel--set::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='256' height='256' filter='url(%23n)'/></svg>");
+  background-size: 256px 256px;
+}
+.pq-modal__panel--set .pq-modal__head,
+.pq-modal__panel--set .pq-modal__body,
+.pq-modal__panel--set .pq-set__rail {
+  position: relative;
+  z-index: 1;
+}
+/* Settings needs ~90px more glass than the shared 76px frame gutter allows. Only
+   this overlay loosens it; every other modal keeps the wider margin. */
+.pq-modal--set {
+  padding-block: clamp(20px, 4.4vh, 48px);
 }
 
 /* The column is the panel's only scroller: masked at both ends so a row that runs
@@ -3153,8 +3225,8 @@
   min-height: 0;
   display: grid;
   align-content: start;
-  gap: var(--pq-6);
-  padding: var(--pq-5);
+  gap: 28px;
+  padding: 18px var(--pq-5) 24px;
   overflow-y: auto;
   /* No rail. A native scrollbar down the inside edge of diegetic glass is the
      fastest way to say "this is a web page"; the dissolve and the ▼ carry it. */
@@ -3193,18 +3265,43 @@
 .pq-set:not([data-overflow='1'])[data-end='1'] {
   --fade-bot: 0px;
 }
-/* Scroll affordance — the same hairline chevron the transcript uses. Retracts at
-   the end of the column. */
+
+/* ── Foot rail ──
+   A fixed strip under the column, outside the scroller and outside its mask. The ▼
+   is centred in it and the reset action is parked right, so neither can ever sit on
+   the column's type — the previous build floated the chevron over the last visible
+   row, which was itself being cropped by the panel edge. The rule on top is the
+   same architectural hairline the header carries, so the panel is bracketed. */
+.pq-set__rail {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 38px;
+  padding: 0 var(--pq-5);
+}
+.pq-set__rail::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: rgba(255 255 255 / 0.07);
+}
+/* Scroll affordance — the same hairline chevron the transcript uses. Centred in the
+   rail (never over text), held at 40%, and retracted entirely once the column has
+   nothing left to reveal. */
 .pq-set__cue {
   position: absolute;
   left: 50%;
-  bottom: 12px;
-  z-index: 2;
+  top: 50%;
   width: 15px;
   height: 15px;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   pointer-events: none;
-  color: rgba(var(--pq-pane-rgb) / 0.44);
+  color: rgba(var(--pq-pane-rgb) / 0.4);
   opacity: 1;
   transition: opacity var(--pq-dur-3) var(--pq-ease);
 }
@@ -3217,10 +3314,33 @@
 .pq-set__cue[data-end='1'] {
   opacity: 0;
 }
+/* Reset — a tracked mono mark in the rail, not a bordered pill. A 40px rounded
+   button with a fill is the most generic object a web modal owns; the console
+   idiom is a quiet legend on the frame's own bottom edge. */
+.pq-set__reset {
+  font-family: var(--pq-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255 255 255 / 0.34);
+  padding: 6px 0 6px 10px;
+  transition: color var(--pq-dur-2) var(--pq-ease);
+}
+.pq-set__reset:hover {
+  color: rgba(255 255 255 / 0.7);
+}
+.pq-set__reset:focus-visible {
+  outline: none;
+  color: rgba(255 255 255 / 0.9);
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(var(--pq-key-rgb) / 0.7);
+}
 
 .pq-set__group {
   display: grid;
-  gap: var(--pq-3);
+  gap: 10px;
 }
 /* Staggered entrance. Each block rises a hair later than the one above it, so the
    panel assembles in depth on open and a capture taken during the run has real
@@ -3256,21 +3376,38 @@
   font-size: 10px;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(var(--pq-key-rgb) / 0.55);
+  color: rgba(var(--pq-pane-rgb) / 0.45);
 }
+/* ── Section card ──
+   ONE treatment, stated once: 12px radius, a 7% white hairline, a 3% white fill and
+   20px of internal air, with 28px between cards (see .pq-set gap). TEXT, AUDIO and
+   VISUALS previously differed in nothing but height, yet each read slightly
+   differently because the fill was struck in ink-alpha (which the theme re-grades)
+   while the stroke was struck in the shared --pq-line. Both are now flat white
+   alphas, so the three cards are literally the same object at three lengths. */
 .pq-set__rows {
   display: grid;
-  gap: var(--pq-2);
-  padding: var(--pq-3) var(--pq-4);
-  border-radius: var(--pq-r-glass);
-  background: rgba(var(--pq-ink-rgb) / 0.022);
-  border: 1px solid var(--pq-line);
+  gap: 0;
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(255 255 255 / 0.03);
+  border: 1px solid rgba(255 255 255 / 0.07);
 }
+/* Rows are separated by their own symmetric 10px of air across one hairline — the
+   divider sits on the optical centre of the gap. The previous model stacked a grid
+   gap, a margin and an asymmetric padding pair, which put the rule 12px below one
+   row and 20px above the next and cost 12px of column per divider. */
 .pq-field {
-  padding: var(--pq-2) 0;
+  padding: 10px 0;
+}
+.pq-field:first-child {
+  padding-top: 0;
+}
+.pq-field:last-child {
+  padding-bottom: 0;
 }
 .pq-field + .pq-field {
-  border-top: 1px solid var(--pq-line);
+  border-top: 1px solid rgba(255 255 255 / 0.06);
 }
 .pq-field--slider {
   display: grid;
@@ -3287,20 +3424,43 @@
   font-weight: 500;
   color: var(--pq-ink-90);
 }
-/* One readout style, one column. Every value in the panel is the same mono at the
-   same size and the same weight of grey, set on tabular figures and parked on a
-   shared right edge — so "45 cps", "90%" and "50%" line up as a instrument column
-   instead of three differently-coloured labels drifting with their own widths. */
+/* ── Readout ──
+   One style, one column. Every value in the panel is the same mono at the same size
+   and the same 60% white, set on tabular figures and parked on a shared right edge,
+   with the UNIT split into its own tracked small-caps span a shade quieter than the
+   figures. "45 cps", "90%" and "70%" therefore line up as one instrument column —
+   figures on a common baseline and a common right margin, units reading as
+   annotation — instead of three strings of differing length and colour. */
 .pq-field__val {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
   font-family: var(--pq-mono);
   font-size: 11px;
   font-weight: 500;
-  color: rgba(var(--pq-ink-rgb) / 0.6);
-  letter-spacing: 0.04em;
+  color: rgba(255 255 255 / 0.6);
   font-variant-numeric: tabular-nums;
-  min-width: 4.6em;
+  min-width: 5.4em;
   text-align: right;
   white-space: nowrap;
+}
+.pq-field__num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.pq-field__unit {
+  margin-left: 0.42em;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255 255 255 / 0.42);
+}
+/* A percent sign is a glyph, not a word: the word-space that separates "45" from
+   "cps" would read as a typo after "90". */
+.pq-field__unit--tight {
+  margin-left: 0.1em;
+  letter-spacing: 0;
 }
 .pq-field--toggle {
   display: flex;
@@ -3318,17 +3478,14 @@
   line-height: 1.4;
   max-width: 34em;
 }
-.pq-set__foot {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: var(--pq-2);
-}
 
 /* ── Slider ──
    A drawn instrument, not a styled UA range. The rail carries the picture: a 2px
-   hairline for the unspent run, an accent-lit filled run with its own bloom, and
-   a tick at the shipped default so the player can see how far they have pushed
-   off it. The input contributes nothing but its thumb. */
+   12%-white hairline for the unspent run and an accent-lit filled run at 70% with
+   its own bloom. The input contributes nothing but its thumb.
+   NOTE — the default-value tick is gone. Hung a pixel under the rail it rendered,
+   at 1×, as a 1px stub dangling off the bottom of the thumb: an artifact, not a
+   graduation, and one appeared under every slider in every captured frame. */
 .pq-range-wrap {
   position: relative;
   display: block;
@@ -3341,7 +3498,7 @@
   top: 50%;
   height: 2px;
   margin-top: -1px;
-  background: rgba(var(--pq-ink-rgb) / 0.12);
+  background: rgba(255 255 255 / 0.12);
   pointer-events: none;
 }
 .pq-range__fill {
@@ -3350,22 +3507,9 @@
   top: 0;
   bottom: 0;
   width: var(--pq-fill, 50%);
-  background: rgba(var(--pq-key-rgb) / 0.75);
-  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.35);
+  background: rgba(var(--pq-key-rgb) / 0.7);
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.3);
   transition: width 70ms linear;
-}
-/* Default mark — a hairline riser hung *below* the rail, not a dot on it. Slung
-   under the line it stays legible when the thumb is parked on the default (which
-   is exactly where a fresh install finds it) and it reads as an engraved
-   graduation on the instrument rather than a second control. */
-.pq-range__tick {
-  position: absolute;
-  left: var(--pq-tick, 50%);
-  top: 7px;
-  width: 1px;
-  height: 6px;
-  margin-left: -0.5px;
-  background: rgba(var(--pq-ink-rgb) / 0.28);
 }
 .pq-range {
   -webkit-appearance: none;
@@ -3386,8 +3530,10 @@
   height: 2px;
   background: transparent;
 }
-/* Hollow ring. A filled white ball is the stock UA thumb and reads as one in a
-   still frame; a 12px ring with a 1.5px stroke reads as a machined detent. */
+/* Detent. A clean 12px circle: warm-cream 1.5px stroke, teal core, one 8px soft
+   halo at 30%. The previous thumb was a hollow ring filled with panel paper — over
+   an accent-lit rail that reads as a hole punched in the instrument, and the empty
+   centre is what made the tick stub below it look attached to the control. */
 .pq-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -3395,23 +3541,23 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(var(--pq-paper-rgb) / 0.55);
-  border: 1.5px solid rgba(var(--pq-key-rgb) / 0.92);
-  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.35), 0 1px 3px rgba(0, 0, 0, 0.45);
+  background: rgba(var(--pq-key-rgb) / 0.95);
+  border: 1.5px solid rgba(var(--pq-warm-rgb) / 0.9);
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.3);
   transition: transform var(--pq-dur-1) var(--pq-ease), box-shadow var(--pq-dur-2) var(--pq-ease);
 }
 .pq-range::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(var(--pq-paper-rgb) / 0.55);
-  border: 1.5px solid rgba(var(--pq-key-rgb) / 0.92);
-  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.35), 0 1px 3px rgba(0, 0, 0, 0.45);
+  background: rgba(var(--pq-key-rgb) / 0.95);
+  border: 1.5px solid rgba(var(--pq-warm-rgb) / 0.9);
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.3);
 }
 .pq-range:hover::-webkit-slider-thumb,
 .pq-range:active::-webkit-slider-thumb {
   transform: scale(1.14);
-  box-shadow: 0 0 12px rgba(var(--pq-key-rgb) / 0.5), 0 1px 3px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 12px rgba(var(--pq-key-rgb) / 0.45);
 }
 .pq-range:focus-visible {
   outline: none;
@@ -3421,17 +3567,23 @@
 }
 
 /* ── Switch ──
-   A hairline pill. Off is a drawn outline with a dim dot; on fills with the key
-   colour, lights a soft halo, and punches the dot out in the panel's own paper —
-   an accent pill with an accent knob is a blob, not a switch. */
+   A hairline pill. Off is a drawn outline over an inner shadow — a recess cut into
+   the card, with a dim dot sitting in it. On fills with the key colour at 55% and
+   lights a soft halo, with a WARM-CREAM knob riding it.
+   The previous on-state ran the accent at 80% under a cream-white dot: at 22px that
+   is a solid pale-blue block, and with three sliders and two switches on screen it
+   was the single brightest object in the frame — a preference toggle out-shouting
+   the masthead. 55% under a warm knob keeps the state unmistakable while letting
+   the type stay the loudest thing in the panel. */
 .pq-switch {
   flex: none;
   position: relative;
   width: 42px;
   height: 22px;
   border-radius: var(--pq-r-pill);
-  background: rgba(var(--pq-ink-rgb) / 0.04);
-  border: 1px solid rgba(var(--pq-ink-rgb) / 0.18);
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(255 255 255 / 0.14);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
   transition: background 200ms var(--pq-ease-soft), border-color 200ms var(--pq-ease-soft),
     box-shadow 200ms var(--pq-ease-soft);
 }
@@ -3443,28 +3595,30 @@
   height: 10px;
   margin-top: -5px;
   border-radius: 50%;
-  background: rgba(var(--pq-ink-rgb) / 0.45);
-  transition: transform 200ms var(--pq-ease-soft), background 200ms var(--pq-ease-soft);
+  background: rgba(255 255 255 / 0.32);
+  transition: transform 200ms var(--pq-ease-soft), background 200ms var(--pq-ease-soft),
+    box-shadow 200ms var(--pq-ease-soft);
 }
 .pq-switch:hover {
-  border-color: rgba(var(--pq-ink-rgb) / 0.3);
+  border-color: rgba(255 255 255 / 0.26);
 }
 .pq-switch:hover .pq-switch__knob {
-  background: rgba(var(--pq-ink-rgb) / 0.62);
+  background: rgba(255 255 255 / 0.5);
 }
 .pq-switch:focus-visible {
   outline: none;
   border-color: rgba(var(--pq-key-rgb) / 0.7);
-  box-shadow: 0 0 0 3px rgba(var(--pq-key-rgb) / 0.22);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(var(--pq-key-rgb) / 0.22);
 }
 .pq-switch.is-on {
-  background: rgba(var(--pq-key-rgb) / 0.8);
-  border-color: rgba(var(--pq-key-rgb) / 0.55);
-  box-shadow: 0 0 14px rgba(var(--pq-key-rgb) / 0.26);
+  background: rgba(var(--pq-key-rgb) / 0.55);
+  border-color: rgba(var(--pq-key-rgb) / 0.42);
+  box-shadow: 0 0 12px rgba(var(--pq-key-rgb) / 0.22), inset 0 1px 0 rgba(255 255 255 / 0.1);
 }
 .pq-switch.is-on .pq-switch__knob {
   transform: translateX(20px);
-  background: rgba(var(--pq-paper-rgb) / 0.9);
+  background: rgba(var(--pq-warm-rgb) / 0.92);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 /* ══════════════════════════════  Backlog  ══════════════════════════════ */
