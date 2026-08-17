@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.vite/
+# Blender toolkit local artifacts
+.blender-toolkit/
+# Generated art is kept in git so stories are self-contained; large temp renders are not
+stories/**/assets/**/*.tmp.png

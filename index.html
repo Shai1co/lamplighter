@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <title>Picture Quest</title>
+    <meta name="description" content="A cinematic narrative quest — in the spirit of Eliza." />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Three.js renders here -->
+      <canvas id="stage" aria-hidden="true"></canvas>
+      <!-- DOM UI overlay is mounted into here by src/ui -->
+      <div id="ui" role="application" aria-label="Picture Quest"></div>
+      <!-- First-paint boot splash, removed by main.ts once assets are ready -->
+      <div id="boot">
+        <div class="boot__glyph" aria-hidden="true"></div>
+        <div class="boot__label">Picture Quest</div>
+        <div class="boot__bar"><span></span></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "picture-quest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A cinematic Three.js narrative-quest engine in the spirit of Eliza — built so adding new stories is trivial.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "check": "node tools/build-check.mjs",
+    "new-story": "node tools/new-story.mjs",
+    "gen-assets": "node tools/gen-assets.mjs"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "howler": "^2.2.4",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.11",
+    "@types/three": "^0.169.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8"
+  }
+}
