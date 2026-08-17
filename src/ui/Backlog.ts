@@ -60,7 +60,37 @@ function isStageDirection(text: string): boolean {
  * position that happens to sit 300px above the next entry does not dissolve a
  * third of the panel. About three lines of the reading serif.
  */
-const HEAD_FADE_MAX = 58;
+/*
+ * ── …and three lines was not enough ─────────────────────────────────────────
+ * The ramp terminates on an entry boundary, but capping its LENGTH at 58px
+ * means that when the entry scrolling out is taller than that — which is most
+ * of them, since the reading serif runs ~31px a line — only its last two lines
+ * dissolve and everything above them prints at full value. The captured frame
+ * therefore opened on a severed half-sentence ("name. You give your voice.")
+ * sitting under the masthead rule at nearly full ink, which reads as a
+ * rendering fault rather than as a dissolve.
+ *
+ * At 168 (about five lines) the ramp reaches the START of the outgoing entry
+ * in every case the transcript actually produces, so what the reader sees at
+ * the head of the column is a whole paragraph going evenly from nothing to
+ * full — and the first entry they can read still begins at full value on its
+ * own cap line. The cap survives only to stop a pathologically long entry
+ * dissolving a third of the panel.
+ */
+const HEAD_FADE_MAX = 168;
+
+/**
+ * Clear air between the masthead rule and the first ink of the dissolve, in px.
+ *
+ * With the ramp long enough to take a whole outgoing entry (above) its START
+ * lands on the scroller's own top edge — which is 8px under the header rule —
+ * so the outgoing paragraph's cap line printed at ~15% directly against the
+ * hairline and read as text bleeding through a rule rather than as a column
+ * passing behind a masthead. Twenty-two px (the panel's half-gutter, the same
+ * measure the rails hang on) is one clean band of nothing under the rule
+ * before the dissolve begins.
+ */
+const HEAD_FADE_GAP = 22;
 
 /**
  * Where the shift clock starts, in minutes past midnight — 03:11, the hour the
@@ -285,7 +315,7 @@ export class Backlog {
         break;
       }
     }
-    const len = Math.min(boundary, HEAD_FADE_MAX);
+    const len = Math.min(Math.max(boundary - HEAD_FADE_GAP, 0), HEAD_FADE_MAX);
     s.setProperty('--fade-start', `${(boundary - len).toFixed(1)}px`);
     s.setProperty('--fade-top', `${boundary.toFixed(1)}px`);
   }

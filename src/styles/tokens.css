@@ -143,9 +143,21 @@
      .pq-backlog__row.is-latest), because a transcript with no box has to say
      "you are here" with value, and the three levels below still have to mean
      what they have always meant. */
-  --pq-log-speech: rgba(var(--pq-warm-rgb) / 1);
-  --pq-log-body: rgba(var(--pq-warm-rgb) / 0.9);
-  --pq-log-stage: rgba(var(--pq-warm-rgb) / 0.78);
+  /* ── Round 11b: the transcript's own paper, lamp-warmed ───────────────────
+     --pq-warm-rgb (#e8e2d6) is the reading white the DIALOGUE bar is printed
+     in, and it is deliberately near-neutral so a bottom-third caption never
+     picks up a cast. The transcript is a different object: it is a column of
+     type standing INSIDE a room whose only practical is a tungsten desk lamp,
+     and at #e8e2d6 over a near-black scene it measured as flat white on flat
+     black — the one pairing the rubric names outright. #eae0ce is the same
+     value pushed one step down the Planckian locus (b: 214 → 206, r−b 18 → 28),
+     which is the colour a sheet of paper actually is under a 2700K lamp. The
+     type therefore belongs to the same light source as the picture behind it,
+     and nothing else in the game moves. */
+  --pq-log-ink-rgb: 234 224 206;
+  --pq-log-speech: rgba(var(--pq-log-ink-rgb) / 1);
+  --pq-log-body: rgba(var(--pq-log-ink-rgb) / 0.9);
+  --pq-log-stage: rgba(var(--pq-log-ink-rgb) / 0.78);
 
   /* ── Glows ── */
   --pq-glow-key: rgba(var(--pq-key-rgb) / 0.28);
@@ -515,8 +527,16 @@
      that terminates against a fill can be short and still read as a dissolve;
      one that terminates against a painted scene needs the extra half-line or the
      eye reads the last legible word as the point where the text was cut off. */
+     Round 11b: the exit ramp goes 38 → 56px. A 38px dissolve at the foot of a
+     column whose padding already reserves 46px never touched a glyph — it
+     dissolved empty air, which is the same thing as not being there, and the
+     note that came back was that the entries "hard-stop at the frame's bottom
+     edge". Fifty-six is long enough that a partially-scrolled line at the foot
+     of the region is visibly going rather than gone, and the rest of the
+     end-of-scroll treatment is carried by the painted wedge below
+     (--pq-panel-fade) and by the position thumb, which now rests visible. */
   --pq-fade-len: 92px;
-  --pq-fade-end: 38px;
+  --pq-fade-end: 56px;
   /* ── The panel's bottom terminus ────────────────────────────────────────────
      This used to be the depth of a mask that dissolved the pane's own fill,
      frost and hairline so the glass "ran off the bottom of the frame". In a
@@ -528,8 +548,14 @@
      token stops being a mask depth and becomes the length of the soft dissolve
      that hides OVERFLOWING ENTRIES above that footer. 80px is about four lines
      of the reading serif: long enough that a paragraph scrolling out never
-     meets a hard cut, short enough that it never eats a whole entry. */
-  --pq-panel-fade: 92px;
+     meets a hard cut, short enough that it never eats a whole entry.
+     Round 11b: 92 → 118px. This wedge is the column's actual END-OF-SCROLL
+     TREATMENT — the mask ramp above it can only ever dissolve the scroller's
+     own bottom padding, so the thing that has to say "the log closes here" is
+     the light: a painted fall-off under the last entry, inside the 80–120px
+     band, that carries the column into the room's own floor value instead of
+     letting it terminate on empty glass. */
+  --pq-panel-fade: 118px;
   /* ── Frame inset ────────────────────────────────────────────────────────────
      The one number the transcript pane's top AND bottom margins are struck
      from. The panel used to be bottom-anchored at 88vh with the lower gutter
@@ -543,8 +569,21 @@
      --pq-4 (16px), and at that distance a ragged line ending long runs into the
      stamp's airspace — the two columns stop being a tab stop and start being a
      collision. 36px is wider than the stamp itself, so the log column is
-     unambiguously a separate field however the prose happens to break. */
-  --pq-time-gutter: 36px;
+     unambiguously a separate field however the prose happens to break.
+     Round 11b: 36 → 44px, and the stamp column is given an EXPLICIT width
+     (--pq-time-col) rather than being sized `auto` off its own content. Two
+     different notes land on the same defect: a tab stop derived from what
+     happens to be printed in it is not a tab stop, and a 36px gutter let the
+     longest ragged line ("One line lights up. The first call of the shift.")
+     come within 40px of 03:17 while a short one sat 72px clear — the same
+     column read at two different optical distances down one page. Forty-four
+     is --pq-panel-pad, i.e. the measure every other vertical in the panel is
+     struck from, so the log column is now on the panel's own grid. */
+  --pq-time-gutter: 44px;
+  /* The stamp's own field. `03:12` is five tabular glyphs of the 11px mono at
+     +0.14em, which measures 41px; 42 is that rounded up to an even number so
+     the right-aligned column can never reflow by a subpixel between rows. */
+  --pq-time-col: 42px;
   /* ── Settings column: the machined grid ──────────────────────────────────
      The panel was hand-placed — the value column drifted a few pixels row to
      row, the tracks stopped wherever the widest readout happened to leave them,
