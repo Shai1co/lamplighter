@@ -144,7 +144,14 @@ function banner(ok) {
 async function main() {
   console.log(C.bold('Lamplighter — build check'));
 
-  const tsOk = await run('typecheck (tsc --noEmit)', 'typescript', 'tsc', ['--noEmit']);
+  // Two tsconfig projects since storygen split the Node server lane out of
+  // the browser one (docs/superpowers/specs/2026-08-18-storygen-design.md
+  // §3.4): this shells `tsc` directly rather than `npm run typecheck`, so it
+  // has to know about both projects itself instead of picking up the
+  // package.json script unchanged.
+  const browserOk = await run('typecheck browser (tsc -p tsconfig.json)', 'typescript', 'tsc', ['--noEmit', '-p', 'tsconfig.json']);
+  const serverOk = await run('typecheck server (tsc -p tsconfig.node.json)', 'typescript', 'tsc', ['--noEmit', '-p', 'tsconfig.node.json']);
+  const tsOk = browserOk && serverOk;
   // Always attempt the build too, so a single run surfaces every problem.
   const viteOk = await run('bundle (vite build)', 'vite', 'vite', ['build']);
 

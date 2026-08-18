@@ -1,0 +1,105 @@
+{
+  "manifest": {
+    "id": "fixture-good-standard",
+    "title": "Fixture Good Standard",
+    "subtitle": "One night on the north light",
+    "author": "Lamplighter",
+    "synopsis": "You keep the overnight radio watch on an island with one ferry a day. Tonight one voice comes up on the open channel, and she has a bag packed and until dawn to decide whether to use it.",
+    "entry": "signal_open",
+    "narrator": "Watch",
+    "cover": "cover_key",
+    "credits": [
+      "Signal Hill",
+      "",
+      "Written by Lamplighter",
+      "Made with Lamplighter"
+    ],
+    "artStyle": "Painterly cinematic still, cold North Atlantic palette of slate grey and lamp amber, wet light, soft sea haze, filmic grain, shallow depth of field, consistent character identity; no text, no UI, no border, no watermark.",
+    "theme": {
+      "key": "#86b0bd",
+      "accent": "#d9a05f",
+      "ink": "#e9eef1",
+      "paper": "#0c1215",
+      "grade": {
+        "splitTone": 0.3,
+        "contrast": 1.06,
+        "saturation": 0.92
+      },
+      "bloom": 0.7,
+      "vignette": 0.42,
+      "grain": 0.45
+    },
+    "characters": {
+      "wren": {
+        "name": "Wren",
+        "color": "#d9a05f",
+        "defaultPose": "guarded",
+        "home": "right",
+        "scale": 1,
+        "description": "A woman in her late thirties, close-cropped grey-blonde hair, a salt-stained navy fisherman's jumper under an open oilskin, chapped hands. Lit by the amber wash of a radio set against a cold blue night. Wardrobe and lighting identical in every pose.",
+        "poses": {
+          "guarded": {
+            "prompt": "Portrait of Wren — restate the description — jaw set, eyes level, holding the handset a little too tightly. Chest-up, painterly, opaque dark neutral backdrop."
+          },
+          "thawing": {
+            "prompt": "Portrait of Wren — restate the description — the set of her mouth loosening, gaze off to the side. Chest-up, painterly, opaque dark neutral backdrop."
+          },
+          "decided": {
+            "prompt": "Portrait of Wren — restate the description — chin up, clear-eyed, the first grey light on one cheek. Chest-up, painterly, opaque dark neutral backdrop."
+          }
+        }
+      }
+    },
+    "backgrounds": {
+      "radio_room": {
+        "prompt": "A cramped island radio room at night, one amber dial glow, charts pinned to a damp wall, black window streaming with rain. Landscape, no people.",
+        "parallax": 0.05,
+        "focus": 0.5
+      },
+      "harbour_dawn": {
+        "prompt": "A small stone harbour at first light, one ferry at the pier with its lamps still on, flat grey water, gulls, thin mist lifting. Landscape, no people.",
+        "parallax": 0.06,
+        "focus": 0.68
+      }
+    },
+    "cg": {
+      "cover_key": {
+        "prompt": "Key art: a lit radio-room window on a black headland above a harbour, one warm square in a great deal of dark. No people."
+      }
+    },
+    "music": {
+      "watch_theme": {
+        "synth": "pad",
+        "loop": true,
+        "volume": 0.5
+      }
+    },
+    "ambience": {
+      "sea_rain": {
+        "synth": "rain",
+        "loop": true,
+        "volume": 0.45
+      },
+      "room_tone": {
+        "synth": "hum",
+        "loop": true,
+        "volume": 0.3
+      }
+    },
+    "sfx": {
+      "chime": {
+        "synth": "chime",
+        "volume": 0.6
+      },
+      "click": {
+        "synth": "click",
+        "volume": 0.5
+      }
+    },
+    "vars": {
+      "trust": 0,
+      "steady": 3
+    }
+  },
+  "script": ":: signal_open\n@chapter \"Signal Hill\" \"One night on the north light\"\n@bg radio_room mood:night\n@weather rain intensity:0.55\n@ambience sea_rain fade:2\n@music watch_theme fade:4\n@camera push zoom:1.04 duration:8\n| The set has been quiet since eleven. You have the watch, the rain, and a mug going cold.\n| A gull complains somewhere out past the breakwater, unseen.\n| The dial glows the same amber it always glows, patient as a pilot light.\n| Out past the black glass the swell keeps time, indifferent to the hour.\n| The mug has gone properly cold now. You do not get up for it.\n@sfx chime\n| Channel sixteen opens. Somebody breathes into it for four full seconds before they speak.\n@enter wren from:right pose:guarded\nwren: North light, this is Wren off the Kittiwake. You are not going to want this call.\n> \"North light receiving. Go ahead, Wren.\" -> open_script\n>! \"I have got all night and nothing in it. Go on.\" -> open_own\n\n:: open_script\nwren: Right. Good. Procedure. I can do procedure.\n-> the_ferry\n\n:: open_own\n@set trust += 1\n@set steady -= 1\nwren: ...That is not the voice they train you to use.\nwren: All right. All right, then.\n-> the_ferry\n\n:: the_ferry\n@pose wren guarded\nwren: There is a ferry at six ten. I have a bag by the door and I have had it there since Tuesday.\n| The chart table creaks under the weight of nothing in particular.\n| Somewhere below the pier, water works at a piling it has worked at for years.\n| You let the silence sit there a moment before you answer it.\nwren: I am not asking anybody's permission. I want that understood.\n| Under the flatness her voice is doing careful work to stay level.\nwren: You are not going to say anything, are you. {morale>=3}\n> \"Nobody is asking you to explain a bag.\" -> ferry_plan\n>! \"You called a radio at three in the morning to tell me you are not asking permission.\" -> ferry_true\n>? \"Where would the six ten take you?\" -> ferry_ask\n\n:: ferry_plan\nwren: Thank you. Genuinely.\n-> the_box\n\n:: ferry_true\n@set trust += 1\n@set steady -= 1\n@pose wren thawing\nwren: ...Yes. I did do that.\nwren: You could have let that sit.\n-> the_box\n\n:: ferry_ask\nwren: Mainland. Then a bus. Then my sister, who has been waiting eleven years to be right about this.\n-> the_box\n\n:: the_box\n@pose wren thawing\nwren: There is a box under the chart table. My father's. I have not opened it since the funeral.\n| The lid has swollen a little with the damp. It always has.\n| A brass corner catches the dial light and holds it.\n| Neither of you reaches for it yet.\nwren: I keep thinking whatever is in it decides this.\n> \"It does not get to decide. You do.\" -> box_leave\n>! \"Then open it while I am here, and you will not have to do it alone.\" -> box_open\n>! \"You already know what is in it. That is why it is still shut.\" -> box_read {trust>=2}\n\n:: box_leave\n@set steady += 1\nwren: Maybe. Maybe that is the sensible way round.\n-> dawn\n\n:: box_open\n@set trust += 1\n@sfx click\n| Something wooden gives. Paper. A long pause with weather in it.\nwren: Charts. Just his charts. Every crossing he ever made, in pencil, in a hand I would know anywhere.\n-> dawn\n\n:: box_read\n@set trust += 1\n@pose wren decided\nwren: ...That is a rotten thing to be right about.\nwren: It is charts. I have always known it is charts. He never wrote a word down in his life.\n-> dawn\n\n:: dawn\n@chapter \"Six Ten\"\n@fx dissolve\n@bg harbour_dawn mood:dawn\n@weather none\n@ambience room_tone fade:3\n@camera pan-right zoom:1.03 duration:7\n@wait 1\n| The rain stops the way it always does here: all at once, and without ceremony.\n| For a moment the whole room sounds too quiet, the way rooms do right after.\n| The window shows a version of the harbour that was not there an hour ago.\n| Grey is doing its slow work on the black.\nwren: The pier lights just came on. That is them warming her up.\n> \"You still have twenty minutes.\" -> dawn_kind\n>! \"You have been on this channel four hours to avoid twenty minutes.\" -> dawn_true\n\n:: dawn_kind\nwren: Twenty minutes. Yes.\n-> the_ask\n\n:: dawn_true\n@set trust += 1\n@set steady -= 1\n@pose wren decided\nwren: God. Yes. Obviously.\n-> the_ask\n\n:: the_ask\nwren: Say the thing. Whatever the thing is that you people say.\n| You have said it before, to other people, on other nights. It has never once felt routine.\n| Somewhere on the mainland a bus is already indifferent to whether she is on it.\n| The handset is warm in your hand from an hour of holding it.\n> \"Whatever you decide, you will have decided it.\" -> ask_stay\n>! \"Get on the boat, Wren.\" -> ask_go\n>! \"I am not going to tell you. But I will stay on until she casts off.\" -> ask_silent {trust>=3}\n\n:: ask_stay\nwren: That is very even-handed of you.\n-> last_light\n\n:: ask_go\n@set trust += 1\nwren: ...You are not allowed to say that.\nwren: Say it again.\n-> last_light\n\n:: ask_silent\n@set trust += 1\n@set steady -= 1\nwren: You will stay on.\nwren: All right.\n-> last_light\n\n:: last_light\n| Gulls. An engine finding its note across the water.\n| The pier lights hold steady, unbothered by any of this.\n| Six ten was always going to arrive whether either of you were ready.\n| You do not hang up first. You never do.\nwren: North light. Are you still there.\n> \"Still here. North light standing by.\" -> close_plain\n>! \"Still here, Wren.\" -> close_warm\n\n:: close_warm\n@set trust += 1\n-> ending_ferry {trust>=4}\n-> ending_harbour\n\n:: close_plain\n-> ending_ferry {trust>=4}\n-> ending_harbour\n\n:: ending_ferry\n@pose wren decided\nwren: Then you can hear this. That is my boots on the ramp.\n| The channel stays open a while after she stops talking. You let it.\n@music stop fade:5\n| Six ten. On time, for once in its life.\n-> END\n\n:: ending_harbour\n@exit wren to:right\n| The channel closes with a click and no goodbye, which is its own kind of answer.\n| At six ten the ferry goes without her. At six eleven the light on the pier goes out.\n@music stop fade:5\n| You write the log. Nothing to report.\n-> END\n"
+}

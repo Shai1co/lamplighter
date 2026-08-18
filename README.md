@@ -110,6 +110,52 @@ The engine never requires any of it. Art is optional to run.
 
 ---
 
+## Story generation (server-side)
+
+`npm run dev` / `npm run preview` also mount a small Node-only API
+(`src/server/`, wired in by `storygen()` in `vite.config.ts`) that writes
+whole new stories from a premise: an LLM drafts a `manifest.json` +
+`story.pq`, the real parser and a 34-rule checklist validate and — if
+needed — repair it, and only then does it land in `stories/<id>/` as an
+ordinary story. A static `dist/` has none of this; it just plays what's
+already in `stories/`.
+
+Nothing here is required to run the app. Without any key set below, `GET
+/api/health` reports every provider as unconfigured except `mock`, which
+needs no key at all and runs the whole pipeline offline.
+
+Copy `.env.example` to `.env.local` and fill in whichever of these you want
+(all optional, none committed — `.env.local` is git-ignored):
+
+| Purpose | Variable | Default |
+|---|---|---|
+| Default provider | `STORYGEN_PROVIDER` | `gemini` |
+| Default text model override | `STORYGEN_MODEL` | the provider's own default |
+| Gemini key | `GEMINI_KEY` (fallback `GEMINI_API_KEY`) | — |
+| Gemini text model | `GEMINI_MODEL` | `gemini-3.7-flash` |
+| Gemini image model | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-image` |
+| xAI key | `XAI_API_KEY` (fallback `GROK_API_KEY`) | — |
+| xAI model | `XAI_MODEL` | `grok-4` |
+| OpenAI-compatible key | `OPENAI_API_KEY` | — |
+| OpenAI-compatible base URL | `OPENAI_BASE_URL` | `https://api.openai.com/v1` |
+| OpenAI-compatible model | `OPENAI_MODEL` | `gpt-5` |
+| Anthropic key | `ANTHROPIC_API_KEY` | — |
+| Anthropic model | `ANTHROPIC_MODEL` | `claude-sonnet-5` |
+| Stories root override | `STORYGEN_STORIES_DIR` | `<repo>/stories` |
+| Image backend override | `STORYGEN_IMAGE_BACKEND` | `gemini` \| `mock` \| `none` (auto) |
+
+If your network needs an HTTPS proxy, Node's `fetch` only honours
+`HTTPS_PROXY` when started with `NODE_USE_ENV_PROXY=1` (Node ≥ 22.15) — the
+server logs one line at startup when it detects a proxy it isn't using.
+
+No UI ships with this yet — that (and `/api/generate-assets` for the art
+pipeline) lands in a later change. For now the surface is the HTTP/SSE API
+itself: `GET /api/health`, `GET /api/stories`, `POST /api/generate-story`
+(streams progress over Server-Sent Events), and `GET/DELETE
+/api/jobs/:id[/events]`.
+
+---
+
 ## How it works
 
 Five subsystems that never call each other — everything crosses one typed event bus.
@@ -121,6 +167,8 @@ src/
   stage/     Three.js: parallax layers, characters, weather, camera, post-FX grade
   ui/        hand-built DOM overlay: dialogue, proxy panel, chapter cards, saves
   audio/     Howler + a procedural synth fallback
+  server/    Node-only Vite plugin: the story-generation HTTP/SSE API (dev
+             + preview only; excluded from the browser tsconfig/bundle)
   main.ts    the composition root — the only module that knows all five
 stories/     one folder per story (+ `_template`)
 tools/       new-story, gen-assets, build-check

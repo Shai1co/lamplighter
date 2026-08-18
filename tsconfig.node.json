@@ -3,8 +3,8 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
-    "types": ["three", "howler", "vite/client"],
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
@@ -21,6 +21,5 @@
     "allowJs": false,
     "noEmit": true
   },
-  "include": ["src", "src/vite-env.d.ts"],
-  "exclude": ["node_modules", "dist", "tools", "stories", "src/server"]
+  "include": ["src/server", "vite.config.ts"]
 }

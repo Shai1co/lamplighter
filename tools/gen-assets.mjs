@@ -20,24 +20,16 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { ASPECT, DEFAULT_STYLE, planAssets } from './lib/asset-plan.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
-/** Shared art-director preamble prepended to every prompt for cohesion. */
-export const DEFAULT_STYLE =
-  'painterly cinematic still, muted Pacific-Northwest palette (slate blues, foggy greens, ' +
-  'warm amber accents), soft volumetric light, gentle atmospheric haze, filmic grain, ' +
-  'shallow depth of field, consistent character identity across images, ' +
-  'no text, no watermark, no signature, no UI, no logo, no border, no frame';
-
-const ASPECT = {
-  background: '16:9 cinematic landscape, 1920x1080, wide establishing composition',
-  character:
-    '3:4 portrait, 1024x1365, single figure, waist-up or full-body, isolated on a plain ' +
-    'neutral or transparent background so it composites cleanly onto a scene',
-  cg: '16:9 cinematic landscape, 1920x1080, key-art composition',
-};
+// Job planning (manifest -> job list) now lives in tools/lib/asset-plan.mjs,
+// shared with the storygen server's (PR-3) Gemini art backend. Re-exported
+// here for compatibility with anything already importing these two from
+// this module.
+export { DEFAULT_STYLE, ASPECT };
 
 const CODEX_TIMEOUT_MS = 6 * 60 * 1000;
 const GENERATED_DIR = path.join(os.homedir(), '.codex', 'generated_images');
@@ -68,23 +60,6 @@ function parseArgs(argv) {
   }
   args.id = rest[0] || '';
   return args;
-}
-
-function layerFilename(bgId, index, total) {
-  return total > 1 ? `${bgId}.${index}.png` : `${bgId}.png`;
-}
-
-function depthHint(index, total, layerName) {
-  const named = layerName ? `layer "${layerName}"` : `layer ${index + 1} of ${total}`;
-  if (total <= 1) return '';
-  if (index === 0) {
-    return `PARALLAX BACKPLATE (${named}): the distant background only — sky, horizon, far ` +
-      `structures — atmospheric and softly focused, FULLY OPAQUE, no foreground objects`;
-  }
-  const nearness = index === total - 1 ? 'nearest FOREGROUND' : 'MID-GROUND';
-  return `PARALLAX ${nearness} (${named}): only the ${nearness.toLowerCase()} framing elements, ` +
-    `rendered on a FULLY TRANSPARENT background (PNG alpha), no sky, no backplate — this plane ` +
-    `will be composited over the backplate`;
 }
 
 function buildPrompt(style, context, entryPrompt, aspect, filename) {
@@ -262,80 +237,15 @@ async function main() {
     die(`manifest.json is not valid JSON: ${err?.message || err}`);
   }
 
-  const style = (manifest.artStyle && String(manifest.artStyle).trim()) || DEFAULT_STYLE;
-  const assetsDir = path.join(storyDir, 'assets');
-  const want = (kind) => !only || only === kind;
-
-  /** @type {Array<{kind:string,label:string,targetDir:string,filename:string,context:string,entryPrompt:string,aspect:string,style:string}>} */
-  const jobs = [];
-
-  // Backgrounds (each layer becomes its own image).
-  if (want('backgrounds') && manifest.backgrounds) {
-    for (const [bgId, bg] of Object.entries(manifest.backgrounds)) {
-      if (!bg || !bg.prompt) continue;
-      const layerNames = Array.isArray(bg.layers) && bg.layers.length ? bg.layers : null;
-      const explicitFiles = Array.isArray(bg.files) && bg.files.length ? bg.files : null;
-      const total = explicitFiles ? explicitFiles.length : layerNames ? layerNames.length : 1;
-      for (let i = 0; i < total; i++) {
-        const filename = explicitFiles
-          ? path.basename(explicitFiles[i])
-          : layerFilename(bgId, i, total);
-        const hint = depthHint(i, total, layerNames ? layerNames[i] : '');
-        jobs.push({
-          kind: 'backgrounds',
-          label: `background ${bgId}${total > 1 ? ` [layer ${i + 1}/${total}]` : ''}`,
-          targetDir: path.join(assetsDir, 'backgrounds'),
-          filename,
-          context: `Background art for the scene "${bgId}".${hint ? ' ' + hint + '.' : ''}`,
-          entryPrompt: bg.prompt,
-          aspect: ASPECT.background,
-          style,
-        });
-      }
-    }
-  }
-
-  // Character poses.
-  if (want('characters') && manifest.characters) {
-    for (const [charKey, ch] of Object.entries(manifest.characters)) {
-      if (!ch || !ch.poses) continue;
-      const desc = ch.description ? `, ${ch.description}` : '';
-      for (const [pose, poseDef] of Object.entries(ch.poses)) {
-        if (!poseDef || !poseDef.prompt) continue;
-        const filename = poseDef.file ? path.basename(poseDef.file) : `${pose}.png`;
-        jobs.push({
-          kind: 'characters',
-          label: `character ${charKey} / ${pose}`,
-          targetDir: path.join(assetsDir, 'characters', charKey),
-          filename,
-          context:
-            `Character "${ch.name || charKey}"${desc}. Expression/pose: "${pose}". ` +
-            `Keep this character's identity, wardrobe, and features identical across every pose.`,
-          entryPrompt: poseDef.prompt,
-          aspect: ASPECT.character,
-          style,
-        });
-      }
-    }
-  }
-
-  // CG / key art.
-  if (want('cg') && manifest.cg) {
-    for (const [key, cg] of Object.entries(manifest.cg)) {
-      if (!cg || !cg.prompt) continue;
-      const filename = cg.file ? path.basename(cg.file) : `${key}.png`;
-      jobs.push({
-        kind: 'cg',
-        label: `cg ${key}`,
-        targetDir: path.join(assetsDir, 'cg'),
-        filename,
-        context: `Key art "${key}" for story "${manifest.title || id}".`,
-        entryPrompt: cg.prompt,
-        aspect: ASPECT.cg,
-        style,
-      });
-    }
-  }
+  // Job planning (manifest -> job list, prompt parts included) lives in
+  // tools/lib/asset-plan.mjs — see that file's header for why. `targetDir`
+  // comes back relative to the story's own directory ("assets/backgrounds"),
+  // so it is resolved to an absolute path here, once, exactly where the
+  // in-place `path.join(assetsDir, ...)` calls used to build it directly.
+  const jobs = planAssets(manifest, { only, storyId: id }).map((job) => ({
+    ...job,
+    targetDir: path.join(storyDir, job.targetDir),
+  }));
 
   if (jobs.length === 0) {
     console.log(C.yellow('Nothing to generate: no entries with prompts matched your filter.'));

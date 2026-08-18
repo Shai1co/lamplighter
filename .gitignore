@@ -1,9 +1,17 @@
 node_modules/
 dist/
 *.log
+# Local secrets — never commit API keys
+.env
+.env.*
+!.env.example
 .DS_Store
 .vite/
+# esbuild output from tests/validate.test.ts's bundling step
+.tmp/
 # Blender toolkit local artifacts
 .blender-toolkit/
 # Generated art is kept in git so stories are self-contained; large temp renders are not
 stories/**/assets/**/*.tmp.png
+# Playwright e2e failure diagnostics (screenshots / console dumps)
+tests/artifacts/
