@@ -15,3 +15,5 @@ dist/
 stories/**/assets/**/*.tmp.png
 # Playwright e2e failure diagnostics (screenshots / console dumps)
 tests/artifacts/
+# Ephemeral per-session runtime lock — regenerated every session
+.claude/scheduled_tasks.lock
