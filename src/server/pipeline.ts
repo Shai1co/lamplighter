@@ -1,6 +1,8 @@
 /**
- * Lamplighter — draft → validate → repair(≤2) → write → art. Owns the stage
- * events (design doc §5, §8.3, §10.3).
+ * Lamplighter — draft → validate → repair(≤2) → write → art, plus one fresh
+ * redraft (its own repair(≤2) budget) when draft + both repairs are all
+ * rejected (design doc §8.3, addendum 2026-08-18). Owns the stage events
+ * (design doc §5, §8.3, §10.3).
  *
  * Art runs INSIDE this same detached job, after `ready` fires — never
  * before: `ready` means "files are on disk and the story is playable", and
@@ -133,74 +135,109 @@ export async function runPipeline(ctx: ServerContext, job: Job, req: GenerateSto
   const profile = LENGTH_PROFILES[length];
   const userMessage = buildUserMessage({ prompt: req.prompt, title: req.title, length });
 
+  // Budget: 2 repairs per round (design doc §8.3), and — if the draft AND
+  // both repairs of a round are all rejected — exactly one fresh redraft
+  // round with its own 2-repair budget before giving up for real (§8.3's
+  // 2026-08-18 addendum). Bounded worst case: MAX_ROUNDS * (REPAIRS_PER_ROUND
+  // + 1) = 6 model calls.
+  const REPAIRS_PER_ROUND = 2;
+  const MAX_ROUNDS = 2;
+
   let envelope: StoryEnvelope | undefined;
   let lastRaw = '';
   let fatalIssues: Issue[] = [];
   const attempts: GenerationMeta['attempts'] = [];
   let warnings: string[] = [];
 
-  for (let attempt = 0; attempt <= 2; attempt++) {
-    if (cancelled()) return;
-    if (attempt === 0) stage('draft', 'Writing the story…', 2);
-    else stage('repair', `Fixing a few loose ends (attempt ${attempt} of 2)…`, 3);
+  roundLoop: for (let round = 0; round < MAX_ROUNDS; round++) {
+    for (let roundAttempt = 0; roundAttempt <= REPAIRS_PER_ROUND; roundAttempt++) {
+      // generation.json's attempts[] indexes keep climbing across a redraft
+      // (0,1,2, then 3,4,5) rather than resetting — the redraft is a
+      // continuation of the same job, not a new one.
+      const attemptIndex = round * (REPAIRS_PER_ROUND + 1) + roundAttempt;
+      const isDraft = roundAttempt === 0;
+      const isLastOfRound = roundAttempt === REPAIRS_PER_ROUND;
+      const isLastRound = round === MAX_ROUNDS - 1;
 
-    let raw: string;
-    try {
-      const result = await generateText(ctx.env, provider, {
-        system: SYSTEM_PROMPT,
-        user: attempt === 0 ? userMessage : buildRepairMessage(lastRaw, fatalIssues),
-        model,
-        temperature: attempt === 0 ? 0.9 : 0.35,
-        json: true,
-        signal: job.controller.signal,
-      });
-      raw = result.text;
-    } catch (err) {
       if (cancelled()) return;
-      bail(err, attempt === 0 ? 'draft' : 'repair');
-      return;
-    }
-    lastRaw = raw;
-    if (cancelled()) return;
-    stage('validate', 'Checking the script…', 3);
+      if (isDraft && round === 0) {
+        stage('draft', 'Writing the story…', 2);
+      } else if (isDraft) {
+        // The redraft's own stage step stays 3, matching the repair/validate
+        // steps already emitted earlier this run — step 2 belongs to the
+        // run's ONE opening draft; §5.1's ordering guarantee is that `step`
+        // never goes backward, and 3 (already used) legally repeats.
+        stage('draft', 'Starting over with a fresh draft…', 3);
+      } else {
+        stage('repair', `Fixing a few loose ends (attempt ${roundAttempt} of ${REPAIRS_PER_ROUND})…`, 3);
+      }
 
-    let parsedRaw: unknown;
-    try {
-      parsedRaw = extractEnvelope(raw);
-    } catch {
-      fatalIssues = [
-        {
-          code: 'ENVELOPE_SHAPE',
-          severity: 'fatal',
-          message: `Your reply was not a single JSON object. First 400 characters: ${raw.slice(0, 400)}`,
-        },
-      ];
-      attempts.push({ index: attempt, ok: false, issues: ['ENVELOPE_SHAPE'] });
-      if (attempt === 2) {
+      let raw: string;
+      try {
+        const result = await generateText(ctx.env, provider, {
+          system: SYSTEM_PROMPT,
+          user: isDraft ? userMessage : buildRepairMessage(lastRaw, fatalIssues),
+          model,
+          // Every draft/redraft runs at the same "writer" temperature with
+          // its own fresh sample from the model — that IS the fresh
+          // randomness a redraft is for. Repairs stay at the "clerk" 0.35.
+          temperature: isDraft ? 0.9 : 0.35,
+          json: true,
+          signal: job.controller.signal,
+        });
+        raw = result.text;
+      } catch (err) {
+        if (cancelled()) return;
+        bail(err, isDraft ? 'draft' : 'repair');
+        return;
+      }
+      lastRaw = raw;
+      if (cancelled()) return;
+      stage('validate', 'Checking the script…', 3);
+
+      let parsedRaw: unknown;
+      try {
+        parsedRaw = extractEnvelope(raw);
+      } catch {
+        fatalIssues = [
+          {
+            code: 'ENVELOPE_SHAPE',
+            severity: 'fatal',
+            message: `Your reply was not a single JSON object. First 400 characters: ${raw.slice(0, 400)}`,
+          },
+        ];
+        attempts.push({ index: attemptIndex, ok: false, issues: ['ENVELOPE_SHAPE'] });
+        if (isLastOfRound && isLastRound) {
+          bail(tagInvalidOutput(fatalIssues), 'validate');
+          return;
+        }
+        continue;
+      }
+
+      const result = validateEnvelope(parsedRaw, profile);
+      if (result.ok && result.envelope) {
+        envelope = result.envelope;
+        warnings = result.issues.filter((i) => i.severity === 'warn').map((i) => `[${i.code}] ${i.message}`);
+        attempts.push({ index: attemptIndex, ok: true, issues: result.issues.map((i) => i.code) });
+        break roundLoop;
+      }
+      fatalIssues = result.issues.filter((i) => i.severity === 'fatal');
+      attempts.push({ index: attemptIndex, ok: false, issues: fatalIssues.map((i) => i.code) });
+      if (isLastOfRound && isLastRound) {
         bail(tagInvalidOutput(fatalIssues), 'validate');
         return;
       }
-      continue;
-    }
-
-    const result = validateEnvelope(parsedRaw, profile);
-    if (result.ok && result.envelope) {
-      envelope = result.envelope;
-      warnings = result.issues.filter((i) => i.severity === 'warn').map((i) => `[${i.code}] ${i.message}`);
-      attempts.push({ index: attempt, ok: true, issues: result.issues.map((i) => i.code) });
-      break;
-    }
-    fatalIssues = result.issues.filter((i) => i.severity === 'fatal');
-    attempts.push({ index: attempt, ok: false, issues: fatalIssues.map((i) => i.code) });
-    if (attempt === 2) {
-      bail(tagInvalidOutput(fatalIssues), 'validate');
-      return;
+      // Otherwise: not the final attempt of the final round. Either the inner
+      // loop continues to the next repair, or — when this was the last
+      // attempt of a non-final round — it falls out to the outer loop, which
+      // starts the next round with a fresh redraft.
     }
   }
 
   if (!envelope) {
     // Defensive backstop — every path through the loop above either breaks
-    // with an envelope or bails+returns on the final attempt.
+    // with an envelope or bails+returns on the final attempt of the final
+    // round.
     bail(tagInvalidOutput(fatalIssues), 'validate');
     return;
   }

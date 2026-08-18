@@ -24,6 +24,7 @@ import type { ParsedStory, StoryManifest, StoryNode } from '../core/types';
 import { evalGuard } from '../engine/guards';
 import { lex } from '../engine/lexer';
 import { parse } from '../engine/parser';
+import { STATE_GUARDS_MIN, STATE_SETS_MIN, STATE_SET_VARS_MIN } from './limits';
 import type { LengthProfile } from './prompt';
 
 export type Severity = 'fatal' | 'warn';
@@ -755,12 +756,18 @@ export function validateEnvelope(raw: unknown, profile: LengthProfile): Validati
     issues.push(mk('OFFSCRIPT_TOO_FEW', 'fatal', `only ${offscriptOptions} off-script (">!") option(s); at least 2 are required.`));
   }
   // ---- 20: SETS_TOO_FEW ----
-  if (sets < 6 || setTargets.size < 2) {
-    issues.push(mk('SETS_TOO_FEW', 'fatal', `${sets} @set node(s) over ${setTargets.size} var(s); at least 6 @set nodes over at least 2 vars are required.`));
+  if (sets < STATE_SETS_MIN || setTargets.size < STATE_SET_VARS_MIN) {
+    issues.push(
+      mk(
+        'SETS_TOO_FEW',
+        'fatal',
+        `${sets} @set node(s) over ${setTargets.size} var(s); at least ${STATE_SETS_MIN} @set nodes over at least ${STATE_SET_VARS_MIN} vars are required.`,
+      ),
+    );
   }
   // ---- 21: GUARDS_TOO_FEW ----
-  if (guarded < 3) {
-    issues.push(mk('GUARDS_TOO_FEW', 'fatal', `only ${guarded} guarded node(s) (say/choice-option/jump); at least 3 are required.`));
+  if (guarded < STATE_GUARDS_MIN) {
+    issues.push(mk('GUARDS_TOO_FEW', 'fatal', `only ${guarded} guarded node(s) (say/choice-option/jump); at least ${STATE_GUARDS_MIN} are required.`));
   }
 
   // ---- 22: GUARD_UNKNOWN_VAR ----

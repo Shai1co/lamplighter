@@ -16,11 +16,12 @@
  * other's copy.
  */
 
+import { STATE_GUARDS_MIN, STATE_SETS_MIN, STATE_SET_VARS_MIN } from './limits';
 import type { Issue, IssueCode } from './validate';
 import { ISSUE_RULE_NUMBER } from './validate';
 import type { StoryLength } from './types';
 
-export const PROMPT_VERSION = '1.0';
+export const PROMPT_VERSION = '1.1';
 
 export const SYSTEM_PROMPT = `You are the staff writer and art director for LAMPLIGHTER, a cinematic visual-novel
 engine. You write complete, playable, branching stories in its authoring format.
@@ -160,7 +161,10 @@ DECLARATIONS
 
 STATE THAT MATTERS — this is the part that decides whether the story is any good
  5. Declare two to four vars. Mutate them with @set after MOST choices, and read
-    them back with guards.
+    them back with guards. This is a hard minimum, not a suggestion: at least
+    ${STATE_SETS_MIN} @set mutations across ${STATE_SET_VARS_MIN}+ vars, and at
+    least ${STATE_GUARDS_MIN} guards that read one back — a guarded line, a
+    guarded option, or a guarded jump chain.
  6. The state must change the STORY, not merely the ending. Use guards to swap a
     line of dialogue, to unlock a fourth option a colder player never sees, or to
     open a scene that otherwise does not happen. If every branch reconverges with
@@ -315,7 +319,9 @@ function profileLine(p: LengthProfile): string {
     `${p.backgroundsMin}-${p.backgroundsMax} backgrounds. ${p.charactersMin}-${p.charactersMax} character(s) ` +
     `with ${p.posesPerCharMin}-${p.posesPerCharMax} poses each. ${p.endingsMin}-${p.endingsMax} endings. ` +
     `${p.labelsMin}-${p.labelsMax} labels total. Image budget: at most ${p.imageBudget} generated images ` +
-    `total, counting every background, every character pose and every cg entry.`
+    `total, counting every background, every character pose and every cg entry. ` +
+    `At least ${STATE_SETS_MIN} @set mutations over ${STATE_SET_VARS_MIN}+ vars, and at least ${STATE_GUARDS_MIN} ` +
+    `guards that read them back — a guarded line, a guarded option, or a guarded jump chain.`
   );
 }
 
