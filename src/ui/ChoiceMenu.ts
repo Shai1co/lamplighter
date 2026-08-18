@@ -55,6 +55,8 @@ export class ChoiceMenu {
       return row;
     });
 
+    // Shed the previous selection's lift-out class — see ProxyPanel.show().
+    this.root.classList.remove('is-choosing');
     this.root.hidden = false;
     requestAnimationFrame(() => this.root.classList.add('is-in'));
     return this.rows;
@@ -62,7 +64,7 @@ export class ChoiceMenu {
 
   hide(): void {
     this.root.hidden = true;
-    this.root.classList.remove('is-in');
+    this.root.classList.remove('is-in', 'is-choosing');
     clear(this.listEl);
     this.rows = [];
   }

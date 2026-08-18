@@ -120,6 +120,12 @@ export class ProxyPanel {
     const allSuggested = options.every((o) => o.kind === 'suggested' || o.kind === 'offscript');
     this.labelEl.textContent = allSuggested ? 'PROXY RESPONSE' : 'RESPONSE';
 
+    // A previous selection leaves `is-choosing` on the panel (it drives the
+    // lift-out fade, opacity 0) — hide() keeps it so the fade can finish, but a
+    // fresh show() MUST shed it or the new menu renders fully transparent and
+    // unclickable: the runtime waits on a choice no mouse can reach. (Hotkeys
+    // still worked, which is exactly why automated playthroughs missed it.)
+    this.root.classList.remove('is-choosing');
     this.root.hidden = false;
     // Stagger the tiles in.
     requestAnimationFrame(() => this.root.classList.add('is-in'));
@@ -183,7 +189,7 @@ export class ProxyPanel {
 
   hide(): void {
     this.root.hidden = true;
-    this.root.classList.remove('is-in');
+    this.root.classList.remove('is-in', 'is-choosing');
     clear(this.listEl);
     clear(this.offEl);
     this.tiles = [];
