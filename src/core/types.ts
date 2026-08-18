@@ -7,6 +7,12 @@
  * Nothing here imports three, howler, or the DOM — it stays pure and portable.
  */
 
+// Type-only, erased at emit: pulls in nothing from src/server beyond the wire
+// interfaces themselves (which import nothing Node-specific — see
+// src/server/types.ts's own doc comment). Lets AppHost describe its storygen
+// members against the real contract instead of a hand-duplicated shape.
+import type { StorygenHealth } from '../server/types';
+
 /* ─────────────────────────────  PQScript AST  ───────────────────────────── */
 
 /** A raw guard expression, e.g. "trust>=3" or "seen_building && coherence<2". */
@@ -511,4 +517,21 @@ export interface AppHost {
   applySettings(settings: Settings): void;
   getSettings(): Settings;
   returnToTitle(): void;
+  /**
+   * Story-gen capabilities, probed once at boot (see main.ts's `probeHealth`).
+   * null means either no dev/preview server is behind this page (a static
+   * `dist/` deploy) or the probe failed/timed out — both collapse to the same
+   * "no server" signal the rest of the UI treats identically, so the Create
+   * entry simply does not render rather than rendering broken.
+   */
+  storygenHealth(): StorygenHealth | null;
+  /**
+   * Adopt a just-created story: persist the one-shot autostart flag and
+   * reload. A reload — rather than adopting the bundle in place — is
+   * deliberate: it re-derives the story from `/api/stories` (disk, at
+   * request time), so the newly written folder is guaranteed present
+   * regardless of whether Vite's own watcher has noticed it yet. See
+   * docs/superpowers/specs/2026-08-18-storygen-design.md §12.5.
+   */
+  adoptStory(storyId: string): void;
 }

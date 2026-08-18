@@ -9,7 +9,19 @@
 export { parse } from './parser';
 export { Runtime } from './runtime';
 export { evalGuard, applySet } from './guards';
-export { discoverStories, buildAssetTable } from './registry';
+export {
+  discoverStories,
+  buildAssetTable,
+  // The split behind discoverStories (design doc §11): re-exported alongside
+  // it so a caller that needs one stage on its own — CreateStory.ts adopting
+  // a bundle without a full re-discovery, a future unit test — reaches it
+  // through the same barrel as everything else in this lane, rather than
+  // reaching past it into registry.ts directly.
+  buildBundle,
+  discoverBundledStories,
+  fetchRuntimeStories,
+  mergeStories,
+} from './registry';
 export { SaveStore, SettingsStore } from './state';
 
 // Lexer internals are exported for tooling/tests that want token-level access.

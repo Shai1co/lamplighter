@@ -6,6 +6,18 @@
  * by filename convention. Unmatched assets are simply left out — subsystems are
  * responsible for tasteful procedural placeholders, so the app runs before any
  * art exists. Folders whose name starts with `_` (e.g. `_template`) are skipped.
+ *
+ * Two discovery paths, merged. `discoverBundledStories` is the original,
+ * build-time path: `import.meta.glob` freezes whatever was on disk when Vite
+ * last (re)scanned. `fetchRuntimeStories` is new — dev/preview only, reading
+ * `/api/stories` (src/server/stories.ts), which walks the real disk at
+ * REQUEST time. The runtime path is what makes a story generated this session
+ * (src/ui/CreateStory.ts) show up at all without a full page rebuild, and what
+ * makes a story hand-edited since the page loaded come back correct rather
+ * than stale. It is also entirely optional: on a static `dist/` deploy there
+ * is no server behind `/api/stories`, `fetchRuntimeStories` resolves to `[]`,
+ * and `discoverStories()` is byte-for-byte what it was before this feature
+ * existed. See docs/superpowers/specs/2026-08-18-storygen-design.md §11.
  */
 
 import type {
@@ -19,6 +31,10 @@ import type {
   StoryBundle,
   StoryManifest,
 } from '../core/types';
+// Type-only — erased at emit, and types.ts itself has no Node dependency (see
+// its own doc comment), so this does not pull anything server-side into the
+// browser bundle. See src/engine/index.ts and tsconfig.json §3.4.
+import type { RuntimeStoryRecord, StoriesResponse } from '../server/types';
 import { parse } from './parser';
 
 const IMG_EXT = ['png', 'jpg', 'jpeg', 'webp'];
@@ -138,10 +154,24 @@ export function buildAssetTable(manifest: StoryManifest, urlMap: Record<string, 
 }
 
 /**
- * Discover every story bundled under /stories at build time.
- * Returns bundles sorted by manifest title.
+ * Manifest + raw script + a discovered-URL map -> a load-ready bundle. Both
+ * discovery paths below end here, which is what guarantees a runtime story
+ * and a bundled one are parsed by the exact same function — the same one the
+ * server validated the script with (src/server/validate.ts imports the same
+ * parser, never `engine/index.ts`; see design doc §2) — so a story cannot
+ * come out parsed differently depending on which path found it.
  */
-export async function discoverStories(): Promise<StoryBundle[]> {
+export function buildBundle(manifest: StoryManifest, src: string, urlMap: Record<string, string>): StoryBundle {
+  return { manifest, script: parse(src), assets: buildAssetTable(manifest, urlMap) };
+}
+
+/**
+ * Discover every story bundled under /stories at build time. Returns bundles
+ * sorted by manifest title. Unchanged behaviour from before this feature —
+ * `import.meta.glob` freezes whatever was on disk when Vite last (re)scanned,
+ * which is exactly what a static `dist/` needs and all it can ever have.
+ */
+export function discoverBundledStories(): StoryBundle[] {
   const manifests = import.meta.glob('/stories/*/manifest.json', {
     eager: true,
     import: 'default',
@@ -172,15 +202,95 @@ export async function discoverStories(): Promise<StoryBundle[]> {
     const src = scripts[`/stories/${id}/story.pq`];
     if (typeof src !== 'string') continue;
 
-    const script = parse(src);
     const prefix = `/stories/${id}/`;
     const urlMap: Record<string, string> = {};
     for (const [p, u] of Object.entries(images)) if (p.startsWith(prefix)) urlMap[p] = u;
     for (const [p, u] of Object.entries(audio)) if (p.startsWith(prefix)) urlMap[p] = u;
 
-    bundles.push({ manifest, script, assets: buildAssetTable(manifest, urlMap) });
+    bundles.push(buildBundle(manifest, src, urlMap));
   }
 
   bundles.sort((a, b) => (a.manifest.title ?? '').localeCompare(b.manifest.title ?? ''));
   return bundles;
+}
+
+/** How long fetchRuntimeStories waits before giving up and reporting "no server". */
+const RUNTIME_STORIES_TIMEOUT_MS = 2500;
+
+/** One runtime record -> a bundle, with the ?v=mtime cache-buster on every asset URL. */
+function buildRuntimeBundle(rec: RuntimeStoryRecord): StoryBundle {
+  const urlMap: Record<string, string> = {};
+  for (const f of rec.assets) {
+    // The key stays a clean relative path (buildAssetTable normalizes it via
+    // its own /assets/ split); the value carries the cache-buster. This is
+    // not decoration: art can arrive AFTER a story is first discovered (the
+    // art job keeps running after "ready" — see CreateStory's "Begin now"),
+    // and a regenerated asset lands at the exact same path. Without a
+    // buster the browser — or an intermediary — would happily keep serving
+    // the previous bytes (or the 404 it cached for a not-yet-painted one)
+    // forever. See design doc §11.
+    urlMap[f.path] = `/stories/${rec.id}/${f.path}?v=${f.mtime}`;
+  }
+  return buildBundle(rec.manifest, rec.script, urlMap);
+}
+
+/**
+ * Runtime, dev+preview only. Resolves to `[]` on ANY failure — 404 (no
+ * plugin mounted, i.e. a static `dist/`), a network error, a timeout, a
+ * non-JSON body, or a contract-version mismatch — and never logs one. A
+ * static deployment is not a fault condition; see design doc §11 and §16.
+ */
+export async function fetchRuntimeStories(o?: { timeoutMs?: number }): Promise<StoryBundle[]> {
+  try {
+    const res = await fetch('/api/stories', {
+      signal: AbortSignal.timeout(o?.timeoutMs ?? RUNTIME_STORIES_TIMEOUT_MS),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as Partial<StoriesResponse>;
+    if (body.api !== '1.0' || !Array.isArray(body.stories)) return [];
+
+    const bundles: StoryBundle[] = [];
+    for (const rec of body.stories) {
+      try {
+        bundles.push(buildRuntimeBundle(rec));
+      } catch {
+        // The server already skips a directory missing story.pq/manifest.json
+        // (design doc §4.2) — this only guards against a genuinely malformed
+        // record still reaching here (a stale cache, a future field slipping
+        // out of sync). One bad record must not blank the whole merge.
+      }
+    }
+    return bundles;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Bundled first, runtime overwrites by id, sorted by title.
+ *
+ * Runtime wins deliberately. In dev a story created this session is
+ * discovered TWICE — `import.meta.glob` re-evaluates on the next full
+ * reload, and `/api/stories` reads the disk right now — and the runtime
+ * record is the one actually read from disk at request time, so it is the
+ * one that is correct if the story has been hand-edited since the page
+ * first loaded.
+ */
+export function mergeStories(bundled: StoryBundle[], runtime: StoryBundle[]): StoryBundle[] {
+  const byId = new Map<string, StoryBundle>();
+  for (const b of bundled) byId.set(b.manifest.id, b);
+  for (const r of runtime) byId.set(r.manifest.id, r);
+  const merged = [...byId.values()];
+  merged.sort((a, b) => (a.manifest.title ?? '').localeCompare(b.manifest.title ?? ''));
+  return merged;
+}
+
+/**
+ * Unchanged signature — every existing caller (main.ts) keeps working
+ * untouched. Now: merge(bundled, await runtime), run in parallel since
+ * neither depends on the other's result.
+ */
+export async function discoverStories(): Promise<StoryBundle[]> {
+  const [bundled, runtime] = await Promise.all([discoverBundledStories(), fetchRuntimeStories()]);
+  return mergeStories(bundled, runtime);
 }

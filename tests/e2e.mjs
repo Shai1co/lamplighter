@@ -467,25 +467,35 @@ async function snapshotUi(page) {
 /* ─────────────────────────  scenario steps  ───────────────────────── */
 
 async function assertTitleScreenAndDiscovery(page) {
-  section('Title screen: Lumen discovered, _template excluded');
+  section('Title screen: Lumen discovered, _template excluded, Create reachable');
   await page.locator('.pq-title:not([hidden])').waitFor({ state: 'visible', timeout: STORY_START_TIMEOUT_MS });
   log('Title screen is visible.');
 
   const info = await page.evaluate(() => {
-    const cards = Array.from(document.querySelectorAll('.pq-storycard'));
+    // The create card (.pq-storycard--create) is a MODIFIER on .pq-storycard
+    // (see src/ui/TitleScreen.ts, buildCreateCard) — same base class as a
+    // real story card, so it has to be excluded here rather than counted as
+    // a second discovered story.
+    const allCards = Array.from(document.querySelectorAll('.pq-storycard'));
+    const cards = allCards.filter((c) => !c.classList.contains('pq-storycard--create'));
+    const createCard = document.querySelector('.pq-storycard--create');
     const plate = document.querySelector('.pq-title__plate');
-    const lockIdx = document.querySelector('.pq-lockslot__idx');
+    const lockslot = document.querySelector('.pq-lockslot');
+    const menuLabels = Array.from(document.querySelectorAll('.pq-menuitem__label')).map((l) => l.textContent || '');
     return {
       cardCount: cards.length,
       cardLabels: cards.map((c) => c.getAttribute('aria-label') || ''),
+      createCardLabel: createCard ? createCard.getAttribute('aria-label') || '' : null,
+      hasLockslot: !!lockslot,
       plateSrc: plate ? plate.getAttribute('src') : null,
-      lockText: lockIdx ? lockIdx.textContent : null,
       titleInnerText: document.querySelector('.pq-title')?.innerText ?? '',
+      menuLabels,
     };
   });
   log('Discovered story card(s):', JSON.stringify(info.cardLabels));
   log('Title backdrop plate src:', info.plateSrc);
-  log('Locked-slot ledger text:', JSON.stringify(info.lockText));
+  log('Create card aria-label:', JSON.stringify(info.createCardLabel));
+  log('Menu entries:', JSON.stringify(info.menuLabels));
 
   if (info.cardCount !== 1) {
     throw new Error(`Expected exactly 1 discovered story card, found ${info.cardCount}: ${JSON.stringify(info.cardLabels)}`);
@@ -502,12 +512,23 @@ async function assertTitleScreenAndDiscovery(page) {
   if (!info.plateSrc || !info.plateSrc.includes('/stories/lumen/')) {
     throw new Error(`The visible title backdrop does not point at Lumen's art (src=${JSON.stringify(info.plateSrc)}).`);
   }
-  if (!info.lockText || !/2\s+slots/i.test(info.lockText)) {
-    // Corroborating evidence only (RAIL_SLOTS - discovered count); not a hard
-    // requirement in case that constant ever changes.
-    warn(`Locked-slot ledger read ${JSON.stringify(info.lockText)}, expected to mention "2 slots". Continuing.`);
+  // This harness always runs against a real vite dev server (see
+  // startViteServer below), which always mounts the storygen plugin — so
+  // the boot-time health probe always succeeds and Create is always
+  // reachable here. That flips two things at once (design doc §12.1,
+  // §12.5): the picker's shelf renders the create card instead of the old
+  // "N slots · Locked" ledger, and (asserted in startLumen below) "New
+  // Story" opens the picker even though Lumen is the only real story.
+  if (!info.createCardLabel || !/write a new/i.test(info.createCardLabel)) {
+    throw new Error(`Expected a create card on the shelf (server is up), got aria-label ${JSON.stringify(info.createCardLabel)}`);
   }
-  log('PASS: Lumen is the sole discovered story (its own art is the visible title backdrop); "_template" appears nowhere.');
+  if (info.hasLockslot) {
+    throw new Error('Expected .pq-lockslot to be ABSENT once a create card is shown — both rendered at once.');
+  }
+  if (!info.menuLabels.some((l) => /create a story/i.test(l))) {
+    throw new Error(`Expected a "Create a Story" menu entry (server is up). Menu: ${JSON.stringify(info.menuLabels)}`);
+  }
+  log('PASS: Lumen is the sole discovered story (its own art is the visible title backdrop); "_template" appears nowhere; Create is reachable via the menu and the shelf.');
 }
 
 async function applyFastSettings(page) {
@@ -561,11 +582,25 @@ async function applyFastSettings(page) {
 }
 
 async function startLumen(page) {
-  section('Starting Lumen via "New Story" (only story discovered -> starts immediately, no picker)');
+  section('Starting Lumen via "New Story" -> picker (Create is reachable, so the picker opens even for one story) -> Lumen card');
   const newStoryBtn = page.locator('.pq-menuitem.is-primary');
   await newStoryBtn.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
   log('Clicking primary menu button:', JSON.stringify((await newStoryBtn.innerText()).trim()));
   await newStoryBtn.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
+
+  // TitleScreen.newStory() opens the picker whenever `stories.length > 1 ||
+  // canCreate()` (design doc §12.1) — this harness's dev server always
+  // answers /api/health, so canCreate() is always true here even with
+  // Lumen as the only real story. The old "single story starts directly"
+  // path is exercised instead by the static/no-server scenario this repo's
+  // manual verification covers (no dev server behind it at all).
+  await page.locator('.pq-modal--picker.is-open').waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
+  log('Story picker is open.');
+
+  const lumenCard = page.locator('.pq-storycard:not(.pq-storycard--create)[aria-label*="Lumen" i]');
+  await lumenCard.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
+  log('Clicking the Lumen story card.');
+  await lumenCard.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
 
   await page.locator('.pq-title').waitFor({ state: 'hidden', timeout: STORY_START_TIMEOUT_MS });
   log('Title screen dismissed.');

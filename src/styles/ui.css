@@ -2836,6 +2836,15 @@
   border-color: var(--pq-line-2);
   background: rgba(var(--pq-ink-rgb) / 0.05);
 }
+/* No .pq-btn was ever disabled before Create's "Generate" (below 8 chars of
+   premise, see CreateStory.ts). A disabled control that looks identical to a
+   live one is the thing this codebase's own toggle/switch comments refuse
+   to ship (see .pq-switch's doc) — this is the button-shaped equivalent. */
+.pq-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 
 .pq-iconbtn {
   display: inline-grid;
@@ -6386,6 +6395,44 @@
   border-radius: 3px 3px 0 0;
 }
 
+/* ── Create card ──────────────────────────────────────────────────────────
+   `.pq-lockslot`'s replacement whenever Create is reachable (src/ui/
+   TitleScreen.ts, buildCreateCard): a BEM modifier on .pq-storycard, not a
+   new component, so it inherits the plate inset, the body padding, the
+   title/subtitle type and the foot rule verbatim — "same card geometry,
+   same hairline language" is not a metaphor here, it is the same markup.
+   The base theme gradient every cover-less card already falls back to
+   (.pq-storycard__art's own rule, a few hundred lines up) needs no
+   override; the only new mark is the quill standing in for key art. */
+.pq-storycard--create .pq-storycard__art {
+  display: grid;
+  place-items: center;
+}
+.pq-storycard__mark {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  color: rgba(var(--a) / 0.7);
+  filter: drop-shadow(0 0 10px rgba(var(--a) / 0.25));
+  transition: color var(--pq-dur-2) var(--pq-ease), filter var(--pq-dur-3) var(--pq-ease);
+}
+.pq-storycard__mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  stroke-width: 1.3;
+}
+/* Lit by the same "the featured/hover state is carried by light" rule the
+   BEGIN control uses two hundred lines up — no lift, no scale, the mark
+   simply brightens toward the room's own warm accent. */
+.pq-storycard--create:hover .pq-storycard__mark,
+.pq-storycard--create:focus-visible .pq-storycard__mark,
+.pq-storycard--create.is-featured .pq-storycard__mark {
+  color: rgb(var(--a));
+  filter: drop-shadow(0 0 16px rgba(var(--a) / 0.4));
+}
+
 /* ══════════════════════════════  Modal shell  ══════════════════════════════ */
 
 .pq-modallayer {
@@ -7782,6 +7829,15 @@
   font-size: var(--pq-fs-base);
   line-height: var(--pq-lh-body);
   color: var(--pq-ink-70);
+}
+/* The one no-server sentence (design doc §12.1) — a quiet aside under the
+   body paragraph, not a second body: readable, but clearly a footnote
+   rather than a second claim of equal weight to the lede above it. */
+.pq-about__note {
+  margin-top: calc(-1 * var(--pq-2));
+  font-size: var(--pq-fs-sm);
+  line-height: var(--pq-lh-body);
+  color: var(--pq-ink-55);
 }
 .pq-about__meta {
   display: flex;
@@ -9184,6 +9240,462 @@
   background: rgba(var(--pq-ctl-rgb) / 0.95);
   box-shadow: 0 0 0 1px rgba(255 255 255 / 0.34), 0 0 4px rgba(var(--pq-ctl-rgb) / 0.55),
     0 0 10px rgba(var(--pq-ctl-rgb) / 0.3);
+}
+
+/* ══════════════════════════════  Create a Story  ══════════════════════════════
+   Built on the shared modal shell (overlayShell, dom.ts) — the same glass,
+   rack focus, focus trap and Esc/backdrop-click Settings and Save/Load
+   inherit. Only the panel's WIDTH is bespoke (a segmented control and a row
+   of example chips need more than the default 560px column to avoid an
+   awkward wrap); there is no photographic focal-point tuning like Settings
+   carries, because this panel opens over the TITLE plate rather than over a
+   speaker's portrait and there is no reference frame yet to tune those
+   numbers against — the story picker a few hundred lines up makes the
+   identical call, for the identical reason.
+   Every colour and spacing value below is an existing token. Two things
+   have no prior art in this file and are the only genuinely new RULES: the
+   text field (there has never been a `<textarea>`/`<input type=text>` to
+   style before) and the segmented control (three-plus stops, where the
+   nearest relative, .pq-switch, only ever has two). Everything else — the
+   stage rail, the progress bar, the disclosure, the byline, the failure
+   panel — is an existing idiom (the micro-label system, .pq-range's
+   hairline-plus-fill, .pq-menurow__chev's chevron rotate, .pq-callstrip's
+   tabular timer) simply pointed at a new screen. */
+.pq-modal__panel--create {
+  width: min(600px, 100%);
+}
+
+.pq-create {
+  display: flex;
+  flex-direction: column;
+}
+.pq-create__form {
+  display: grid;
+  gap: var(--pq-4);
+}
+
+/* One row = one micro-label caption over its control. The caption sits on
+   the micro system's --1 rather than --2 — it NAMES the field under it,
+   which is exactly the rule tokens.css states for choosing between the two
+   ranks. Premise/Title/Length are simply three more instances of a system
+   every eyebrow, byline and shelf-state label in the game already uses. */
+.pq-create__row {
+  display: grid;
+  gap: 8px;
+}
+.pq-create__label {
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-micro);
+  text-transform: uppercase;
+  color: var(--pq-micro-1);
+}
+
+/* ── The text field — genuinely new (design doc §12.6) ──────────────────────
+   Takes the pane's own hairline and recessed-well fill (the exact language
+   the picker's rail is cut into, a few hundred lines up), the reading serif
+   rather than a system sans, and a focus treatment matching
+   .pq-modal__close's own — a colour shift plus a soft key-coloured halo —
+   rather than the browser's default ring. */
+.pq-create__field {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(var(--pq-scrim-rgb) / 0.28);
+  border: 1px solid var(--pq-line-pane);
+  border-radius: var(--pq-r-glass-inner);
+  font-family: var(--pq-serif);
+  font-size: var(--pq-fs-base);
+  line-height: var(--pq-lh-body);
+  color: rgba(var(--pq-warm-rgb) / 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color var(--pq-dur-2) var(--pq-ease), box-shadow var(--pq-dur-2) var(--pq-ease);
+}
+textarea.pq-create__field {
+  resize: vertical;
+  min-height: 92px;
+}
+.pq-create__field::placeholder {
+  color: rgba(var(--pq-warm-rgb) / 0.38);
+  font-style: italic;
+}
+.pq-create__field:focus {
+  outline: none;
+  border-color: rgba(var(--pq-ctl-rgb) / 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(var(--pq-ctl-rgb) / 0.3),
+    0 0 16px rgba(var(--pq-ctl-rgb) / 0.16);
+}
+/* Title / Model: one reading row, no resize handle. */
+.pq-create__field--line {
+  padding: 10px 14px;
+}
+
+/* Reporting rank (--2, a count rather than a name) — the row's `extra`
+   slot, set beside the label so it never competes with the placeholder for
+   the same line the eye reads first. */
+.pq-create__count {
+  justify-self: end;
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--pq-micro-2);
+}
+
+/* ── Example chips ──
+   A rotating placeholder is unreadable the instant someone starts typing; a
+   chip is a click. Small pills in the pane's own hairline — exactly the
+   vocabulary --pq-r-pill already exists for. */
+.pq-create__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: -4px;
+}
+.pq-create__chip {
+  padding: 6px 12px;
+  border: 1px solid var(--pq-line-2);
+  border-radius: var(--pq-r-pill);
+  background: rgba(var(--pq-ink-rgb) / 0.04);
+  font-family: var(--pq-sans);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--pq-ink-55);
+  text-align: left;
+  transition: color var(--pq-dur-2) var(--pq-ease), border-color var(--pq-dur-2) var(--pq-ease),
+    background var(--pq-dur-2) var(--pq-ease);
+}
+.pq-create__chip:hover,
+.pq-create__chip:focus-visible {
+  color: var(--pq-ink-90);
+  border-color: var(--pq-line-key);
+  background: rgba(var(--pq-ink-rgb) / 0.07);
+}
+.pq-create__chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(var(--pq-key-rgb) / 0.45);
+}
+
+/* ── Segmented control — genuinely new (design doc §12.6) ────────────────────
+   Built from .pq-switch's own vocabulary — a hairline track with no fill of
+   its own, a lit state struck in exactly --pq-ctl-rgb — stretched to three
+   (or more) stops instead of two. Each cell is its own full hit target
+   rather than a dragged thumb: past two stops a sliding indicator needs to
+   know its own index to translate to, which is one more moving part than a
+   control this size earns. */
+.pq-create__seg {
+  display: flex;
+  border: 1px solid rgba(var(--pq-warm-rgb) / 0.17);
+  border-radius: var(--pq-r-2);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.pq-create__segbtn {
+  flex: 1 1 0;
+  padding: 9px 10px;
+  border: 0;
+  border-left: 1px solid rgba(var(--pq-warm-rgb) / 0.14);
+  background: transparent;
+  font-family: var(--pq-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(var(--pq-warm-rgb) / 0.6);
+  transition: color var(--pq-dur-2) var(--pq-ease), background var(--pq-dur-2) var(--pq-ease),
+    box-shadow var(--pq-dur-2) var(--pq-ease);
+}
+.pq-create__segbtn:first-child {
+  border-left: 0;
+}
+.pq-create__segbtn:hover {
+  color: rgba(var(--pq-warm-rgb) / 0.85);
+}
+.pq-create__segbtn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(var(--pq-ctl-rgb) / 0.6);
+}
+.pq-create__segbtn.is-active {
+  background: rgba(var(--pq-ctl-rgb) / 0.14);
+  color: rgb(var(--pq-warm-rgb));
+  box-shadow: inset 0 0 7px rgba(var(--pq-ctl-rgb) / 0.2);
+}
+
+/* ── Disclosure ──
+   The same chevron-rotate idiom .pq-menurow__chev and .pq-set__cue already
+   use — a hairline chevron, resting sideways, standing upright when open —
+   reused for "Advanced" and the failed view's issue list rather than a
+   second interaction language invented for either. */
+.pq-create__discwrap {
+  display: grid;
+  gap: 10px;
+}
+.pq-create__disc {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-micro);
+  text-transform: uppercase;
+  color: var(--pq-micro-1);
+  transition: color var(--pq-dur-2) var(--pq-ease);
+}
+.pq-create__disc:hover,
+.pq-create__disc:focus-visible {
+  color: rgba(var(--pq-warm-rgb) / 0.85);
+}
+.pq-create__disc:focus-visible {
+  outline: none;
+}
+.pq-create__discchev {
+  width: 11px;
+  height: 11px;
+  color: inherit;
+  transform: rotate(-90deg);
+  transition: transform var(--pq-dur-2) var(--pq-ease);
+}
+.pq-create__discchev svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  stroke-width: 1.6;
+}
+.pq-create__disc.is-open .pq-create__discchev {
+  transform: rotate(0deg);
+}
+.pq-create__discbody {
+  display: grid;
+  gap: var(--pq-3);
+}
+.pq-create__advgrid {
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+}
+@media (max-width: 520px) {
+  .pq-create__advgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Availability is fixed for the life of the page (probed once at boot), so
+   this is the only control on the panel that is ever disabled — and a
+   disabled control with nothing attached is the thing the codebase refuses
+   to ship (see .pq-switch's own doc comment), so it gets a real dimmed
+   state rather than inheriting whatever the bare browser default is.
+   Scoped to .pq-create rather than added to .pq-switch globally: no OTHER
+   toggle in the game is ever disabled, so this stays this panel's problem. */
+.pq-create .pq-switch:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.pq-create__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--pq-3);
+  margin-top: 4px;
+}
+
+/* ══ Working / painting ══ */
+.pq-create__working {
+  display: grid;
+  gap: var(--pq-4);
+}
+.pq-create__rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pq-5);
+}
+.pq-create__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-micro);
+  text-transform: uppercase;
+  color: var(--pq-hairline);
+  transition: color var(--pq-dur-3) var(--pq-ease);
+}
+.pq-create__step.is-past {
+  color: var(--pq-micro-2);
+}
+.pq-create__step.is-live {
+  color: var(--pq-micro-1);
+}
+/* The live step's dot reuses .pq-callstrip__dot's own "is-live" language —
+   struck in the key colour, the same soft blink — rather than a second
+   "this one is active" mark invented for this screen. */
+.pq-create__stepdot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--pq-key);
+  box-shadow: 0 0 6px var(--pq-glow-key);
+  animation: pq-blink 2.4s var(--pq-ease-in-out) infinite;
+}
+
+.pq-create__stagerow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--pq-4);
+}
+.pq-create__stagecopy {
+  font-family: var(--pq-serif);
+  font-size: var(--pq-fs-base);
+  color: var(--pq-ink-90);
+}
+/* The same tabular mono readout .pq-callstrip__timer already is — the
+   elapsed clock during `draft`'s 20-90s of nothing else to show. */
+.pq-create__timer {
+  flex: none;
+  font-family: var(--pq-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(var(--pq-ink-rgb) / 0.55);
+}
+
+/* ── Progress bar ──
+   The exact hairline-plus-lit-fill instrument .pq-range__rail/__fill
+   already are, restated non-interactively: a 1px unspent run etched by a
+   dark drop shadow, a 2px spent run in --pq-ctl-rgb. Indeterminate — before
+   any `asset` event has arrived to make it determinate — is the one
+   genuinely new mark on this element: nothing else in the game animates a
+   moving bar, so the sweep gets one small new keyframe, timed off the same
+   duration/easing tokens as everything else here. */
+.pq-create__bar {
+  position: relative;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+}
+.pq-create__barfill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: rgba(var(--pq-ctl-rgb) / 0.85);
+  box-shadow: 0 0 7px rgba(var(--pq-ctl-rgb) / 0.28);
+  transition: width var(--pq-dur-3) var(--pq-ease);
+}
+.pq-create__bar.is-indeterminate .pq-create__barfill {
+  width: 30%;
+  transition: none;
+  animation: pq-create-sweep 1.6s var(--pq-ease-in-out) infinite;
+}
+@keyframes pq-create-sweep {
+  0% {
+    left: -30%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+:root[data-pq-motion='reduced'] .pq-create__bar.is-indeterminate .pq-create__barfill {
+  animation: none;
+  left: 0;
+  width: 100%;
+  opacity: 0.4;
+}
+
+.pq-create__assetline,
+.pq-create__byline {
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-micro);
+  color: var(--pq-micro-2);
+}
+
+.pq-create__notes {
+  display: grid;
+  gap: 4px;
+}
+.pq-create__note {
+  font-family: var(--pq-sans);
+  font-size: 12.5px;
+  color: var(--pq-ink-55);
+}
+
+/* ── Ready-to-play banner ── art:'running' promotes here (design doc
+   §12.2); PR-3 is what actually lights it up, since PR-2's pipeline always
+   resolves art:false. Built now against the real wire contract so nothing
+   about this screen changes when it does. */
+.pq-create__ready {
+  display: grid;
+  gap: 6px;
+  padding-bottom: var(--pq-4);
+  border-bottom: 1px solid var(--pq-line);
+}
+.pq-create__readytitle {
+  font-family: var(--pq-serif);
+  font-size: var(--pq-fs-lg);
+  font-weight: 420;
+  color: var(--pq-ink);
+}
+.pq-create__readybody {
+  font-family: var(--pq-sans);
+  font-size: var(--pq-fs-sm);
+  line-height: var(--pq-lh-body);
+  color: var(--pq-ink-70);
+}
+/* Informational, not a control — "here is what happens if you press
+   neither of the other two" — so it takes the quiet micro-label rank
+   rather than a third button that would do nothing when clicked. */
+.pq-create__keepwatch {
+  margin-right: auto;
+  font-family: var(--pq-mono);
+  font-size: var(--pq-fs-2xs);
+  letter-spacing: var(--pq-tr-micro);
+  text-transform: uppercase;
+  color: var(--pq-micro-2);
+}
+
+/* ══ Done / failed ══ */
+.pq-create__result,
+.pq-create__fail {
+  display: grid;
+  gap: 8px;
+}
+.pq-create__resulttitle,
+.pq-create__failheading {
+  font-family: var(--pq-serif);
+  font-size: var(--pq-fs-lg);
+  font-weight: 420;
+  color: var(--pq-ink);
+}
+.pq-create__resulthint {
+  font-family: var(--pq-sans);
+  font-size: var(--pq-fs-sm);
+  color: var(--pq-ink-55);
+}
+.pq-create__failbody {
+  font-family: var(--pq-sans);
+  font-size: var(--pq-fs-sm);
+  line-height: var(--pq-lh-body);
+  color: var(--pq-ink-70);
+  max-width: 46em;
+}
+.pq-create__faillist {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 1.1em;
+  font-family: var(--pq-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--pq-ink-55);
+}
+.pq-create__result .pq-create__actions,
+.pq-create__fail .pq-create__actions {
+  margin-top: var(--pq-2);
 }
 
 /* ══════════════════════════════  Backlog  ══════════════════════════════ */

@@ -25,9 +25,87 @@ import { Runtime, SaveStore, SettingsStore, discoverStories } from './engine';
 import { Stage } from './stage';
 import { UILayer } from './ui/UILayer';
 import { AudioManager } from './audio';
+// Type-only — erased at emit; src/server/types.ts has no Node dependency of
+// its own (see its doc comment), so this never pulls Node types into the
+// browser bundle. See docs/superpowers/specs/2026-08-18-storygen-design.md §3.4.
+import type { StorygenHealth } from './server/types';
 
 /** Debounce interval for the rolling autosave triggered by state:changed. */
 const AUTOSAVE_THROTTLE_MS = 1400;
+
+/** GET /api/health's hard budget — boot must never wait longer than this for
+ *  a server that may not even exist (a static dist/ deploy answers with an
+ *  immediate connection refusal, not a hang, but a hung dev server should
+ *  not be able to hold the title screen hostage either). */
+const HEALTH_PROBE_TIMEOUT_MS = 2000;
+/** The contract's major version this build understands (design doc §4.1). A
+ *  minor bump is additive and safe to ignore; a major bump means the wire
+ *  shapes may have changed underneath this client, so Create is hidden
+ *  rather than rendered against a contract it was not built for. */
+const SUPPORTED_API_MAJOR = '1';
+
+/**
+ * GET /api/health, probed once at boot. Resolves to `null` on ANY failure —
+ * no server (a static `dist/`), a network error, a timeout, a non-JSON body,
+ * or a major-version mismatch — which is exactly the signal AppHost.
+ * storygenHealth() hands the UI: "no Create", nothing more specific. A
+ * static deployment answering with an immediate connection refusal is not a
+ * fault to log; see fetchRuntimeStories() in src/engine/registry.ts, which
+ * makes the identical judgment call for the sibling `/api/stories` probe.
+ */
+async function probeHealth(): Promise<StorygenHealth | null> {
+  try {
+    const res = await fetch('/api/health', { signal: AbortSignal.timeout(HEALTH_PROBE_TIMEOUT_MS) });
+    if (!res.ok) return null;
+    const body = (await res.json()) as Partial<StorygenHealth>;
+    if (body.ok !== true || typeof body.api !== 'string') return null;
+    if (body.api.split('.')[0] !== SUPPORTED_API_MAJOR) return null;
+    return body as StorygenHealth;
+  } catch {
+    return null;
+  }
+}
+
+/** sessionStorage, not localStorage: a reload keeps it, a new tab does not
+ *  inherit somebody else's autostart, and it evaporates when the tab
+ *  closes. See design doc §12.5. */
+const AUTOSTART_KEY = 'pq:autostart';
+/** A flag written and then survived by a crash, a rebuild and ten minutes of
+ *  editing must not hijack a later boot. */
+const AUTOSTART_MAX_AGE_MS = 120_000;
+
+/** Persist the one-shot autostart flag and reload — the second half of
+ *  AppHost.adoptStory(); see the host implementation below for why a reload
+ *  rather than an in-place adopt. */
+function writeAutostart(storyId: string): void {
+  try {
+    sessionStorage.setItem(AUTOSTART_KEY, JSON.stringify({ id: storyId, at: Date.now() }));
+  } catch {
+    /* private mode / storage disabled — the story is still on disk and in the picker */
+  }
+  location.reload();
+}
+
+/**
+ * Consumed FIRST thing on the next boot, before anything else can throw.
+ * Removed BEFORE it is read (one-shot): if the subsequent beginStory() then
+ * throws, the NEXT reload lands on the title screen instead of looping into
+ * the same crash — beginStory() already falls back to the title on failure,
+ * this only makes that fallback reachable rather than merely likely.
+ */
+function takeAutostart(): string | null {
+  try {
+    const raw = sessionStorage.getItem(AUTOSTART_KEY);
+    sessionStorage.removeItem(AUTOSTART_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { id?: unknown; at?: unknown };
+    if (typeof v.id !== 'string') return null;
+    if (typeof v.at !== 'number' || Date.now() - v.at > AUTOSTART_MAX_AGE_MS) return null;
+    return v.id;
+  } catch {
+    return null;
+  }
+}
 
 function requireEl<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -60,8 +138,13 @@ async function boot(): Promise<void> {
   const settingsStore = new SettingsStore();
   let settings: Settings = settingsStore.load();
 
-  /* ── Story discovery (auto-discovered from /stories, art-optional) ── */
-  const bundles = await discoverStories();
+  /* ── Story discovery (auto-discovered from /stories, art-optional) and the
+   *    storygen health probe, run together: both are local and both already
+   *    carry their own timeout, so boot is never delayed by more than the
+   *    slower of the two — 2s even with a hung dev server, and effectively
+   *    instantly when there is no server at all (an immediate connection
+   *    refusal). See design doc §12.5. ── */
+  const [bundles, health] = await Promise.all([discoverStories(), probeHealth()]);
   const bundleById = new Map<string, StoryBundle>();
   for (const b of bundles) bundleById.set(b.manifest.id, b);
   const manifests = bundles.map((b) => b.manifest);
@@ -232,17 +315,42 @@ async function boot(): Promise<void> {
       bus.emit('audio:ambience', { id: null, fade: 1.2 });
       uiLayer.showTitle(manifests);
     },
+    storygenHealth() {
+      return health;
+    },
+    adoptStory(storyId: string) {
+      writeAutostart(storyId);
+    },
   };
 
   /* ── UI (constructed last: it reads host.getSettings() in its ctor) ── */
   const uiLayer = new UILayer(bus, uiRoot, host);
 
-  /* ── First paint: size the stage, apply settings, show the title ── */
+  /* ── First paint: size the stage, apply settings, then either resume a
+   *    just-created story (CreateStory's "Begin" handshake) or show the
+   *    title ── */
   stage.resize();
   applyEverywhere(settings);
-  uiLayer.showTitle(manifests);
-  // Give the title screen one frame to lay out, then fade the boot splash.
-  requestAnimationFrame(() => requestAnimationFrame(dismissBoot));
+
+  const autostartId = takeAutostart();
+  const autostartBundle = autostartId ? bundleById.get(autostartId) : undefined;
+  if (autostartBundle) {
+    // beginStory() owns dismissBoot() itself, timed to when the story's own
+    // assets are actually ready (it awaits stage.loadStory + audio.loadStory
+    // first). Scheduling the splash's fade here too — as the title-screen
+    // branch below does — would tear it away over a blank stage for the
+    // whole of that load; the two paths hand off the splash differently on
+    // purpose, not by accident. A failed start falls back to the title
+    // screen from inside beginStory's own catch, dismissing the splash then.
+    void beginStory(autostartBundle);
+  } else {
+    // A missing/expired/unresolvable autostart id falls through silently to
+    // here — the story (if any) is still in the picker, exactly as if
+    // "Create a Story" had never been used this session.
+    uiLayer.showTitle(manifests);
+    // Give the title screen one frame to lay out, then fade the boot splash.
+    requestAnimationFrame(() => requestAnimationFrame(dismissBoot));
+  }
 
   /* ── Rolling autosave, throttled off state:changed ── */
   bus.on('state:changed', () => {

@@ -48,6 +48,35 @@ export async function serveStoryFile(req: IncomingMessage, res: ServerResponse, 
   const rawUrl = req.url ?? '';
   if (!rawUrl.startsWith(urlPrefix)) return false;
 
+  // PR-2 fix, recorded per the coding-agent brief's instruction to note any
+  // src/server/** change outside a wire-type addition — see the final
+  // report for the full account of why this was judged unavoidable rather
+  // than out of scope.
+  //
+  // `src/engine/registry.ts`'s `import.meta.glob('/stories/**/*.png', {
+  // query: '?url' })` — pre-existing code, unrelated to StoryGen — asks
+  // Vite's OWN dev-transform pipeline to answer each matched asset with a
+  // tiny wrapper module (`export default "/actual/url"`; `?raw` gets the
+  // file's text the same way). Vite tags every one of those internal
+  // specifiers with a bare `import` query key so its own middleware knows
+  // to intercept them. Because this handler is deliberately registered
+  // AHEAD of Vite's middleware (see storygen-plugin.ts's doc comment — that
+  // ordering is the whole point: one answerer for `/stories/**`, not two,
+  // so traversal policy can't diverge between dev and preview), it was
+  // shadowing those requests completely: the browser asked for a MODULE
+  // and got raw PNG/text bytes back with an image/text content-type,
+  // which is a hard "Failed to load module script" for every glob-imported
+  // story asset — the entire pre-existing, bundled-story code path,
+  // reproducible with a bare `curl` and unrelated to anything from the
+  // storygen feature itself. Handing exactly the `import`-tagged requests
+  // back to `next()` restores Vite's own ownership of them; every REAL
+  // asset request this handler exists for — an <img>/texture/Howler fetch
+  // of a plain URL, or the runtime discovery path's own `?v=<mtime>`
+  // cache-busted one (src/engine/registry.ts's fetchRuntimeStories) — never
+  // carries `import` and is untouched by this check.
+  const query = rawUrl.split('?')[1];
+  if (query && new URLSearchParams(query).has('import')) return false;
+
   // 1. Reject a literal NUL or a %-decode that yields one.
   if (rawUrl.includes('\0')) {
     send404(res);

@@ -18,7 +18,7 @@
  * legibility, a matte-box vignette, film grain, shadow dither, and a slow drift.
  */
 import type { StoryManifest } from '../core/types';
-import { clear, el, overlayShell, rgbTriplet, smartQuotes } from './dom';
+import { clear, el, Icons, overlayShell, rgbTriplet, smartQuotes } from './dom';
 
 /** Slots the picker's rail always shows — real stories first, the remainder dimmed. */
 const RAIL_SLOTS = 3;
@@ -38,6 +38,15 @@ export interface TitleHandlers {
   openModal: (overlay: HTMLElement, panel: HTMLElement) => void;
   /** Pop the top modal — the picker's close button, backdrop click and Esc. */
   closeModal: () => void;
+  /**
+   * Whether the Create flow is reachable at all — a dev/preview server
+   * answered `/api/health` at boot. Gates both the menu entry and the
+   * picker's create card; see design doc §12.1. Absent on a static `dist/`
+   * deploy, where it is simply false and nothing about Create renders.
+   */
+  canCreate: () => boolean;
+  /** Open the Create panel (src/ui/CreateStory.ts) on the shared modal layer. */
+  onCreate: () => void;
 }
 
 export class TitleScreen {
@@ -192,6 +201,14 @@ export class TitleScreen {
     const items: HTMLElement[] = [this.menuItem('New Story', () => this.newStory(), true)];
     // A dimmed, unexplained "Continue" reads as broken — it only exists when it works.
     if (this.h.hasContinue()) items.push(this.menuItem('Continue', () => this.h.onContinue()));
+    // "Create a Story" sits between the two verbs that start you playing
+    // (New Story, Continue) and the three that manage the app (Load,
+    // Settings, About) — the hinge between playing the anthology and adding
+    // to it. Never the primary: the primary action on a title screen is
+    // play. Absent entirely — not dimmed, not tooltipped — when there is no
+    // server behind it (§12.1): a control that never works is worse than no
+    // control, and the capability is explained one level in, in About.
+    if (this.h.canCreate()) items.push(this.menuItem('Create a Story', () => this.h.onCreate()));
     items.push(
       this.menuItem('Load', () => this.h.onLoad()),
       this.menuItem('Settings', () => this.h.onSettings()),
@@ -201,11 +218,15 @@ export class TitleScreen {
   }
 
   /**
-   * One story is not a choice, so it is not presented as one: NEW STORY starts
-   * it. Several stories IS a choice, and a choice needs the art — the picker.
+   * One story with no way to add another is not a choice, so it is not
+   * presented as one: NEW STORY starts it directly. Everything else IS a
+   * choice — several stories, or a library that can grow even at one — and
+   * a choice needs the art: the picker, whose rail now also carries the
+   * create card whenever `canCreate()` is true (see buildLockedSlot's
+   * replacement, renderRail below).
    */
   private newStory(): void {
-    if (this.stories.length > 1) {
+    if (this.stories.length > 1 || this.h.canCreate()) {
       this.renderRail();
       this.h.openModal(this.picker.overlay, this.picker.panel);
       return;
@@ -233,6 +254,17 @@ export class TitleScreen {
     this.stories.forEach((story, i) => {
       this.railEl.appendChild(this.buildCard(story, i));
     });
+
+    // The shelf's terminal row: a create card when the capability exists —
+    // the empty shelf FILLED, not counted — otherwise the ledger it always
+    // was (§12.1). The two are mutually exclusive, never both drawn: a
+    // padlock next to a live "write a new one" card would say two
+    // contradictory things about the same empty space.
+    if (this.h.canCreate()) {
+      this.railEl.classList.add('has-lock');
+      this.railEl.appendChild(this.buildCreateCard());
+      return;
+    }
     // Empty shelf space is summarized in one quiet ledger row so the rail
     // terminates on a designed edge instead of repeating disabled chrome.
     const locked = Math.max(0, RAIL_SLOTS - this.stories.length);
@@ -241,6 +273,60 @@ export class TitleScreen {
     // two share one frame. A detached micro-bar reads as unfinished layout.
     this.railEl.classList.toggle('has-lock', locked > 0);
     if (locked > 0) this.railEl.appendChild(this.buildLockedSlot(locked));
+  }
+
+  /**
+   * The rail's terminal row when Create is reachable: same card geometry and
+   * hairline language as a real story card (`.pq-storycard--create` is a
+   * MODIFIER, not a replacement — see src/styles/ui.css), a drawn quill
+   * mark standing in for cover art, and a one-line invitation instead of a
+   * synopsis. It replaces `.pq-lockslot` outright rather than sharing the
+   * shelf with it — the padlock only ever meant "nothing here", and now
+   * there is something here to do (§12.1).
+   */
+  private buildCreateCard(): HTMLElement {
+    return el(
+      'button',
+      {
+        class: 'pq-storycard pq-storycard--create',
+        type: 'button',
+        role: 'listitem',
+        aria: { label: 'Write a new story' },
+        on: {
+          click: () => {
+            this.h.closeModal();
+            this.h.onCreate();
+          },
+        },
+      },
+      [
+        // The SAME four-layer art stack a cover-less real card falls back to
+        // (buildCard, above) — grade/spark are inert without .has-cover
+        // (which this never carries), so what actually shows is the base
+        // theme gradient every uncovered card already shows, plus grain and
+        // the reveal hairline/glow that frame it. A drawn quill stands in
+        // for the image layer; nothing else about the stack is new.
+        el('div', { class: 'pq-storycard__art', aria: { hidden: true } }, [
+          el('span', { class: 'pq-storycard__mark', html: Icons.quill, aria: { hidden: true } }),
+          el('div', { class: 'pq-storycard__grade' }),
+          el('div', { class: 'pq-storycard__spark' }),
+          el('div', { class: 'pq-storycard__grain' }),
+          el('div', { class: 'pq-storycard__glow' }),
+        ]),
+        el('div', { class: 'pq-storycard__body' }, [
+          el('h3', { class: 'pq-storycard__title', text: 'Write a new one' }),
+          el('p', {
+            class: 'pq-storycard__sub',
+            text: 'A premise, a few minutes, a story that plays like any other.',
+          }),
+          el('div', { class: 'pq-storycard__foot' }, [
+            el('span', { class: 'pq-storycard__cta' }, [
+              el('span', { class: 'pq-storycard__ctalabel', text: 'Create' }),
+            ]),
+          ]),
+        ]),
+      ],
+    );
   }
 
   /**

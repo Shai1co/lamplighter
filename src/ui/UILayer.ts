@@ -22,6 +22,9 @@ import type {
   StoryManifest,
   StoryTheme,
 } from '../core/types';
+// Type-only — erased at emit; see src/server/types.ts's own doc comment on
+// why this never pulls Node types into the browser bundle.
+import type { ApiErrorBody, ErrorCode, GenerateStoryRequest } from '../server/types';
 import { clear, el, focusables, Icons, overlayShell, rgbTriplet, systemMotionOK } from './dom';
 import { CallStrip } from './CallStrip';
 import { DialogueBox } from './DialogueBox';
@@ -32,6 +35,9 @@ import { Backlog } from './Backlog';
 import { SaveLoad } from './SaveLoad';
 import { SettingsPanel } from './Settings';
 import { TitleScreen } from './TitleScreen';
+import { CreateStory } from './CreateStory';
+import { readSse } from './sse-client';
+import type { SseMessage } from './sse-client';
 
 interface ModalEntry {
   overlay: HTMLElement;
@@ -68,6 +74,7 @@ export class UILayer implements IUILayer {
   private readonly saveload: SaveLoad;
   private readonly settings: SettingsPanel;
   private readonly title: TitleScreen;
+  private readonly create: CreateStory;
   private readonly pause: ReturnType<typeof overlayShell>;
   private readonly about: ReturnType<typeof overlayShell>;
 
@@ -227,6 +234,25 @@ export class UILayer implements IUILayer {
       backdropUrl: (id) => this.host.getBackdropUrl(id),
       openModal: (overlay, panel) => this.openModal(overlay, panel),
       closeModal: () => this.closeTop(),
+      canCreate: () => !!this.host.storygenHealth(),
+      onCreate: () => this.openCreate(),
+    });
+
+    // CreateStory is the one modal whose handlers reach past the AppHost
+    // boundary into the network directly (submit/cancel) — every OTHER
+    // component here only ever calls into `host` or `this`. That is
+    // deliberate: story generation talks to THIS page's own dev/preview
+    // server, not to game state, so it does not belong on AppHost (whose
+    // only two storygen members are the boot-time health probe and the
+    // one-shot adopt/reload handshake — see core/types.ts). Keeping the
+    // fetch + SSE plumbing here rather than inside CreateStory.ts itself
+    // keeps every sibling modal (this one included) purely handler-driven.
+    this.create = new CreateStory(this.modalLayer, {
+      health: () => this.host.storygenHealth(),
+      submit: (req, on, signal) => this.submitGenerate(req, on, signal),
+      cancel: (jobId) => this.cancelGenerate(jobId),
+      adopt: (storyId) => this.host.adoptStory(storyId),
+      close: () => this.closeTop(),
     });
 
     this.backlog = new Backlog(this.modalLayer, () => this.closeTop());
@@ -663,6 +689,56 @@ export class UILayer implements IUILayer {
     this.openModal(this.settings.overlay, this.settings.panel);
   }
 
+  private openCreate(): void {
+    this.create.open();
+    this.openModal(this.create.overlay, this.create.panel);
+  }
+
+  /**
+   * `POST /api/generate-story` → typed SSE events. The status-code rule
+   * (design doc §4) puts the seam right here: a 2xx opens the stream and
+   * everything after is `readSse`'s job; a 4xx is answered before any
+   * stream opens at all, so it is synthesized into the SAME `error` shape
+   * an in-stream failure carries — CreateStory never has to know which of
+   * the two happened, only that one did.
+   */
+  private async submitGenerate(req: GenerateStoryRequest, on: (e: SseMessage) => void, signal: AbortSignal): Promise<void> {
+    const res = await fetch('/api/generate-story', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+      signal,
+    });
+    if (!res.ok) {
+      let body: Partial<ApiErrorBody> = {};
+      try {
+        body = (await res.json()) as Partial<ApiErrorBody>;
+      } catch {
+        /* a non-JSON 4xx body — fall through to the generic message below */
+      }
+      const code: ErrorCode = body.error?.code ?? 'bad_request';
+      on({
+        event: 'error',
+        data: {
+          code,
+          message: body.error?.message ?? `The request could not be sent (HTTP ${res.status}).`,
+          detail: body.error?.detail,
+          retryable: body.error?.retryable ?? false,
+          stage: 'plan',
+        },
+      });
+      return;
+    }
+    for await (const msg of readSse(res, signal)) on(msg);
+  }
+
+  /** Best-effort: a lost DELETE just means the job keeps running, which the
+   *  design already treats as correct behaviour (§4.5) rather than a fault
+   *  — there is nothing useful to surface back to CreateStory here. */
+  private cancelGenerate(jobId: string): void {
+    fetch(`/api/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }).catch(() => {});
+  }
+
   private openBacklog(): void {
     this.backlog.render();
     this.openModal(this.backlog.overlay, this.backlog.panel);
@@ -785,6 +861,15 @@ export class UILayer implements IUILayer {
           class: 'pq-about__body',
           text:
             'An original work in the spirit of Zachtronics’ Eliza, rendered in real time with Three.js: parallax depth, weather, film grain and a per-story color grade. Every story is a folder you can drop in — no code required.',
+        }),
+        // The one-sentence answer for anyone who has seen "Create a Story"
+        // and lost it: the entry itself is never dimmed or tooltipped on a
+        // static build (design doc §12.1), so this panel is where the
+        // capability is documented instead.
+        el('p', {
+          class: 'pq-about__note',
+          text:
+            'Stories can be written from inside the app when Lamplighter is running from npm run dev or npm run preview.',
         }),
         el('div', { class: 'pq-about__meta' }, [
           el('span', { text: 'Space / Enter — advance' }),
@@ -963,6 +1048,7 @@ export class UILayer implements IUILayer {
     this.saveload.destroy();
     this.settings.destroy();
     this.title.destroy();
+    this.create.destroy();
     this.pq.remove();
   }
 }
