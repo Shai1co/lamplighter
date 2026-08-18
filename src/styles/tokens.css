@@ -53,6 +53,17 @@
      a visible grey — so the ramp has somewhere to go and the corner has a value
      in it. Paired with the extra emulsion on .pq-plate::after. */
   --pq-scrim-rgb: 11 15 17;
+  /* ── …and the READING bar's own near-black ────────────────────────────────
+     The token above is the app's neutral scrim and it is used on modals, cards
+     and menus, all of which sit over a blurred backdrop and want to be neutral.
+     The dialogue fade does not: it is the bottom of the PICTURE, it lies over a
+     desk lit by a 2700K practical, and struck in a blue-leaning near-black it
+     was the one large area of the frame that demonstrably was not in the grade —
+     the fade cooled as it darkened while everything above it warmed.
+     17/14/11 is the same value (L ≈ 5.5%) rotated to the lamp's side of neutral:
+     about a 2% warm shift at the composite, which is nothing to name and exactly
+     enough that the bar stops reading as a black bar laid over a warm frame. */
+  --pq-scrim-warm-rgb: 17 14 11;
 
   /* ── Derived surfaces (glass) ── */
   --pq-glass: rgba(var(--pq-paper-rgb) / 0.52);
@@ -374,7 +385,10 @@
      130px of almost nothing. On a bright plate (the atrium) a fade that starts
      at 35% and carries density immediately reads as the top edge of a box; the
      longer the lead-in, the less there is for the eye to call an edge. */
-  --pq-scrim-h: clamp(320px, 42vh, 454px);
+  /* 42vh → 60vh (454 → 648px at 1080). See --pq-scrim-band: the pair is the
+     fade, and stretching only the band would have made the lead-in relatively
+     shorter, i.e. re-introduced the step this veil exists to remove. */
+  --pq-scrim-h: clamp(460px, 60vh, 648px);
   /* …and the DESIGNED band inside that long tail — the element the eye reads as
      "the dialogue bar". It starts exactly 28% up the frame (y=778 at 1080) and
      carries the fade's real density on an eased curve, while --pq-scrim-h keeps
@@ -385,7 +399,20 @@
      goes properly dark, so the type has a floor under it rather than a haze.
      Ours was long and thin — the reading white was fighting the wet reflections
      behind it for the last 8% of contrast it needed. */
-  --pq-scrim-band: clamp(214px, 28vh, 302px);
+  /* …and then 28vh → 42vh (302 → 454px at 1080), with the density that was
+     bought with the shortness handed back (band floor 0.70 → 0.62, tail 0.22 →
+     0.18). Shorter-and-deeper was the right answer to "the prose floats"; it is
+     the wrong answer to the note that came back next, which is that the band's
+     upper shoulder had become findable — there was a height at which the scene
+     visibly DIED, and a horizon like that in a fade is the single most legible
+     "this is a UI element" tell a dialogue bar can carry.
+     One and a half times the run at nine tenths of the density puts the same
+     ~0.48 composited under the first baseline (the reading white's floor is
+     unchanged, and it was measured, not guessed) while the ramp's steepest
+     gradient drops by a third — so the desk, the lid's arris and the rain bokeh
+     all read THROUGH the bottom of the frame the way Eliza's couch and carpet
+     read through its own. */
+  --pq-scrim-band: clamp(320px, 42vh, 454px);
 
   /* ── Proxy panel geometry ───────────────────────────────────────────────
      The panel shares the frame with the speaker's face, and a UI edge across a
@@ -393,25 +420,20 @@
      the pane 8% narrower and drop it ~85px so its top arris clears the chin
      with room to spare; everything inside it was retuned to hold the same
      footprint. Anchored to vh/vw so the clearance survives a resize. */
-  /* Relay panel (the always-on Lumen readout, top right). 356 → 330px at 1920:
-     the panel's lower-left corner was cropping the speaker's hair, and a 7%
-     trim plus a 24px step down (see .pq-callstrip) clears it without touching a
-     single type size — scaling the panel itself would have taken the 11.5px
-     mono back under the aliasing floor it was raised above.
-     The floor holds at ~292: below that the three telemetry rows can no longer
-     carry a label, a full scale and a tabular value without one of the three
-     being abbreviated, and the panel collapses into the badge it stopped
-     being. Content width at 330 is 290 — label 84 + scale 148 + value 38. */
-  --pq-relay-w: clamp(292px, 17.2vw, 330px);
-  /* The relay's numeric column, and the reason it is a token: every number on
-     the panel — the shift clock, the vocal level, all three telemetry values —
-     is right-aligned into a box of exactly this width hung off the content's
-     right edge. That makes the numeric tab stop STRUCTURAL rather than a
-     coincidence of three different layout modes agreeing, and it is what lets
-     the three scale tracks terminate on one shared vertical. 40px holds four
-     glyphs of 11.5px mono ("+0.1", "0.75", "00:18") with a hair to spare. */
+  /* The relay chip's numeric column. There used to be a --pq-relay-w beside it,
+     sizing a 330px telemetry panel; the panel is now a one-line status chip that
+     sizes to its own type (see .pq-callstrip), so the only geometry left worth
+     naming is the tab stop the clock is set on. 40px holds four glyphs of 12.5px
+     tabular mono ("00:18") with a hair to spare, which is what stops the chip
+     changing width as the minute rolls over. */
   --pq-relay-val: 40px;
   --pq-proxy-w: clamp(324px, 27.3vw, 524px);
+  /* The proxy pane's numeric column. Every number on the pane — the vocal level
+     and all three telemetry readouts — is right-aligned into a box of exactly
+     this width, which is what makes the decimal column STRUCTURAL rather than a
+     coincidence of two layout modes agreeing. 38px holds four glyphs of 11px
+     mono ("+0.1") with a hair to spare. */
+  --pq-proxy-val: 38px;
   --pq-proxy-bottom: clamp(146px, 19.63vh, 212px);
 
   /* ── The implied glass plane ──────────────────────────────────────────────
@@ -526,7 +548,7 @@
      dissolving into a sheet of glass — it dissolves into the ROOM. A dissolve
      that terminates against a fill can be short and still read as a dissolve;
      one that terminates against a painted scene needs the extra half-line or the
-     eye reads the last legible word as the point where the text was cut off. */
+     eye reads the last legible word as the point where the text was cut off.
      Round 11b: the exit ramp goes 38 → 56px. A 38px dissolve at the foot of a
      column whose padding already reserves 46px never touched a glyph — it
      dissolved empty air, which is the same thing as not being there, and the

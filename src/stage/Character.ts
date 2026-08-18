@@ -49,7 +49,14 @@ interface SpriteUniforms {
  * only warm-only surface in the frame and still reads as flesh; past ~0.45 the
  * sheen goes grey and the face looks lit through a window that isn't there.
  */
-const PLATE_DESAT = 0.15;
+/* 0.15 → 0.21. The blind read was not "her skin is a touch saturated", it was
+ * "a photographic woman in a painted set", and chroma is one of the four things
+ * that separates the two idioms (the others — micro-detail, mark structure and
+ * grain — are handled by localContrast, PLATE_PAINT and the composite grade).
+ * A painted flesh tone is mixed from a limited palette and lands lower in
+ * chroma than a sensor's; 21% is the point at which hers measures inside the
+ * range the desk still-life occupies and still, unmistakably, has blood in it. */
+const PLATE_DESAT = 0.21;
 const PLATE_SPLIT = 0.22;
 const PLATE_COOL = 0.3;
 
@@ -97,8 +104,20 @@ const PLATE_CANVAS = 0.055;
  * portrait (1024 wide) it is a ~2.7px reach, which at the ×4 tap spread reads as
  * a stroke about five pixels across — a sable at portrait scale.
  */
-const PLATE_PAINT = 0.62;
-const PLATE_BRUSH = 0.0026;
+/* 0.62 → 0.71, brush 0.0026 → 0.0031.
+ *
+ * The band this lives in was measured, not guessed: below ~0.4 the plate reads
+ * as a photograph with a filter on it, past ~0.8 skin turns to wax. 0.62 sat
+ * squarely in the safe middle of that and the frame still came back with the
+ * seam as its single loudest note — which is the evidence that the safe middle
+ * was not far enough. 0.71 is one step further into the range and still a clear
+ * step short of the wax boundary; the brush widens with it, because a longer
+ * carry at the same reach only smooths, whereas a longer carry at a longer
+ * reach actually describes the surface in MARKS. At the flagship portrait's
+ * 1024px that is a ~3.2px reach and a ~6px stroke: a sable at portrait scale,
+ * which is the mark size the painted room's own shadows are built from. */
+const PLATE_PAINT = 0.71;
+const PLATE_BRUSH = 0.0031;
 
 function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
   material: THREE.MeshBasicMaterial;

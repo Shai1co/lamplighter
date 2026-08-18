@@ -182,11 +182,43 @@
        and a gradient has no scale, so the whole left third read as a smear
        rather than as a lit surface with props on it. A tight lift on the mug's
        lamp-side flank is the cheapest object cue in the frame. */
-    radial-gradient(2.2% 3.6% at 10.6% 68.5%, rgba(255, 214, 158, 0.17), transparent 76%),
+    radial-gradient(2.2% 3.6% at 10.6% 68.5%, rgba(255, 214, 158, 0.195), transparent 76%),
     /* 3b — and the headphone band, which is the same note on a longer, flatter,
        darker object: a specular RAKE rather than a point. Half the density, so
        it reads as sheen on plastic and never as a second light. */
-      radial-gradient(4.8% 3.2% at 24.4% 70.2%, rgba(250, 198, 138, 0.115), transparent 80%),
+      radial-gradient(4.8% 3.2% at 24.4% 70.2%, rgba(250, 198, 138, 0.132), transparent 80%),
+    /* 3c — the headset's CABLE, where it coils off the band and onto the wood.
+       A single bright bead, 27px across: the smallest object in the frame, and
+       the one that finally gives the desk a scale. Everything else in this pool
+       is either a large form (mug, band, monitor) or a wash, and a still life
+       with no small thing in it reads as three shapes on a gradient. */
+    radial-gradient(1.4% 0.8% at 26.6% 73.4%, rgba(250, 206, 150, 0.15), transparent 78%),
+    /* 3e — THE STANDBY LED on the relay's lower bezel, and 3f a phone face-down
+       on the wood past the headset. Two four-pixel sources, and they are here
+       because the note was that the void has no *life* in it: a room with
+       exactly two lights in it is a set, and a room with two lights and a couple
+       of forgotten indicators is a place somebody works in at 3am. Both are tiny
+       by construction — the LED is 4px of core in an 18px halo, the phone a
+       shallow lozenge and its bounce — so neither can ever compete with the
+       practical; they are punctuation, not light. The LED is amber (it is a
+       standby, i.e. the one warm indicator on a cool machine); the phone is the
+       room's own pane teal, so it belongs to the same emitter family as the
+       relay screen above it. */
+      radial-gradient(0.22% 0.4% at 31.2% 58.6%, rgba(255, 198, 124, 0.48), transparent 70%),
+    radial-gradient(1.1% 1.9% at 31.2% 58.9%, rgba(240, 172, 100, 0.062), transparent 80%),
+    radial-gradient(1.9% 1.0% at 36.4% 73.2%, rgba(152, 208, 224, 0.1), transparent 76%),
+    radial-gradient(4.6% 2.4% at 36.4% 74.3%, rgba(130, 186, 204, 0.034), transparent 82%),
+    /* 3d — …and the desk PLANE carried right, out from under the props toward
+       the middle of the frame. This is the compositional note, not a lighting
+       one: the frame's triangle is lamp → mug → subject, and its bottom leg was
+       missing — the lit surface simply stopped at the headset and 700px of dead
+       wood ran from there to the chair. Two very flat lobes (rx ≈ 4× ry, i.e.
+       a surface seen at a rake, never a glow) continue the pool along the
+       tabletop at a third and a fifth of its strength, which is what a 2700K
+       source 500mm away actually does to varnished wood. The eye now has a path
+       out of the practical instead of a cul-de-sac. */
+    radial-gradient(7.5% 2.2% at 27.5% 76.5%, rgba(244, 190, 130, 0.075), transparent 82%),
+    radial-gradient(5.5% 1.8% at 32.5% 78.5%, rgba(238, 180, 120, 0.05), transparent 84%),
     /* 2c — the relay monitor's bloom. The board itself is painted into the
        plate (see drawCallBoard) and a screen does not stop at its bezel: this
        is the cyan it throws into the room, which is what makes it read as an
@@ -195,16 +227,26 @@
        tight core, a wide halo at a third the density. */
       radial-gradient(5.5% 7.5% at 22.2% 46.5%, rgba(126, 208, 226, 0.115), transparent 78%),
     radial-gradient(14% 17% at 22.2% 47.5%, rgba(110, 190, 210, 0.038), transparent 82%),
-    /* 2 — the practical itself, kept alight. 0.18 → 0.215 → 0.25: the desk
-       beneath it has just been opened up two thirds of a stop, and a source
-       that does not rise with the surface it is lighting stops being the
-       brightest thing in its own pool — which is the one thing a practical may
-       never do. */
-      radial-gradient(4.5% 6.5% at 15.5% 49.5%, rgba(232, 160, 92, 0.25), transparent 74%),
-    /* 2b — bloom halo. A practical seen through a rainy window does not stop at
-       its shade; it blooms. Three times the radius at a third the density, so
-       it reads as air scattering the source rather than as a second lamp. */
-      radial-gradient(13% 17% at 15.5% 50.5%, rgba(232, 160, 92, 0.085), transparent 80%),
+    /* 2 — the practical's BLOOM, and the deletion of the thing that used to sit
+       here.
+       This pair was authored as "the lamp, kept alight": an 86 × 70px amber core
+       at 15.5% / 49.5% with a 250 × 184px halo under it. The lamp is not there.
+       Measured off a 1920 × 1080 capture of the framed plate, the shade's mouth
+       is at 21.0% / 33.5% — 107px right and 173px UP of where these two were
+       painting — so what the frame actually carried at 15.5% / 49.5% was a soft,
+       structureless warm smudge on a dark wall a hand's width left of the relay
+       screen, with no object under it and no edge anywhere on it. Read at a
+       glance that is not a bloom, it is a RENDERING ARTEFACT, and it is the one
+       kind of mark a critic can name in two seconds without knowing anything
+       about the picture.
+       The core is deleted outright rather than moved: the shade's interior is
+       already the brightest value in the plate (it has its own print shoulder —
+       see compressPracticals) and re-pointing 25% of amber onto it would buy the
+       artefact back as a blown highlight. What survives is the halo alone, moved
+       onto the shade it belongs to and taken down a fifth, which is what a
+       tungsten source seen through room haze actually contributes: air around a
+       light, not a second light. */
+    radial-gradient(11% 15% at 21% 35%, rgba(232, 160, 92, 0.072), transparent 82%),
     /* 1 — the spill window over the lit desk.
        This is a NEGATIVE window: it exists to keep the plate's own practical
        from printing as a blown slab. It was doing that job and about 0.7 stop
@@ -217,13 +259,27 @@
        still true; it is simply no longer eating the counterweight. */
       radial-gradient(
         17% 19% at 20.5% 64.5%,
-        rgba(8, 6, 4, 0.51),
-        rgba(8, 6, 4, 0.35) 52%,
-        rgba(8, 6, 4, 0.15) 76%,
+        /* 0.51 → 0.45. One more sixth of a stop back into the pool, and it is
+           bought by the three terms above rather than spent on them: with the
+           cable bead and the desk plane carrying the eye rightwards, the pool no
+           longer has to be held down to stop it reading as a blown slab — it has
+           somewhere to go. */
+        /* …and 0.45 → 0.385, with the whole ramp scaled by the same 0.855. The
+           note is that the desk has to unambiguously OWN the frame, and the
+           cheapest ~15% of exposure available anywhere in this file is the
+           negative window sitting on top of the one region that is supposed to
+           be winning. Everything else in the picture is being pushed away from
+           the eye in this pass (the mid-frame mass is crushed, the floor haze is
+           confined, the far bokeh is racked further out of focus); the pool has
+           to move the other way or the contrast ratio between hero and ground is
+           unchanged and the whole exercise is a wash. */
+        rgba(8, 6, 4, 0.385),
+        rgba(8, 6, 4, 0.265) 52%,
+        rgba(8, 6, 4, 0.111) 76%,
         transparent 92%
       ),
     /* 1b — the falloff, pulled in so the glow ends on the desk edge */
-      radial-gradient(28% 28% at 19% 66%, rgba(8, 6, 4, 0.128), transparent 84%);
+      radial-gradient(28% 28% at 19% 66%, rgba(8, 6, 4, 0.109), transparent 84%);
 }
 
 /* ── The middle third ───────────────────────────────────────────────────────
@@ -254,10 +310,16 @@
      the band holds full through 66%, is half gone by 74% and finished by 86% —
      which still leaves the chair's bounce (69%) and the desk wedge most of
      their strength, both of which are FLOOR-side terms and belong there. */
+  /* …and the TOP of that band opens from 22% to 12%. The void this pass exists
+     to fill does not start at the desk line: it runs from the top of the frame
+     down, and above y≈0.22 the band was contributing nothing at all, so the
+     mullions — the one structural term in here — simply stopped a fifth of the
+     way down a wall of floor-to-ceiling glass. A window frame member that
+     terminates in mid-air is worse than none. */
   -webkit-mask-image: linear-gradient(90deg, transparent 18%, #000 34%, #000 66%, transparent 84%),
-    linear-gradient(180deg, transparent 4%, #000 22%, #000 66%, rgba(0, 0, 0, 0.45) 74%, transparent 86%);
+    linear-gradient(180deg, transparent 2%, #000 12%, #000 66%, rgba(0, 0, 0, 0.45) 74%, transparent 86%);
   mask-image: linear-gradient(90deg, transparent 18%, #000 34%, #000 66%, transparent 84%),
-    linear-gradient(180deg, transparent 4%, #000 22%, #000 66%, rgba(0, 0, 0, 0.45) 74%, transparent 86%);
+    linear-gradient(180deg, transparent 2%, #000 12%, #000 66%, rgba(0, 0, 0, 0.45) 74%, transparent 86%);
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
   /* Everything below is ~60% stronger than the pass it replaces. The band was
@@ -285,29 +347,91 @@
        lamp's own falloff and the table simply ceased to exist halfway across
        the frame; a long, shallow, near-horizontal wedge continues its plane
        into the dark so the room has a floor under the middle third instead of
-       a void. Four percent, and its far end is inside the mask's own fade. */
+       a void. Up 0.042 → 0.062 at the head, and its far end is inside the
+       mask's own fade. */
       linear-gradient(
         84.5deg,
-        rgba(232, 160, 92, 0.042) 6%,
-        rgba(228, 158, 96, 0.022) 34%,
-        rgba(210, 152, 104, 0.009) 58%,
+        rgba(232, 160, 92, 0.062) 6%,
+        rgba(228, 158, 96, 0.033) 34%,
+        rgba(210, 152, 104, 0.014) 58%,
         transparent 76%
+      ),
+    /* 1d — …and the desk's own EDGE, which is the term that was actually
+       missing. A wedge of light is a WASH: it has a value but no boundary, and
+       the eye reads a plane from its edge long before it reads it from its
+       shading. The tabletop's front arris runs at a shallow rake from the lit
+       third out toward the middle of the frame, so a 2px catch on it — the same
+       cool the near desk edge carries in the establishing pass, because it is
+       lit by the window and not by the lamp — continues the one straight line
+       the composition owns across the dead band. Dissolved at both ends: this
+       is an edge the eye finds, never one it can follow to a terminus. */
+      /* …and it comes down to 0.052 / 0.019. A 180° gradient is a band that runs
+         the ENTIRE width of the frame, and the mask this pass carries only fades
+         it at 18% and 84% — so what was drawn as "the tabletop's front arris,
+         continued into the dead band" also printed straight across the lit desk
+         on one side and across the far bay on the other. The frame came back
+         with that read exactly: a horizontal seam at y≈780 slicing the picture
+         with no light source justifying its full run. It is kept, because the
+         one straight line the composition owns is worth continuing; it is
+         printed at the level of a hint rather than of an edge, and the LOUD
+         horizontal in this band (the establishing pass's horizon and floor wash)
+         is where the actual fix lands — see the :not(.has-cast) rule below. */
+      linear-gradient(
+        180deg,
+        transparent 71.4%,
+        rgba(168, 208, 220, 0.052) 72.1%,
+        rgba(150, 192, 206, 0.019) 72.9%,
+        transparent 74.2%
       ),
     /* 2 — window mullions. Two incommensurate periods (287px and 173px at
        1920) at a hair off vertical, so the wall reads as structure in
-       perspective and never as a repeating pattern. */
+       perspective and never as a repeating pattern.
+       Both gauges come up ~55% (0.055/0.022 → 0.085/0.034, 0.028 → 0.044). The
+       band they live in is the region the frame was called on for being
+       "crushed, textureless black", and a structural element authored so faintly
+       that it survives neither the vignette nor the 8-bit encode is not
+       restraint — it is absence with a comment attached. At these levels a
+       mullion is ~4 RGB points over the plate: findable at a glance across a
+       200px square, still nothing the eye can name. */
       repeating-linear-gradient(
         92.4deg,
         transparent 0 138px,
-        rgba(178, 208, 218, 0.055) 138px 141px,
-        rgba(178, 208, 218, 0.022) 141px 146px,
+        rgba(178, 208, 218, 0.085) 138px 141px,
+        rgba(178, 208, 218, 0.034) 141px 146px,
         transparent 146px 287px
       ),
     repeating-linear-gradient(
         91.2deg,
         transparent 0 168px,
-        rgba(178, 208, 218, 0.028) 168px 170px,
+        rgba(178, 208, 218, 0.044) 168px 170px,
         transparent 170px 173px
+      ),
+    /* 3 — the relay monitor's throw INTO the middle third. The screen is a lit
+       emissive object at x≈0.22 and the room grade already gives it a tight core
+       and a halo (see layers 2c above), but both of those die inside the desk
+       vignette — so the one cool source in the left half was lighting nothing
+       beyond its own bezel. A wide, very low, very flat lobe carries its spill
+       out across the partition and the chair, which is exactly the plane the eye
+       has to cross on its way to her. Seven percent, rx ≈ 3× ry because a
+       screen's throw on a wall seen at a rake is an ellipse lying down, and cool
+       so the bridge is not made of one colour: the eye travels lamp (warm) →
+       desk edge (cool) → chair bounce (warm) → face. */
+      radial-gradient(
+        21% 13% at 36% 52%,
+        rgba(128, 190, 208, 0.07),
+        rgba(112, 172, 192, 0.026) 48%,
+        transparent 82%
+      ),
+    /* 3b — and the far bay's own ambient, up where the glass wall meets the
+       ceiling. The top third of the dead band had no term in it at all: the
+       mullions ran through pure black, which is what makes a repeating structure
+       read as a pattern rather than as a wall. A single broad wash at 5% gives
+       them something to be drawn ON. */
+      radial-gradient(
+        34% 26% at 47% 12%,
+        rgba(120, 176, 196, 0.05),
+        rgba(104, 156, 176, 0.018) 54%,
+        transparent 86%
       );
     /* 3 — …and the rain that used to be carried across here is GONE.
        It was three repeating-linear-gradients of fine steep hairlines, and they
@@ -338,54 +462,108 @@
 
    Both layers are box-confined via background-size/position rather than
    masked, so the lid has a real, straight, slightly-tilted top arris — an
-   object — while everything above it is soft light. */
+   object — while everything above it is soft light.
+
+   ── …and then the lid was read, correctly, as "an undefined grey blur mass".
+   The claim above was right and the execution was not, and the failure is worth
+   naming precisely because it is the difference between a prop and a smear: the
+   lid's leading edge was a THIRTEEN-PERCENT-OF-BOX RAMP — 5% to 18% of 292px,
+   i.e. 38 pixels of gradient — going from nothing to 38% opacity. Nothing in
+   that description is an edge. An out-of-focus dark gradient occupying the
+   bottom-right quadrant with no boundary, no highlight and no value structure
+   is not an object the eye can name, and an unnameable object in the centre-
+   bottom of a hero frame is worse than no object: the eye stops there, finds
+   nothing, and files the whole frame as unresolved.
+
+   A lid is a flat panel of dark plastic with a lit screen on the far side of
+   it, and three things — and only these three — make one legible at night:
+     • a COMMITTED silhouette. The ramp is now 1.4% → 6% of the box (≈13px) and
+       it goes to 0.90, so what sits below the arris is a shape with a value in
+       it, not a haze. The 10% of plate that survives is what keeps it a lit
+       room's black rather than a hole;
+     • the ARRIS ITSELF, drawn as a specular and drawn ON TOP. A four-pixel
+       cool-white line along the top edge is the single mark that converts the
+       mass beneath it into a panel, because it is the only place in the frame
+       where the screen behind the lid is directly visible;
+     • the NEAR EDGE. The box's left boundary is a hard vertical cut at x=56%,
+       and a hard cut with nothing on it is a compositing seam. With a thin
+       specular riding it, the same cut is the lid's own near corner catching
+       its own screen — the identical geometry, read as an object instead of as
+       a mistake.
+   The screen's throw is then allowed to be a real source (layers 3 and 5): it
+   is what lights her jaw, her collar and the hand at her temple from below, and
+   a key whose emitter is visible in shot is the whole of the Eliza-style
+   motivated-light claim this pass exists to make. */
 .pq-roomgrade::after {
   content: '';
   position: absolute;
   inset: 0;
   background-repeat: no-repeat;
-  background-position: 100% 100%, 100% 100%, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
-  background-size: 44% 27%, 44% 27%, 100% 100%, 100% 100%, 100% 100%, 100% 100%,
-    100% 100%, 100% 100%;
+  background-position: 100% 100%, 0 0, 0 0, 100% 100%, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 44% 27%, 100% 100%, 100% 100%, 44% 27%, 100% 100%, 100% 100%,
+    100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
   background-image:
-    /* 1 — the lid. 178deg gives its arris ~2° of tilt across 845px, which is
-       what keeps it an object in perspective instead of a UI band. */
+    /* 1 — THE ARRIS. Boxed to the lid and listed first, i.e. painted over it:
+       the top edge of the panel, seen against the glow escaping from the screen
+       on its far side. ~4px of core into a ~5px falloff at 292px of box, which
+       is a specular on a plastic edge and not a rule. 178deg carries the same
+       ~2° of tilt the lid has, so the highlight and the silhouette are one
+       object in one perspective. */
     linear-gradient(
       178deg,
-      rgba(4, 7, 9, 0) 5%,
-      rgba(4, 7, 9, 0.38) 18%,
-      rgba(4, 7, 9, 0.66) 40%,
-      /* Committed, not half-committed. At 0.76 a quarter of the plate survived
-         under the lid, and what survived down there was the wet-looking smear
-         of city bokeh behind her shoulder — read as a mirror, i.e. as a seam.
-         0.84 lets the corner go to shadow the way the rest of the room does. */
-        rgba(4, 7, 9, 0.84) 100%
+      rgba(170, 224, 240, 0) 1.1%,
+      rgba(206, 244, 252, 0.34) 2.5%,
+      rgba(158, 216, 234, 0.13) 4.2%,
+      rgba(140, 200, 220, 0.04) 7%,
+      rgba(140, 200, 220, 0) 11%
     ),
-    /* 2 — the screen's escape along that arris. Doubled (0.05 → 0.115): this is
-       the SOURCE, and a source that cannot be seen is not motivating anything.
-       The whole complaint about the figure was that her key light arrives from
-       nowhere the audience can point at; the fix is not to soften her, it is to
-       put the lamp in shot. */
+    /* 2 — the lid's NEAR CORNER, riding the box's left cut. A 3px-wide vertical
+       specular: the one term that turns a straight boundary into an edge. Full
+       -frame rather than boxed, so it dies at both ends instead of terminating
+       on the box, and set a hair inboard (56.3% against the cut's 56%) because
+       a highlight sits ON a corner, not beside it. */
+      radial-gradient(
+        3px 128px at 56.3% 87%,
+        rgba(196, 238, 250, 0.26),
+        rgba(150, 206, 224, 0.07) 46%,
+        transparent 80%
+      ),
+    /* 3 — the screen's escape ACROSS that arris: the soft cool wash a lit panel
+       throws onto the air, the desk and the underside of everything above its
+       own top edge. Centred exactly on the arris (73.5%) so it reads as light
+       leaving the lid rather than as a gradient near it. */
+      radial-gradient(
+        24% 7.5% at 78% 73.5%,
+        rgba(136, 206, 222, 0.115),
+        rgba(128, 196, 214, 0.04) 46%,
+        transparent 80%
+      ),
+    /* 4 — the lid itself. A shape, now: 13px of leading edge into a committed
+       0.90, with 10% of the plate left alive inside it so the panel has a
+       surface rather than being a hole cut in the frame. */
       linear-gradient(
         178deg,
-        rgba(125, 200, 214, 0) 6.5%,
-        rgba(132, 204, 218, 0.078) 12%,
-        rgba(125, 200, 214, 0.03) 17.5%,
-        rgba(125, 200, 214, 0) 29%
+        rgba(4, 7, 9, 0) 1.4%,
+        rgba(4, 7, 9, 0.34) 2.6%,
+        rgba(4, 7, 9, 0.74) 6%,
+        rgba(4, 7, 9, 0.87) 20%,
+        rgba(4, 7, 9, 0.9) 100%
       ),
-    /* 3 — the screen's own glow, thrown up off the desk in front of her. Full
+    /* 5 — the screen's own glow, thrown up off the desk in front of her. Full
        -frame (not boxed to the lid) so it can spill ACROSS the arris and land
        on the underside of everything above it, which is what a screen does.
        Its centre sits at 67.5% — a hair left of her new anchor — so the light
        comes from in FRONT of her and slightly across, never from behind the
-       camera. This is the cool half of the two-source key. */
+       camera. This is the cool half of the two-source key, and it is up half a
+       stop (0.088 → 0.135) with the emitter now visible: a source you can point
+       at is allowed to be a source you can see the effect of. */
       radial-gradient(
-        13.5% 11.5% at 67.5% 76%,
-        rgba(138, 208, 222, 0.088),
-        rgba(130, 200, 216, 0.032) 44%,
-        transparent 78%
+        16% 13.5% at 67.5% 75%,
+        rgba(140, 210, 226, 0.135),
+        rgba(130, 200, 216, 0.05) 44%,
+        transparent 80%
       ),
-    /* 4 — and the warm half: the task lamp on HER side of the desk, the thing
+    /* 6 — and the warm half: the task lamp on HER side of the desk, the thing
        that has been lighting her cheek all along with nothing in frame to
        explain it. A tight amber core plus a bloom at a third the density and
        three times the radius, the same construction the far practical uses, so
@@ -399,14 +577,52 @@
         transparent 80%
       ),
     radial-gradient(11% 15% at 57.5% 71.5%, rgba(232, 160, 92, 0.05), transparent 82%),
-    /* 5 — spill on the collar: the widest of the three, and the one that
+    /* 7 — spill on the collar: the widest of the three, and the one that
        actually anchors her shoulders to the desk. Tracked left with her. */
-      radial-gradient(15% 13% at 72.5% 60%, rgba(125, 200, 214, 0.05), transparent 74%),
-    /* 6 — jaw underside. Small and low-set: light from a screen reaches the
+      radial-gradient(15% 13% at 72.5% 60%, rgba(125, 200, 214, 0.075), transparent 74%),
+    /* 8 — jaw underside. Small and low-set: light from a screen reaches the
        underside of a chin and nothing above it. */
-      radial-gradient(7% 6% at 71.5% 46%, rgba(125, 200, 214, 0.042), transparent 76%),
-    /* 7 — the hand at her temple, catching the same source at a glance. */
-      radial-gradient(5.5% 5% at 64.5% 34%, rgba(125, 200, 214, 0.032), transparent 78%);
+      radial-gradient(7% 6% at 71.5% 46%, rgba(125, 200, 214, 0.062), transparent 76%),
+    /* 9 — the hand at her temple, catching the same source at a glance. */
+      radial-gradient(5.5% 5% at 64.5% 34%, rgba(125, 200, 214, 0.046), transparent 78%),
+    /* 10 — and the LAMP's answer on the far side of her, which the frame was
+       missing entirely: she was lit cool from the screen and warm across the
+       face, and her camera-left silhouette — the edge actually turned toward
+       the practical, 1400px away across the desk — carried nothing at all. A
+       figure whose contour never catches the room's only warm source is a
+       figure that was lit somewhere else. Two narrow terms, both on her own
+       outline: the hair, where a rim reads hardest… */
+      radial-gradient(
+        1.7% 7% at 61.4% 27%,
+        rgba(244, 190, 124, 0.128),
+        rgba(236, 174, 110, 0.04) 50%,
+        transparent 80%
+      ),
+    /* 11 — …and the shoulder below it, a step wider and a step quieter, the way
+       a source that far off falls across a soft wool edge. */
+      radial-gradient(
+        2.2% 7.5% at 59.8% 60%,
+        rgba(238, 178, 112, 0.106),
+        rgba(232, 168, 104, 0.034) 52%,
+        transparent 80%
+      ),
+    /* 12 — the HAND at her temple, catching the lamp across its knuckles.
+       Layer 9 already gives that hand the screen's cool underlight, which is
+       correct and is only half the story: the hand is the highest, nearest and
+       most forward-facing surface on her, so it is also the one thing on the
+       figure with a clean line of sight back to the practical. A small warm
+       catch on its outboard edge is the mark that finishes the light: her hair
+       (10), her shoulder (11) and her hand all now carry the same source, which
+       is what makes the lamp read as lighting HER rather than as lighting a
+       photograph of her. Tight and low — it is the smallest term in this pass,
+       and a hand blown out over its own knuckles reads as a compositing halo
+       rather than as a specular on skin. */
+      radial-gradient(
+        2.4% 3.4% at 63.2% 33.5%,
+        rgba(246, 196, 132, 0.115),
+        rgba(238, 178, 112, 0.036) 50%,
+        transparent 80%
+      );
 }
 
 /* ── The same room, with nobody in it ───────────────────────────────────────
@@ -445,25 +661,22 @@
   background-position: 0 0;
   background-size: 100% 100%;
   background-image:
-    /* 1 — the rim on the far chair's window side. A LINE (2.4px of core into a
-       ~6px falloff), struck in the pane steel because the thing behind it is a
-       wall of glass. This is the object the right third was missing; everything
-       else in this stack is the air and the floor around it. */
-    radial-gradient(
-      2.4px 104px at 73.5% 74.5%,
-      rgba(172, 220, 234, 0.175),
-      rgba(150, 202, 218, 0.055) 52%,
-      transparent 80%
-    ),
-    /* 1b — its crown, and 1c the mass inside the two edges, so the silhouette
-       has a value in it rather than being an outline round a void. */
-      radial-gradient(30px 4px at 71.9% 68.6%, rgba(168, 216, 230, 0.105), transparent 80%),
-    radial-gradient(
-        4.6% 8.4% at 71.3% 76%,
-        rgba(96, 150, 168, 0.078),
-        rgba(96, 150, 168, 0.026) 56%,
-        transparent 82%
-      ),
+    /* 1 — the far chair's rim, its crown and its mass USED TO BE HERE, and they
+       have moved rather than gone: see the `:not(.has-cast) .pq-atmos__midlight
+       ::after` rule below. Two things were wrong with them in this pass and both
+       are structural rather than a matter of tuning.
+       First the registration. Measured off a framed 1920 × 1080 capture the
+       plate's far chair occupies screen y 453→660; these three terms sat at
+       68.6–76%, i.e. 150px below it, out on the wet floor — a 104px vertical
+       cool line standing in a puddle, which is the "AI-mush in the midground"
+       note in its purest form.
+       Second, and the reason they cannot simply be re-pointed here: this rule
+       carries a vertical mask that is transparent above 58% and only opens at
+       66%. The object is at 42–61%. Every correctly-placed mark would have been
+       masked away. The pass is the FLOOR and the junction above it; a chair is
+       not floor, and it belongs in the unmasked pass.
+       What is left below is the air and the floor alone, which is what this
+       stack was always for. */
     /* 2 — the horizon. The glass wall meets the floor here and until it does
        the right third has no depth at all: a shallow dark step with a lit edge
        riding on top of it, which is exactly what that junction looks like at
@@ -489,46 +702,81 @@
       radial-gradient(11px 78px at 85.2% 79%, rgba(150, 204, 220, 0.098), transparent 76%),
     radial-gradient(9px 62px at 65.2% 78%, rgba(232, 172, 108, 0.082), transparent 78%),
     radial-gradient(7px 46px at 93.5% 77%, rgba(146, 200, 216, 0.062), transparent 78%),
-    /* 4 — the window's light lying ON that floor: a broad, shallow band under
-       the glass, brightest just below the horizon and dying before the reading
-       band. Value step two. */
-      linear-gradient(
-        180deg,
-        transparent 68%,
-        rgba(112, 168, 186, 0.098) 74%,
-        rgba(104, 158, 176, 0.05) 84%,
-        transparent 93%
+    /* 4 — the window's light lying ON that floor.
+       It used to be a `linear-gradient(180deg, …)`, i.e. a band with no width
+       limit at all: 25% of the frame's height of flat cool wash running from
+       x=0 to x=1920, laid over the lit desk, the lamp base, the carpet and the
+       far bay indifferently. That is the "flat gray haze band across the lower
+       two thirds" note, and it is also why the frame's blacks stopped being
+       black anywhere below the desk line — a single translucent rectangle has a
+       DC term, so it lifts every pixel it covers by the same amount and takes
+       the local contrast out of all of them.
+       Replaced with the shape the light actually has. The source is the wall of
+       glass in the centre-right, so the pool of transmitted light on the floor
+       is an ELLIPSE under it — dense just below the horizon where the window is
+       nearest, falling off in every direction, and reaching zero well before the
+       near foreground (the camera plane, where nothing is lit and everything
+       should stay crushed). Two lobes, a core and a long halo at a third the
+       density, so it has depth-graded falloff rather than an edge. */
+      radial-gradient(
+        26% 9% at 72% 76.5%,
+        rgba(112, 168, 186, 0.105),
+        rgba(106, 160, 178, 0.042) 52%,
+        transparent 84%
       ),
+    radial-gradient(44% 17% at 74% 78%, rgba(100, 152, 172, 0.036), transparent 86%),
     /* 5 — and the floor's own mass. Value step one: the darkest of the three,
        and the whole point of it is that it is not zero. A very low cool wash
        over the outboard quarter, which is where the vignette and the frame-edge
-       window both bite hardest. */
+       window both bite hardest. Pulled up and outboard with (4) so the bottom
+       ~120px of frame — the nearest floor, i.e. the camera plane — keeps the
+       plate's own black. */
       radial-gradient(
-        46% 30% at 82% 84%,
-        rgba(64, 112, 130, 0.088),
-        rgba(58, 104, 120, 0.03) 58%,
+        40% 24% at 84% 80%,
+        rgba(64, 112, 130, 0.082),
+        rgba(58, 104, 120, 0.026) 58%,
         transparent 84%
       ),
     /* 6 — the near desk's front edge, carried right. The lit third stops dead
        at the desk's own falloff; a cool catch along the arris continues the one
        straight line the composition owns across into the dark half, which is
-       the path the eye takes out of the lamp pool. */
+       the path the eye takes out of the lamp pool. Re-pointed 6–42% → 26–58%:
+       the horizontal mask below now retires this whole pass over the desk (that
+       is the point of it), so a catch that started at x=6% was half deleted and
+       half a seam running through the fade. Starting it at 26% puts the whole
+       run inside the surviving band and lands its bright end where the eye
+       actually leaves the pool. */
       linear-gradient(
         95.4deg,
-        transparent 6%,
-        rgba(150, 200, 214, 0.055) 17%,
-        rgba(146, 196, 212, 0.022) 30%,
-        transparent 42%
+        transparent 26%,
+        rgba(150, 200, 214, 0.055) 36%,
+        rgba(146, 196, 212, 0.022) 48%,
+        transparent 58%
       ),
     /* 7 — the far bench's own lit plane, so the chair above is standing on
        something. */
       radial-gradient(9% 1.7% at 75% 71.2%, rgba(178, 206, 216, 0.05), transparent 82%);
-  /* The desk-edge catch (6) is a near-horizontal band and would otherwise run
-     the full width of the frame; the rest belongs to the outboard half. One
-     mask confines the whole pass to the region it describes and dissolves it at
-     every boundary, so nothing here can acquire an edge of its own. */
-  -webkit-mask-image: linear-gradient(180deg, transparent 58%, #000 66%, #000 84%, transparent 96%);
-  mask-image: linear-gradient(180deg, transparent 58%, #000 66%, #000 84%, transparent 96%);
+  /* Two masks, intersected.
+     The vertical one is the original: the pass describes the floor and the
+     junction above it, so it is born under the desk line and dissolves before
+     the reading band. It is unchanged; the FOREGROUND chair that answers the
+     dead right third lives one layer up instead, in .pq-atmos__midlight, because
+     an object on the near plane has to survive to the bottom edge of the frame
+     and this mask's whole job is to make sure nothing here does.
+     The horizontal one is NEW and it is the actual fix for the frame's loudest
+     note. Every term in this pass belongs to the window wall and the floor under
+     it, and every gradient that describes them was authored as a full-width
+     band — so the pass printed a seam straight across the lit desk, a lift over
+     the lamp's own pool and a flat grey wash over the near foreground, none of
+     which has a source. The mask retires the whole thing left of x≈30% and is
+     only at full strength past 46%, i.e. it dies out before mid-frame exactly
+     the way the light it describes does. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 58%, #000 66%, #000 84%, transparent 96%),
+    linear-gradient(90deg, transparent 30%, #000 46%, #000 100%);
+  mask-image: linear-gradient(180deg, transparent 58%, #000 66%, #000 84%, transparent 96%),
+    linear-gradient(90deg, transparent 30%, #000 46%, #000 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
 /* The two power-window passes above are drawn on the OPS ROOM: a desk lamp hard
@@ -585,25 +833,50 @@
    nothing at every boundary so the pass has no edge of its own. The speaker
    (x > 62%) is never touched: she is the plane everything else is defocused
    *relative to*. */
+/* 3px → 4px, and a third lobe.
+   The note is that the desk has to unambiguously own the frame, and half of
+   owning a frame is what is NOT sharp in it. The two lobes below always aimed at
+   the midground; the region that gives the game away is the wall of city bokeh
+   DIRECTLY BEHIND the props — the bay just outboard of the relay screen, where a
+   painted disc and a painted mug lip were resolving at the same rate a foot
+   apart on screen and several hundred feet apart in the fiction. That is not
+   depth of field, that is an image with no lens in front of it.
+   The first lobe also moves, 41.5%/67% → 48.8%/56%: it was racking the midground
+   at the position the old "chair" terms were drawn at, and — see
+   .pq-atmos__midlight — that is 130px from where the plate's midground chair
+   actually is. It now sits on the object that pass rims, so the defocus and the
+   rim describe the same thing. */
 .pq-atmos__focus {
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   -webkit-mask-image: radial-gradient(
-      11% 21% at 41.5% 67%,
+      11% 20% at 48.8% 56%,
       #000 0%,
       rgba(0, 0, 0, 0.82) 42%,
       rgba(0, 0, 0, 0.34) 72%,
       transparent 100%
     ),
-    radial-gradient(26% 8% at 26% 79%, rgba(0, 0, 0, 0.7), transparent 78%);
+    radial-gradient(26% 8% at 26% 79%, rgba(0, 0, 0, 0.7), transparent 78%),
+    radial-gradient(
+      12% 17% at 41% 31%,
+      rgba(0, 0, 0, 0.88) 0%,
+      rgba(0, 0, 0, 0.5) 52%,
+      transparent 100%
+    );
   mask-image: radial-gradient(
-      11% 21% at 41.5% 67%,
+      11% 20% at 48.8% 56%,
       #000 0%,
       rgba(0, 0, 0, 0.82) 42%,
       rgba(0, 0, 0, 0.34) 72%,
       transparent 100%
     ),
-    radial-gradient(26% 8% at 26% 79%, rgba(0, 0, 0, 0.7), transparent 78%);
+    radial-gradient(26% 8% at 26% 79%, rgba(0, 0, 0, 0.7), transparent 78%),
+    radial-gradient(
+      12% 17% at 41% 31%,
+      rgba(0, 0, 0, 0.88) 0%,
+      rgba(0, 0, 0, 0.5) 52%,
+      transparent 100%
+    );
 }
 /* The atrium is a deep-focus daylit interior with no midground object to rack
    away from — the pass has nothing to describe there and would only soften a
@@ -640,48 +913,48 @@
   opacity: 0;
   transition: opacity var(--pq-dur-5) var(--pq-ease);
   background-image:
-    /* 0 — the backrest's LAMP-SIDE arris, and the only genuinely new light in
-       this pass. The chair had a cool 19px-wide catch down its window side and
-       nothing at all facing the practical, which is a shape with one soft glow
-       on it — i.e. still a silhouette, and the note that came back ("a shapeless
-       dark mass at the focal midline / compositing residue") is exactly that
-       read. A rim is a LINE: 2.5px of core feathering to nothing across ~5px,
-       struck in the lamp's own amber, running down the edge the plate already
-       paints at x≈45%. Warm left edge + cool right edge is the whole of what
-       turns a mass into a modelled object, and both sources are in shot. */
+    /* 0 — THE CHAIR, RE-REGISTERED. ────────────────────────────────────────
+       Every term in this group described a seat back and not one of them was on
+       it. Measured off a framed 1920 × 1080 capture — the plate is drawn at 1.3×
+       overscan and slid by the framing bias, so plate coordinates and screen
+       coordinates are two different things (see Stage → computeFraming) — the
+       object the plate actually paints here occupies screen x 835→1041,
+       y 553→661. The old terms sat at x 44.3–51.4% and y 61.5–80%: the warm
+       arris printed a floating orange curve in mid-air at (866, 660), the crown
+       a floating grey dash at (912, 524), and the "arris" at 51.4% a 19px-wide
+       glow with nothing whatsoever underneath it.
+       That is the whole of the note the frame came back with twice — "an
+       ambiguous dark mass / AI-mush a hostile eye catches in two seconds". It
+       was never that the midground had no light on it. It was that the light was
+       ~130px away from the thing it claimed to be lighting, and a rim with no
+       object under it is not a rim, it is a smear.
+       Same four marks, on the object: warm arris on the lamp side, cool arris on
+       the window side, a crown across the top, and a value inside the two edges.
+       Two edges and a value is the entire recipe, and both sources are in shot. */
     radial-gradient(
-      2.6px 116px at 45.1% 61.5%,
-      rgba(246, 196, 138, 0.32),
+      2.6px 54px at 43.6% 56.5%,
+      rgba(246, 196, 138, 0.3),
       rgba(240, 180, 120, 0.09) 54%,
       transparent 82%
     ),
-    /* 0b — the same edge lower, where the back turns into the seat and the rim
-       has to weaken rather than stop. */
-      radial-gradient(2.1px 72px at 44.3% 76.5%, rgba(244, 190, 130, 0.2), transparent 78%),
-    /* 0c — the crown, catching the lamp across the top of the backrest. */
-      radial-gradient(34px 5px at 46.2% 51.8%, rgba(246, 196, 138, 0.17), transparent 80%),
-    /* 1 — the arris. Narrow and tall: a rim is a line, and the moment it has
-       width it becomes a glow around a shape nobody can name. */
+    /* 0b — the crown, catching the lamp across the top of the backrest. */
+      radial-gradient(56px 3px at 47.5% 51.8%, rgba(244, 190, 130, 0.2), transparent 80%),
+    /* 0c — the window-facing arris, struck in the pane steel: what is behind
+       this edge is a wall of glass and a city. Warm left edge + cool right edge
+       is what turns a mass into a modelled object. */
       radial-gradient(
-        19px 205px at 51.4% 66%,
-        rgba(150, 208, 222, 0.19),
-        rgba(150, 208, 222, 0.055) 46%,
-        transparent 76%
-      ),
-    /* 1b — the same edge lower down, where the seat back turns away and the
-       band has to weaken rather than stop. */
-      radial-gradient(13px 96px at 49.8% 80%, rgba(146, 204, 218, 0.125), transparent 74%),
-    /* 2 — the crown of the seat back: a horizontal catch, because the top edge
-       of a chair faces up into the room's ambient as well as across at the
-       glass. */
-      radial-gradient(92px 16px at 47.5% 48.5%, rgba(150, 208, 222, 0.13), transparent 78%),
-    /* 3 — the mass. 8%, i.e. barely: enough that the chair is dark rather than
-       absent, not enough to lift it off the wall behind it. */
-      radial-gradient(
-        9% 19.5% at 44.5% 70%,
-        rgba(104, 158, 174, 0.08),
-        rgba(104, 158, 174, 0.024) 54%,
+        2.2px 50px at 54% 57%,
+        rgba(150, 208, 222, 0.22),
+        rgba(150, 208, 222, 0.06) 50%,
         transparent 80%
+      ),
+    /* 1 — and the mass between them. 7%, i.e. barely: enough that the chair is
+       dark rather than absent, not enough to lift it off the bay behind it. */
+      radial-gradient(
+        5.4% 5.4% at 48.8% 56.6%,
+        rgba(96, 150, 168, 0.07),
+        rgba(96, 150, 168, 0.022) 56%,
+        transparent 82%
       ),
     /* 3b — THE SECOND WORKSTATION. ────────────────────────────────────────────
        The frame's whole weight sat in the left third — lamp, desk, mug, relay
@@ -733,6 +1006,97 @@
       radial-gradient(30% 12% at 82% 82%, rgba(96, 156, 172, 0.05), transparent 80%),
     radial-gradient(15px 96px at 74% 84%, rgba(150, 200, 214, 0.055), transparent 74%),
     radial-gradient(12px 74px at 90.5% 80%, rgba(226, 168, 104, 0.042), transparent 76%);
+}
+/* ── The right two thirds, given something to look at ───────────────────────
+   A pseudo-element rather than more layers on the stack above, and the reason is
+   scope: two of the three objects drawn here stand where the SPEAKER stands.
+   Her plate occupies x 0.51–0.84, and a chair rim at 0.77 with a cast on stage
+   is a cool edge light down her arm — the compositing tell the whole file exists
+   to avoid. The room's empty establishing composition is the only one that needs
+   them, and `:not(.has-cast)` is where they belong.
+
+   The note this answers is the frame's loudest: "two thirds of your frame is
+   undesigned murk — a beautiful corner is not a composition", with the eye dying
+   at x≈900. Three objects fix it, and — this is the whole discipline — every one
+   of them is a thing the PLATE ALREADY PAINTS and the grade had simply never
+   found. Measured off a framed 1920 × 1080 capture, because the plate is drawn
+   at 1.3× overscan and slid by the framing bias and therefore plate coordinates
+   and screen coordinates are two different things (see Stage → computeFraming). */
+.pq[data-pq-bg='ops_room']:not(.has-cast) .pq-atmos__midlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-image:
+    /* 1 — THE FAR CHAIR, at screen x 1330→1490, y 453→660. It is in the plate,
+       its crown is even faintly visible in the capture, and the grade's own "far
+       chair" terms were painting 150px BELOW it, out on the wet floor: a 104px
+       vertical cool line standing in a puddle. Re-registered, and given the same
+       three marks the near chair gets — crown, window-side arris, and a value
+       inside them. This is the object the outboard third was missing. */
+    radial-gradient(60px 3.4px at 73.2% 42.4%, rgba(170, 218, 232, 0.19), transparent 80%),
+    radial-gradient(
+        2.4px 100px at 77.2% 51.5%,
+        rgba(176, 224, 238, 0.24),
+        rgba(150, 202, 218, 0.07) 52%,
+        transparent 80%
+      ),
+    radial-gradient(2px 82px at 69.4% 52.5%, rgba(150, 200, 216, 0.13), transparent 78%),
+    radial-gradient(
+        4.4% 9.6% at 73.4% 51.8%,
+        rgba(88, 140, 158, 0.058),
+        rgba(88, 140, 158, 0.02) 56%,
+        transparent 82%
+      ),
+    /* 2 — THE LIT MULLION at x≈1050–1070, and the answer to "the orange vertical
+       streak at x≈1060 reads arbitrary".
+       It is not an effect and it was never ours: the plate paints a glazing
+       member there, edge-on, catching the desk lamp down its inboard face — a
+       perfectly good piece of architecture. What made it read as arbitrary is
+       that the grade printed only the ~130px of it that happened to sit against
+       the brightest bokeh, so what the eye found was a bar of orange floating in
+       a window with nothing above it and nothing below. A frame member that
+       terminates in mid-air twice is an artefact; the same member running floor
+       to ceiling is structure.
+       So it is CONTINUED, at a third the strength, up to the ceiling and down to
+       the floor line — and given the 1.4px cool catch on its outboard face that
+       every other lit edge in this room has. Warm face + cool arris is what
+       makes it a metal section rather than a stroke. */
+      radial-gradient(2.6px 300px at 54.7% 26%, rgba(238, 176, 110, 0.085), transparent 78%),
+    radial-gradient(2.6px 250px at 54.7% 60%, rgba(232, 168, 104, 0.062), transparent 78%),
+    radial-gradient(1.5px 210px at 55.7% 40%, rgba(158, 208, 222, 0.1), transparent 80%),
+    /* 3 — THE OPERATOR'S CHAIR, in the right FOREGROUND. ────────────────────
+       The two objects above are midground and far, and the composition's real
+       failure is nearer than either: outboard of the headset the NEAR plane does
+       not exist at all. Depth in a still is read from the near plane outward, so
+       three quarters of this picture had no depth to read however well the far
+       half is lit.
+       The plate paints wet floor down there and nothing else, so unlike the two
+       above this one is authored — on exactly the terms the laptop lid in the
+       has-cast pass is authored on, which is the only honest way to put an object
+       into a painting: the OCCLUSION is the object. A committed dark mass rising
+       off the bottom-right corner at 68%, whose top edge crosses the horizon (so
+       it is unambiguously in front of the window rather than beside it) and which
+       covers the floor reflection at 88% — a thing that hides another thing is in
+       front of it, and that is a claim no gradient can make on its own. One
+       inboard rim and one crown, both in pane steel because the only source that
+       can reach the back of a chair from there is the wall of glass across the
+       room, and nothing at all on its outboard side.
+       The eye now runs lamp → mug → headset → desk arris → this shoulder → the
+       far chair → the city: a path across the frame instead of a cul-de-sac. */
+      radial-gradient(150px 3.6px at 88.5% 64%, rgba(174, 220, 234, 0.26), transparent 80%),
+    radial-gradient(
+        3px 200px at 81.5% 81%,
+        rgba(186, 230, 244, 0.34),
+        rgba(150, 202, 218, 0.09) 50%,
+        transparent 80%
+      ),
+    radial-gradient(
+        22% 33% at 91.5% 98%,
+        rgba(2, 5, 7, 0.7),
+        rgba(2, 5, 7, 0.36) 52%,
+        transparent 82%
+      );
 }
 .pq[data-pq-bg='ops_room'] .pq-atmos__midlight {
   opacity: 1;
@@ -1328,11 +1692,11 @@
   background-repeat: no-repeat;
   background-position: bottom center, bottom center;
   /* Two layers, deliberately:
-     1. THE BAND — 302px at 1080, i.e. transparent at 72% frame height ramping
-        to 0.65 at the bottom edge. This is the element the eye reads as "the
-        dialogue bar"; its density arrives fast enough to register as a designed
-        surface rather than as a general darkening.
-     2. THE TAIL — the full --pq-scrim-h veil, capped at 0.30, so the band is
+     1. THE BAND — 454px at 1080, i.e. transparent at 58% frame height ramping
+        to 0.62 at the bottom edge. This is the element the eye reads as "the
+        dialogue bar"; it is a FADE, not a surface, and the run is long enough
+        that no single height in it reads as the top of anything.
+     2. THE TAIL — the full --pq-scrim-h veil, capped at 0.18, so the band is
         approached through 80px of almost nothing instead of through an edge.
         Composited at the bottom the pair lands near 0.76, which is what the
         prose actually needs over the lamp-lit third of the desk.
@@ -1360,25 +1724,44 @@
      its first derivative at BOTH ends, and on a bright plate the eye finds the
      upper one and calls it the top of a box. */
   background-image:
-    /* THE BAND — 302px at 1080, i.e. the fade's real density, arriving late and
-       going properly dark. Its 0.70 floor is reached at the frame edge and it
-       is already past 0.42 at the prose baseline, which — composited with the
-       tail — is the density at which the reading white holds over the brightest
-       thing the band can contain. */
+    /* THE BAND — 454px at 1080 (was 302), on a curve with a third less slope
+       through its middle. The floor comes down 0.70 → 0.62 with the extra run,
+       so the composited density under the first baseline is unchanged (~0.48)
+       while there is no longer a height at which the picture visibly stops. The
+       stops are still sampled off a smoothstep; there are simply more of them,
+       because the failure mode of a long ramp is banding and the failure mode of
+       a coarse one is a visible shoulder. */
     linear-gradient(
       180deg,
-      rgba(var(--pq-scrim-rgb) / 0) 0%,
-      rgba(var(--pq-scrim-rgb) / 0.05) 14%,
-      rgba(var(--pq-scrim-rgb) / 0.19) 34%,
-      rgba(var(--pq-scrim-rgb) / 0.42) 58%,
-      rgba(var(--pq-scrim-rgb) / 0.6) 80%,
-      rgba(var(--pq-scrim-rgb) / 0.7) 100%
+      rgba(var(--pq-scrim-warm-rgb) / 0) 0%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.014) 10%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.051) 22%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.119) 34%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.215) 46%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.327) 58%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.452) 70%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.565) 82%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.655) 92%,
+      rgba(var(--pq-scrim-warm-rgb) / 0.7) 100%
     ),
     /* THE TAIL — the full 454px veil, capped at 0.22, so the band is entered
        through 150px of almost nothing instead of through an edge. Composited at
        the bottom the pair lands near 0.77.
 
-       Both ramps come back down (band 0.80 → 0.70, tail 0.26 → 0.22) for the
+       ── …and then both ramps come back UP, band 0.62 → 0.70 and tail 0.18 →
+       0.22 (composited ~0.69 → ~0.77), with every intermediate stop rescaled by
+       the same factor so the smoothstep the curve was sampled off is preserved
+       exactly — this is a change of DENSITY, not of shape, and the shoulder that
+       the long run exists to hide is exactly where it was.
+       The note it answers is specific and it is a legibility one, not a taste
+       one: the desk and the mug were still readable through the fade underneath
+       the FIRST line of prose, and a transitional serif set over scene detail
+       loses its hairlines before it loses its stems — the type goes soft rather
+       than going grey, which reads as a rendering fault. Eight points of density
+       is the difference between the reading white sitting in atmosphere and
+       sitting on a photograph.
+
+       Both ramps had previously come DOWN (band 0.80 → 0.62, tail 0.26 → 0.18) for the
        same reason the prose moved: the type used to sit ABOVE the dark part of
        the fade, so the fade had to justify itself as a graphic — and a 0.85 slab
        with nothing set in it is a black bar, which is what came back. With the
@@ -1387,11 +1770,11 @@
        over lamp-lit wood), and the bottom edge no longer has to be a floor. */
       linear-gradient(
         180deg,
-        rgba(var(--pq-scrim-rgb) / 0) 0%,
-        rgba(var(--pq-scrim-rgb) / 0.02) 26%,
-        rgba(var(--pq-scrim-rgb) / 0.08) 56%,
-        rgba(var(--pq-scrim-rgb) / 0.16) 80%,
-        rgba(var(--pq-scrim-rgb) / 0.22) 100%
+        rgba(var(--pq-scrim-warm-rgb) / 0) 0%,
+        rgba(var(--pq-scrim-warm-rgb) / 0.015) 30%,
+        rgba(var(--pq-scrim-warm-rgb) / 0.061) 60%,
+        rgba(var(--pq-scrim-warm-rgb) / 0.141) 82%,
+        rgba(var(--pq-scrim-warm-rgb) / 0.22) 100%
       );
 }
 .pq-dialogue__scrim::after {
@@ -1423,6 +1806,15 @@
 }
 .pq-dialogue__name {
   font-family: var(--pq-sans);
+  /* Declared, never inherited from the grid. `align-items: baseline` on the
+     container already aligns first baselines, but the plate is the one item in
+     this set whose box geometry can change (it is `hidden` when a line is
+     anonymous, and it carries a different family at a different size), so the
+     alignment mode it depends on is stated on the item itself. Its alphabetic
+     baseline and the prose's first baseline are then the SAME horizontal by
+     construction rather than by inheritance — the caps sit on the reading line,
+     which is where a speaker plate belongs. */
+  align-self: baseline;
   /* Sized off the BODY, Eliza's way: the plate's cap height matches the prose's
      x-height. Body tops out at 2.13rem (34px) in a face whose x-height is ~0.47em
      ⇒ 16px; Inter's cap height is 0.727em ⇒ 22px = 1.375rem. At the old 1.25rem
@@ -1459,7 +1851,15 @@
      carried a hard 1px black offset that put a dark keyline under every letter
      and made the caps *pop* off the plate; a single soft halo is all a name
      over a fade needs. */
-  color: rgba(var(--pq-warm-rgb) / 0.644);
+  /* 0.644 → 0.72 (78% of the prose's 0.92). The 70% relationship was struck
+     against a scrim that has since lost 8 points of density under the plate —
+     the plate sits ABOVE the first baseline, i.e. in the part of the fade that
+     just got gentler — so the same ratio now lands the caps within ~14% of the
+     value directly behind them. A nameplate a critic has to hunt for is a
+     nameplate that reads as a watermark; 78% restores the ORIGINAL contrast
+     against the ground rather than the original number against the prose, and
+     it is still a clear step under the sentence it labels. */
+  color: rgba(var(--pq-warm-rgb) / 0.72);
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
   /* NO `overflow: hidden` here, ever. A grid item with a scroll-clipped overflow
@@ -1529,9 +1929,9 @@
 .pq-dialogue.is-narration .pq-dialogue__tail {
   color: rgba(var(--pq-warm-rgb) / 0.84);
 }
-/* Same 70%-of-body relationship, measured against narration's quieter 0.84. */
+/* Same 78%-of-body relationship, measured against narration's quieter 0.84. */
 .pq-dialogue.is-narration .pq-dialogue__name {
-  color: rgba(var(--pq-warm-rgb) / 0.588);
+  color: rgba(var(--pq-warm-rgb) / 0.655);
 }
 
 /* Continue glyph — a small SOLID ▼ sitting on the last baseline.
@@ -1559,10 +1959,19 @@
      bolder than the sentence whatever its opacity is. */
   width: 0.52em;
   height: 0.3em;
-  /* Eliza's gap, in px rather than em: the mark is an affordance, not a glyph,
-     and its distance from the sentence is a UI measurement that should not
-     drift with the reading size. */
-  margin-left: 12px;
+  /* An EN SPACE, and it is deliberately typographic rather than a UI number.
+     12px was the previous setting, argued for on the grounds that the mark is an
+     affordance and its distance should not drift with the reading size. In the
+     frame that argument fails from the other end: 12px against a 34px serif is
+     about a third of an em, which is narrower than the word space either side of
+     it, so the triangle HUGS the full stop — it reads as terminal punctuation
+     the face happens not to have rather than as the separate affordance it is.
+     A ▼ that has to be picked out of the period beside it is not an affordance.
+     0.5em is the en space, i.e. exactly one quad half — the same measure a
+     compositor sets before a dingbat or a paragraph mark. At 34px it is 17px,
+     visibly wider than a word space, and it scales with the reading type so the
+     relationship holds at every viewport instead of at exactly one. */
+  margin-left: 0.5em;
   /* An inline-block's baseline is its bottom MARGIN edge, so `baseline` put the
      triangle's point exactly on the text baseline — geometrically right and
      optically high, because a down-pointing triangle carries all of its mass
@@ -1618,75 +2027,90 @@
   }
 }
 
-/* ══════════════════════════════  Relay panel  ══════════════════════════════
+/* ══════════════════════════════  Relay chip  ═══════════════════════════════
 
    The one piece of Lumen that is always in the room. It hangs off the same
-   right margin as the hamburger, one clear gap below it, so the top-right
-   corner reads as a single column of chrome rather than two unrelated marks.
+   right margin as the hamburger AND as the proxy pane, so the whole right side
+   of the frame reads as a single column of chrome rather than three unrelated
+   marks.
 
-   It is a PANEL, not a badge: ~356 × 216 of diegetic glass carrying five rows
-   of live instrumentation. A wristwatch-sized chip in the corner is read by a
-   blind critic as a HUD ornament dropped on a photograph; a pane with a
-   hairline, a real blur, and rows whose numbers move is read as the product the
-   story is about. That is the entire difference in the UI-craft column.
+   It used to be a PANEL — 330 × 216 of glass carrying five rows of live
+   instrumentation — and the argument for that was sound as far as it went: a
+   wristwatch-sized badge in a corner reads as a HUD ornament, while a pane with
+   rows that move reads as the product the story is about. What the argument
+   missed is that the frame already HAS that pane, eighteen hundred pixels away,
+   and it prints the same vocal waveform and the same signal number. Two
+   instrumented panels down one side is not twice the product; it is a dashboard,
+   and a dashboard is the opposite of a place. See CallStrip.ts.
 
-   Glass, not a card — five properties do all of it: a 6% white fill (not a
-   paper-coloured slab), a 12px backdrop blur so the room genuinely bends
-   through it, a single 35% hairline (an etched readout catches the light; at
-   the UI's usual 10–16% the pane has no arris at all), a soft outer bloom
-   instead of a drop shadow, and a 5px cut. */
+   So it is a chip, and it earns its keep by being demonstrably the SAME SHEET as
+   the pane below it: identical fill, identical hairline, identical bloom, the
+   same 5px cut, the same rake off --pq-glass-plane. One product, etched twice on
+   one piece of glass — which is a stronger claim than two panels making it
+   separately. */
 
 .pq-callstrip {
   position: absolute;
-  /* topbar padding + 40px button + air + 24px of clearance.
-     The extra 24 is a collision fix, not taste: the panel's lower-left corner
-     was cutting into the speaker's hair. UI cropping the subject's head is the
-     cheapest-looking thing a frame can do, and it is fixed from both sides —
-     the plate moved a third of the way back toward centre (see anchorsAt) and
-     the panel steps down and narrows to meet it. */
-  top: calc(clamp(12px, 2vw, 22px) + 40px + 16px + 24px);
+  /* topbar padding + 40px button + one step of air. The extra 24px of clearance
+     this rule used to carry was a collision fix — the panel's lower-left corner
+     was cutting into the speaker's hair — and the collision is gone with the
+     panel: a one-line chip is ~150px wide and ~36px tall, so it lives entirely
+     inside the dark corner outboard of her. The chip and the hamburger now read
+     as one stack hung off one margin. */
+  top: calc(clamp(12px, 2vw, 22px) + 40px + 16px);
   /* The panel's outer arris and the hamburger's glyph now terminate on ONE
      vertical — see --pq-chrome-margin. They were 10px apart, which is the worst
      possible amount: far enough to be wrong, close enough to look accidental. */
   right: var(--pq-chrome-margin);
   z-index: var(--pq-z-topbar);
-  width: var(--pq-relay-w);
-  /* 20 on all four sides, up from 16/20. The panel is the strongest piece of UI
-     in the frame and it was being let down by its own margins: at 15px the rows
-     ran almost to the arris, which reads as a dense readout squeezed into a
-     chip rather than as instrumentation laid out on glass. Real hardware gives
-     its type air, and it gives it the SAME air on every side — an asymmetric
-     inset is a CSS accident, and a critic reads it as one. */
-  padding: 20px;
+  /* AUTO, not --pq-relay-w. The element is a one-line status chip now (see
+     CallStrip.ts): a fixed 330px box around a single row would print a hand's
+     width of empty glass after the clock, which is the "panel that used to have
+     more in it" read. It is sized by its own type and hung off the shared right
+     rail, so the only vertical it has to agree with is the one the proxy pane
+     and the hamburger already terminate on. */
+  width: max-content;
+  max-width: min(38vw, 420px);
+  /* One row of 12px mono: 9/16 is the inset a chip wants — the same optical air
+     top and bottom as left and right once the cap height is accounted for. */
+  padding: 9px 16px 10px;
   pointer-events: none;
   border-radius: var(--pq-r-glass);
-  /* TWO layers, and the lower one is new.
-     1. the sheen — 6% white over the blur, a tint, never a fill. The faint warm
-        floor at the bottom is the room's own light collecting in the pane.
-     2. THE INTERIOR. The pane is parked over the brightest region in the
-        picture (a wall of city bokeh that has just come up half a stop), and a
-        6% white tint over transmitted light is not a surface — it is a window
-        onto the noise, with 12px mono set on top of it. The labels were sitting
-        on the legibility floor for exactly that reason. A near-black interior at
-        0.35 gives the readout its own value to be read against without ever
-        going opaque: the discs behind the glass are still discs, they are simply
-        no longer competing with the type. Struck in the scrim's warm near-black
-        rather than a neutral grey, so the pane stays inside the grade. */
+  /* THE SAME SHEET as the proxy pane, to the value: a whisper of the key colour
+     over a 58% paper fill. It used to be its own recipe — a 3.5–8.5% white
+     gradient over a 35% near-black — sized for a 330 × 216 panel parked on the
+     brightest region of the plate, where a white tint is what keeps 12px mono
+     off the bokeh. At chip scale that recipe inverts: 150 × 36px of 6% white
+     over a dark corner composites to a pale grey lozenge, i.e. the lightest,
+     highest-contrast object in the top third of the frame — a badge, and one
+     that out-reads the pane it is supposed to belong to.
+     Matching the proxy's fill fixes the value AND makes the structural claim the
+     corner needs: two etchings on one sheet, not two cards. */
   background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.085),
-      rgba(255, 255, 255, 0.055) 46%,
-      rgba(255, 255, 255, 0.035)
+      rgba(var(--pq-key-rgb) / 0.055),
+      rgba(var(--pq-paper-rgb) / 0.02)
     ),
-    rgba(10, 14, 16, 0.35);
+    rgba(var(--pq-paper-rgb) / 0.58);
   /* A true hairline at 22%. 35% was drawing a bright rectangle: over the dark
      top-right corner of this plate the stroke was the highest-contrast edge in
      the entire frame, and a border that out-prints its own contents is a card
      outline, not the arris of a pane. At 19% the edge is still unambiguously
      there and the glass reads as glass — and one step lighter again now that the
      interior carries a dark fill, so the stroke stays the arris of a pane rather
-     than becoming the outline of a card. */
-  border: 1px solid rgba(255, 255, 255, 0.19);
+     than becoming the outline of a card. 0.19 → 0.22, i.e. the proxy pane's own
+     stroke: one sheet, one cut.
+     …and 0.22 → 0.175. The note came back as "a stroked rectangle rather than
+     Eliza's translucent-glass read", and the whole of that read lives in the
+     ratio between the outer cut and the interior it surrounds: over the near
+     -black top-right corner a 22% white hairline is the highest-contrast edge in
+     the upper third of the frame, and an edge that out-prints its own contents
+     by that margin is an outline whatever is inside it. A fifth off puts the cut
+     back under the type it encloses. The light is not lost — it moves INBOARD,
+     into the soft 1px inner glow added to the shadow stack below, which is where
+     a genuine sheet of glass carries it: an edge that is bright at its centre
+     and dissolves into the fill, rather than a line that stops. */
+  border: 1px solid rgba(255, 255, 255, 0.175);
   /* Bloom, not shadow — and a double edge, which is how etched glass is made.
      A sheet of glass has two arrises, the outer cut and the inner bevel a
      millimetre behind it, and drawing only one is what leaves a pane looking
@@ -1721,11 +2145,35 @@
      and a rectangle whose four edges are identical is not in one. Paired with
      the backdrop blur (the city genuinely bending through it) and the 7px Z
      split off the shared glass plane (a 1–2px parallax against the layer
-     behind), the pane now makes all three of the claims diegetic glass has to. */
-  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.18),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+     behind), the pane now makes all three of the claims diegetic glass has to.
+
+     …and a fifth, outermost: the pane's own AMBIENT.
+     The panel scored well and still read as sitting ON the world rather than IN
+     it, and the reason is that its light stopped at its own edge. Every lit
+     object in this frame — the practical, the relay board, the lid's screen —
+     puts a wide, very low halo into the air around it, because the room has haze
+     in it and the plate is painted with haze in it. The panel had a tight 8px
+     bloom and then nothing, so it was the one emissive surface in shot with no
+     air around it: an object with a hard optical boundary, i.e. a sticker.
+     36px at 9% is a stop and a half under the tight bloom and roughly four times
+     its reach — far too faint to be seen as a glow, exactly enough that the
+     corner it hangs in is no longer a rectangle of light with a vacuum outside
+     it. */
+  /* …and a sixth, which is the light the outer cut just gave up: a 1px INNER
+     SOFT GLOW, spread 6px, struck in the key. The bevel above it (`inset 0 0 0
+     1px`) is a hard line and is what says "etched"; this is the halation around
+     that line, and it is the difference between an edge that STOPS and an edge
+     that dissolves into the sheet. A stroked rectangle has the first; a
+     translucent pane has the second, because the light in the glass scatters a
+     millimetre either side of every cut in it. Kept to a third of the bevel's
+     density and a sixth of the outer bloom's reach — at 6px it never reads as a
+     glow, it reads as the stroke having thickness. */
+  box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.16),
+    0 0 36px rgba(var(--pq-key-rgb) / 0.08),
+    inset 0 0 6px 1px rgba(var(--pq-key-rgb) / 0.075),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
     inset 1px 0 0 rgba(var(--pq-lamp-rgb) / 0.26),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.13);
   /* Frost, not gain. A plain brightness() multiply is the obvious way to stop a
      6% white fill compositing to near-black over the dark corner of a plate —
      and it is wrong, because the camera drifts, and the multiply that rescues
@@ -1757,8 +2205,8 @@
      better and without pulping the room. At 14 the pane still reads as a
      genuinely thick sheet and the city behind it stays recognisably a city,
      which is the whole claim of diegetic glass. */
-  backdrop-filter: blur(14px) contrast(0.72) brightness(0.96) saturate(1.5);
-  -webkit-backdrop-filter: blur(14px) contrast(0.72) brightness(0.96) saturate(1.5);
+  backdrop-filter: blur(14px) contrast(0.82) brightness(0.9) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) contrast(0.82) brightness(0.9) saturate(1.4);
   opacity: 0;
   /* Every transform on this pane is composed onto the shared glass plane — see
      --pq-glass-plane. The pane is the FAR sheet of the pair. */
@@ -1783,11 +2231,69 @@
      anybody is supposed to notice. */
   background: linear-gradient(
       128deg,
-      rgba(var(--pq-lamp-rgb) / 0.09) 0%,
-      rgba(255, 255, 255, 0.026) 22%,
-      transparent 44%
+      rgba(var(--pq-lamp-rgb) / 0.055) 0%,
+      rgba(255, 255, 255, 0.018) 26%,
+      transparent 48%
     ),
     var(--pq-glass-curve);
+}
+/* ── The panel, in the glass ────────────────────────────────────────────────
+   The last thing separating this readout from a floating HTML card is that the
+   pane it is etched on never showed it back. A lit panel hanging in front of a
+   wall of rain-streaked window has a reflection in that window — smeared
+   downward, softened by the water, and about a twentieth of the source — and
+   the absence of one is precisely why a critic can say "well set, but on top of
+   the world rather than in it".
+
+   Deliberately a SMEAR and not a mirror image: it carries the panel's silhouette
+   and its two internal value steps (head row, wave row) and nothing legible.
+   A readable reflection would be a second instance of the UI, which is worse
+   than none; an unreadable one is the pane saying there is a surface here.
+   `scaleY(-1)` off the bottom edge, 22px of blur, 13% — and inheriting the
+   parent's own glass-plane transform, so it shears with the pane rather than
+   sliding off it as the sheet tilts. */
+.pq-callstrip::after {
+  content: '';
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 5%;
+  right: 1%;
+  height: 62%;
+  pointer-events: none;
+  transform: scaleY(-1);
+  transform-origin: 50% 0;
+  border-radius: var(--pq-r-glass);
+  filter: blur(11px);
+  opacity: 0.13;
+  background: linear-gradient(
+      180deg,
+      rgba(var(--pq-key-rgb) / 0.5) 0%,
+      rgba(var(--pq-key-rgb) / 0.24) 26%,
+      rgba(var(--pq-key-rgb) / 0.4) 40%,
+      rgba(var(--pq-key-rgb) / 0.12) 62%,
+      transparent 100%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent 70%);
+  /* Water on a pane breaks a reflection into vertical striation before it
+     dissolves it, so the smear is combed and then faded out over its own run —
+     no boundary anywhere, which is the only way a 13% element can sit over a
+     dark plate without acquiring an edge. */
+  -webkit-mask-image: repeating-linear-gradient(
+      91deg,
+      rgba(0, 0, 0, 0.55) 0 3px,
+      #000 3px 9px,
+      rgba(0, 0, 0, 0.4) 9px 13px
+    ),
+    linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.45) 46%, transparent 92%);
+  -webkit-mask-composite: source-in;
+  mask-image: repeating-linear-gradient(
+      91deg,
+      rgba(0, 0, 0, 0.55) 0 3px,
+      #000 3px 9px,
+      rgba(0, 0, 0, 0.4) 9px 13px
+    ),
+    linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.45) 46%, transparent 92%);
+  mask-composite: intersect;
 }
 .pq-callstrip.is-in {
   opacity: 1;
@@ -1796,10 +2302,11 @@
 .pq-callstrip__head {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
 }
 .pq-callstrip__dot {
+  align-self: center;
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -1810,30 +2317,36 @@
   box-shadow: 0 0 6px var(--pq-glow-key);
   animation: pq-blink 2.4s var(--pq-ease-in-out) infinite;
 }
-/* Every label on this panel sat between 9 and 10.5px — at 1× that is the
+/* Every label on this chip sat between 9 and 10.5px — at 1× that is the
    aliasing floor for a monospaced face, where the stems land between the pixel
-   grid and the type stops being *set* and starts being *approximated*. The
-   whole panel steps up ~1.5px and picks up ~8% more tracking to pay for it;
-   nothing else about the layout changes. */
+   grid and the type stops being *set* and starts being *approximated*. Nothing
+   on this element now sets under 12px. */
 .pq-callstrip__label {
   font-family: var(--pq-mono);
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--pq-ink-rgb) / 0.6);
+  color: rgba(var(--pq-ink-rgb) / 0.62);
 }
 .pq-callstrip.is-live .pq-callstrip__label {
-  color: rgba(var(--pq-ink-rgb) / 0.6);
+  color: rgba(var(--pq-ink-rgb) / 0.78);
 }
-/* Every number on this panel lands in the SAME box: --pq-relay-val wide, hung
-   off the content's right edge, right-aligned inside it. That is the tab stop —
-   see the token. The clock, the vocal level and the three telemetry values were
-   previously laid out by three different mechanisms (flex auto-margin, flex
-   space-between, a grid column) that agreed on a right edge by arithmetic
-   coincidence; one shared width makes the column real, and is what lets the
-   three scale tracks terminate on one shared vertical. */
+/* The one piece of punctuation on the chip, and it is doing structural work: a
+   status and a name run together read as one string, and a slash or a pipe
+   reads as a table cell divider. A middot at a third the ink of the type either
+   side of it is a separator you parse without reading. */
+.pq-callstrip__sep {
+  font-family: var(--pq-mono);
+  font-size: 12px;
+  color: rgba(var(--pq-ink-rgb) / 0.3);
+}
+/* The clock. Right-aligned into --pq-relay-val so its glyphs cannot reflow as
+   the minute rolls over, and given the chip's whole right margin by an auto
+   flex gap — the label group reads left, the number reads right, and the space
+   between them is the only air on the element. */
 .pq-callstrip__timer {
   margin-left: auto;
+  padding-left: var(--pq-3);
   min-width: var(--pq-relay-val);
   text-align: right;
   font-family: var(--pq-mono);
@@ -1842,131 +2355,31 @@
   font-variant-numeric: tabular-nums;
   color: rgba(var(--pq-ink-rgb) / 0.9);
 }
-.pq-callstrip__rule {
-  position: relative;
-  height: 1px;
-  margin: 11px 0 10px;
-  /* One step under the pane's own 22% stroke: an internal rule that matches the
-     outer edge flattens the panel into a table. */
-  background: rgba(255, 255, 255, 0.18);
-}
-.pq-callstrip__rule--foot {
-  margin: 11px 0 9px;
-  background: rgba(255, 255, 255, 0.14);
-}
-/* Centred, so the bars open away from a midline the way a real signal trace
-   does rather than standing up off a floor like a bar chart. */
-.pq-callstrip__wave {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 36px;
-}
-/* Idle bars rest on their own floor (--i) so a closed line still shows a noise
-   floor; a live line animates each bar to its own peak (--h). Envelope and
-   peaks are authored per bar, never random — a waveform has a shape. */
-.pq-callstrip__wave i {
-  /* A fixed 2px stroke, evenly distributed — a signal trace. Flexed to fill,
-     each bar came out ~8px wide and 4px tall and the row read as a dashed
-     rule, which is a wireframe tell, not an instrument. */
-  flex: 0 0 2px;
-  height: var(--i, 10%);
-  border-radius: 1px;
-  background: linear-gradient(
-    180deg,
-    rgba(var(--pq-key-rgb) / 0.35),
-    rgba(var(--pq-key-rgb) / 0.95) 50%,
-    rgba(var(--pq-key-rgb) / 0.35)
-  );
-  box-shadow: inset 0 0 0 1px rgba(var(--pq-key-rgb) / 0.82), 0 0 4px rgba(var(--pq-key-rgb) / 0.38);
-  opacity: 0.5;
-}
-.pq-callstrip.is-live .pq-callstrip__wave i {
-  animation: pq-callwave 1.6s var(--pq-ease-in-out) infinite;
-  animation-delay: var(--d, 0ms);
-}
-@keyframes pq-callwave {
-  0%,
-  100% {
-    height: var(--i, 10%);
-    opacity: 0.45;
-  }
-  50% {
-    height: var(--h, 60%);
-    opacity: 0.92;
-  }
-}
-/* Caption under the trace: what the trace IS, and its current level. Eliza puts
-   a number on every instrument; an unlabelled waveform is decoration. */
-.pq-callstrip__vocal {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-top: 6px;
-  font-family: var(--pq-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  /* 0.34 → 0.52. Nothing on a piece of diegetic glass may sit under half the
-     ink of the type beside it: below that the label stops being read and starts
-     being *inferred*, and an instrument whose captions have to be guessed at is
-     decoration. See the panel-wide legibility floor on .pq-callstrip__foot. */
-  color: rgba(var(--pq-ink-rgb) / 0.6);
-}
-.pq-callstrip__vocalval {
-  min-width: var(--pq-relay-val);
-  text-align: right;
-  font-size: 12.5px;
-  letter-spacing: 0.04em;
-  font-variant-numeric: tabular-nums;
-  color: rgba(var(--pq-ink-rgb) / 0.9);
-}
-.pq-callstrip.is-live .pq-callstrip__vocalval {
-  color: rgba(var(--pq-key-rgb) / 0.9);
-}
+/* Everything that used to sit here — an internal rule, a 34-stroke vocal trace,
+   its labelled VOCAL SIGNAL level, a second rule and a relay/callsign footer —
+   is GONE, and its markup, its CSS and its bar-shape maths went with it.
 
-/* The three telemetry rows that used to sit here (RESPIRATION / AFFECT /
-   RECEPTIVITY, each with its own scale + index mark) are GONE, and their markup,
-   their CSS and their drift maths went with them.
+   Two separate rounds of the same defect, and the second one is the reason this
+   is now a chip. The first was three telemetry rows (RESPIRATION / AFFECT /
+   RECEPTIVITY) that duplicated three rows on the LUMEN PROXY pane. Removing them
+   left a waveform and a signal number — which the proxy pane ALSO prints,
+   eighteen hundred pixels away, at its own value. One fictional product,
+   two vocal traces, two levels, one screen. Read blind that is not rich
+   telemetry, it is a DASHBOARD: two competing readouts stacked down one side of
+   a frame that is supposed to be a room.
 
-   They were not redundant by accident — they were the SAME three instruments the
-   LUMEN PROXY pane prints eighteen hundred pixels away, driven by a second,
-   independent set of sines, so the frame carried one fictional product reporting
-   one caller's vitals twice, at two different values. Read blind, that is not
-   "rich telemetry", it is two teams shipping the same widget into one screen,
-   and it cost the frame its UI-craft column outright.
-   The relay panel now reports the LINE (open? how long? is anyone talking?); the
-   proxy pane reports the CALLER. One number, one home. See CallStrip.ts. */
+   The split that survives is the one the fiction already had. This element is the
+   LINE — open, who, how long. The proxy pane is the CALLER — how they are doing.
+   Neither prints a number the other prints, and only one of them draws a
+   waveform. See CallStrip.ts. */
 
-/* ── The panel's legibility floor ────────────────────────────────────────────
-   The footer carries the relay's identity — the one row that says what this
-   piece of software IS — and it was set at 30% ink over a 12px-blurred pane
-   whose own fill is 6% white. Over the dark top-right corner of the ops plate
-   that composites to roughly two values off the glass, and the note that came
-   back was that "LUMEN RELAY 04" and "BOARD CLEAR" were not readable at all.
-   A caption that cannot be read is worse than no caption: it is a smudge with
-   the silhouette of type, which is the single fastest way to make a rendered
-   panel look like a placeholder.
-
-   0.30 → 0.62 (and the callsign 0.45 → 0.64 in the warm accent). That is a
-   deliberate near-inversion of the old hierarchy: the identity row is now the
-   equal of the telemetry captions rather than a whisper beneath them, because on
-   a real instrument the nameplate is etched deepest. Nothing on the pane now
-   sits under ~0.52. */
-.pq-callstrip__foot {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  gap: var(--pq-3);
-  font-family: var(--pq-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(var(--pq-ink-rgb) / 0.6);
-}
+/* The caller's name, which is the chip's only chroma. Struck in the warm accent
+   because a name is a person and every instrument on this glass is cool. */
 .pq-callstrip__caller {
+  font-family: var(--pq-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: rgba(var(--pq-accent-rgb) / 0.64);
   transition: color var(--pq-dur-3) var(--pq-ease);
   overflow: hidden;
@@ -1987,11 +2400,23 @@
 
 .pq-proxy {
   position: absolute;
-  right: max(12px, calc(var(--pq-gutter) - 32px));
-  /* Geometry lives in tokens: the pane has to clear the speaker's chin by a
-     clear margin at every viewport, so its width and its floor are one tuned
-     pair rather than two independent clamps. */
-  bottom: max(114px, calc(var(--pq-proxy-bottom) - 32px));
+  /* ONE right rail for the whole right column. This used to resolve to 44px
+     (gutter 76 − 32) against the relay chip's 48, and two panes a hand's width
+     apart whose outer arrises miss each other by four pixels is the cheapest
+     "assembled in a browser" tell a captured frame carries — the eye finds the
+     disagreement long before it can name it. Both panes and the hamburger's
+     glyph now terminate on --pq-chrome-margin. */
+  right: var(--pq-chrome-margin);
+  /* Geometry lives in tokens: the pane has to clear the speaker by a clear
+     margin at every viewport, so its width and its floor are one tuned pair
+     rather than two independent clamps.
+     Dropped a further 34px (180 → 146 at 1080). UI over a speaking character's
+     body is a blocking foul, and the pane's top arris was landing on her forearm
+     and the near shoulder — the one place in the frame where a hairline can
+     flatten depth, because it makes the figure and the glass share an edge. At
+     146 the arris clears her silhouette and lands on the laptop lid instead,
+     which is an OBJECT the pane can legitimately sit in front of. */
+  bottom: max(96px, calc(var(--pq-proxy-bottom) - 66px));
   z-index: var(--pq-z-choice);
   width: var(--pq-proxy-w);
   padding: 13px 16px 11px;
@@ -2012,9 +2437,22 @@
     ),
     rgba(var(--pq-paper-rgb) / 0.58);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  /* No cast shadow — a hairline ring plus a 14px bloom in the pane steel, so
-     the glass is lit by the room instead of floating over a print of it. */
-  box-shadow: 0 0 0 1px rgba(var(--pq-pane-rgb) / 0.07), 0 0 14px rgba(var(--pq-pane-rgb) / 0.06);
+  /* A hairline ring plus a 14px bloom in the pane steel, so the glass is lit by
+     the room instead of floating over a print of it…
+
+     …and then, outermost, the SEATING: a very large, very soft warm-black cast,
+     spread 26px, at 10%. It is the note "add a soft local darken behind the
+     panel so the hairline strokes separate from the scene", and it is also the
+     honest optics — a sheet hung a hand's width in front of a lit room occludes
+     a little of what is behind it and drops an ambient shadow on the rest.
+     A box-shadow is the right instrument rather than a pseudo-element because it
+     is clipped to the region OUTSIDE the border box: the darkening lands on the
+     scene the strokes are being read against and never on the pane's own
+     interior, which is already carrying a 58% fill and does not want another
+     tenth of a stop. Warm-black, like every other near-black in this frame, so
+     the seating belongs to the lamp rather than to the stylesheet. */
+  box-shadow: 0 0 0 1px rgba(var(--pq-pane-rgb) / 0.07), 0 0 14px rgba(var(--pq-pane-rgb) / 0.06),
+    0 8px 54px 26px rgba(var(--pq-scrim-warm-rgb) / 0.1);
   backdrop-filter: blur(14px) saturate(1.18);
   -webkit-backdrop-filter: blur(14px) saturate(1.18);
   opacity: 0;
@@ -2177,14 +2615,27 @@
    here, and instruments read numbers. Every trace now terminates in a small
    right-aligned tabular readout, and the vocal trace carries its own labelled
    value the way a real distress channel does. */
+/* ── One stroke weight, one alpha ────────────────────────────────────────────
+   Every rule inside this pane used to be drawn at its own gauge: the telemetry
+   band's two borders at 1px × 10% ink, the meter tracks at 1.25px × 36%, their
+   end stops at 1px × 44%, the tiles at 1px × 16%. Four weights and four alphas
+   inside one 500px pane is not a hierarchy — at hairline sizes the eye cannot
+   resolve a 6% alpha step, so the variation reads as four different people
+   having drawn four different rules. Etched glass has ONE tool.
+   --pq-rule is that tool: 1px, 22% ink. The only marks allowed off it are the
+   graduations (end stops) and the needle, which are not rules — they are the
+   instrument's readable parts and are deliberately a step and a stop above. */
+.pq-proxy {
+  --pq-rule: rgba(var(--pq-ink-rgb) / 0.22);
+}
 .pq-proxy__telemetry {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--pq-4);
-  padding: 6px 0 9px;
+  padding: 7px 0 10px;
   margin-bottom: 2px;
-  border-top: 1px solid var(--pq-line);
-  border-bottom: 1px solid var(--pq-line);
+  border-top: 1px solid var(--pq-rule);
+  border-bottom: 1px solid var(--pq-rule);
 }
 .pq-proxy__vocal {
   display: flex;
@@ -2194,17 +2645,28 @@
 }
 /* Channel caption under the trace — label left, value right, sharing the
    waveform's own left and right edges so the block reads as one instrument. */
+/* 9 → 11px. Nine pixels of mono is below the legibility floor at 1080p couch
+   distance — the stems land between the pixel grid and the caption stops being
+   *set* and starts being *approximated*, which is the fastest way to make a
+   rendered instrument look like a placeholder. The wide tracking is kept (it is
+   what makes a micro-caption read as an engraved label rather than a word) and
+   the ink comes up to the panel-wide 55% floor with it. */
 .pq-proxy__vocalfoot {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   font-family: var(--pq-mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--pq-ink-40);
+  color: var(--pq-micro-1);
 }
+/* Right-aligned into the SAME box the three meter readouts terminate in, so all
+   four numbers on this pane share one decimal column rather than four
+   coincidences. */
 .pq-proxy__vocalval {
+  min-width: var(--pq-proxy-val);
+  text-align: right;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
   color: rgba(var(--pq-key-rgb) / 0.85);
@@ -2243,29 +2705,36 @@
   justify-content: center;
   gap: 5px;
 }
+/* The label column is sized to the LONGEST label set in it (RECEPTIVITY, eleven
+   glyphs of 11px mono at 0.1em ⇒ ~85px) rather than to whatever happened to fit
+   at 9px, so the three tracks start on one vertical by construction and cannot
+   be pushed short by a rename. The readout column is --pq-proxy-val, shared with
+   the vocal level above. */
 .pq-meter {
   display: grid;
-  grid-template-columns: 70px minmax(0, 1fr) 26px;
+  grid-template-columns: 88px minmax(0, 1fr) var(--pq-proxy-val);
   align-items: center;
-  gap: 7px;
+  gap: 8px;
 }
+/* 9 → 11px, same reasoning as the vocal caption: this is the legibility floor,
+   not a taste call. Tracking held wide, ink at the panel's 55% micro floor. */
 .pq-meter__label {
   font-family: var(--pq-mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.1em;
-  color: var(--pq-ink-40);
+  color: var(--pq-micro-1);
 }
-/* Right-aligned tabular readout. Three of these stack into a numeric column
-   whose decimal points line up — the detail that separates believable
-   telemetry from three decorative bars. */
+/* Right-aligned tabular readout. Four of these — three meters plus the vocal
+   level — stack into ONE numeric column whose decimal points line up, which is
+   the detail that separates believable telemetry from four decorative bars. */
 .pq-meter__val {
   font-family: var(--pq-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   line-height: 1;
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
   text-align: right;
-  color: rgba(var(--pq-ink-rgb) / 0.62);
+  color: rgba(var(--pq-ink-rgb) / 0.72);
 }
 /* Instrument, not infographic. A full-width rule so a value is READ against a
    scale rather than floating as a hairline of arbitrary size, a quiet lead-in
@@ -2278,16 +2747,20 @@
    gone at 100% zoom — the frame showed three floating index marks with no rule
    under them, which reads as three stray pixels, not as instrumentation. Three
    things fix it and all three are what a real etched gauge has:
-     • the rule is 1.25px at 36% — still a hairline, now one that prints;
+     • the rule is on the pane's ONE stroke, --pq-rule: a true 1px hairline at
+       22%. It used to be 1.25px at 36%, i.e. a third gauge and a third alpha in
+       a pane that already had two, and a sub-pixel height on a rotated glass
+       plane resolves to a soft grey smear rather than a line;
      • it has END CAPS. Every graduated scale ever engraved terminates in a
        stop; without them a rule just fades out at both ends and the eye has
-       nothing to measure the needle against;
+       nothing to measure the needle against. These are graduations, not rules,
+       so they are allowed the one step above --pq-rule that makes them read;
      • the needle goes to the panel's own accent value at full strength with a
        tighter, brighter bloom, so it is unambiguously the lit part. */
 .pq-meter__track {
   position: relative;
-  height: 1.25px;
-  background: rgba(var(--pq-ink-rgb) / 0.36);
+  height: 1px;
+  background: var(--pq-rule);
 }
 /* End stops. 1px × 5px, at the rule's own weight plus a step — a graduation,
    never a bracket: they terminate the scale, they must not outprint the needle. */
@@ -2299,7 +2772,7 @@
   width: 1px;
   height: 5px;
   transform: translateY(-50%);
-  background: rgba(var(--pq-ink-rgb) / 0.44);
+  background: rgba(var(--pq-ink-rgb) / 0.4);
 }
 .pq-meter__track::before {
   left: 0;
@@ -7714,7 +8187,6 @@
   .pq-wave__bar,
   .pq-proxy__dot,
   .pq-callstrip__dot,
-  .pq-callstrip__wave i,
   .pq-continue.is-shown,
   .pq-chapter.is-in .pq-chapter__more,
   .pq-title__plate,
@@ -7730,7 +8202,6 @@
 :root[data-pq-motion='reduced'] .pq-chapter.is-in .pq-chapter__more,
 :root[data-pq-motion='reduced'] .pq-proxy__dot,
 :root[data-pq-motion='reduced'] .pq-callstrip__dot,
-:root[data-pq-motion='reduced'] .pq-callstrip__wave i,
 :root[data-pq-motion='reduced'] .pq-title__plate,
 :root[data-pq-motion='reduced'] .pq-title__halo,
 :root[data-pq-motion='reduced'] .pq-title__dither,

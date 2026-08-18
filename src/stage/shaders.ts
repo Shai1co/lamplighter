@@ -117,6 +117,9 @@ uniform float uFieldBlur;
 /** Shadow-family unifier — how hard an ungraded dark region is pulled toward
  *  the room's own teal. 0 leaves the plate's own shadow hue alone. */
 uniform float uShadowBridge;
+/** Midtone-weighted exposure, per plate. See the call site — this is the print
+ *  exposure of the frame, not a lift: it cannot move a black or a specular. */
+uniform float uMidLift;
 
 ${GLSL_NOISE}
 
@@ -210,6 +213,53 @@ void main() {
   // Contrast about a linear-ish pivot.
   color = (color - 0.18) * uContrast + 0.18;
   color = max(color, 0.0);
+
+  /* ── Print exposure ───────────────────────────────────────────────────────
+   *
+   * The frame prints a stop and a half down. Not in the shadows — the black
+   * floor below is deliberate and correct — and not in the highlights, which the
+   * shoulder above is already holding off the ceiling. It is the BAND BETWEEN
+   * them: the desk's front face, the partition, the chair, the wall above the
+   * lamp, the shadow side of a face. All of it sits within a few code values of
+   * the black it is supposed to be separating from, so at a glance the picture
+   * is a lamp, a face and a rectangle of nothing, and at thumbnail scale it is a
+   * lamp and a rectangle of nothing.
+   *
+   * Neither lift, gamma nor gain can fix that without costing one of the two
+   * ends. Lift raises the floor (a milky black is the composited-plate tell this
+   * whole stack exists to avoid); gain scales the highlights into the shoulder;
+   * gamma does both, gently, everywhere. What the note actually asks for is a
+   * colourist's midtone window, so that is what this is: a multiplicative gain
+   * inside a luminance window that opens off the toe and has closed again before
+   * the practicals.
+   *
+   *   • it is ZERO at black by construction (the lower smoothstep), so the floor
+   *     that the vignette and the emulsion both depend on cannot move;
+   *   • it has CLOSED AGAIN by 0.46 linear, well under the lit desk and well
+   *     under a lit cheek, so neither the practicals nor the subject's own key
+   *     are billed twice and the highlight shoulder above keeps its job;
+   *   • it is a GAIN, not an add — light scales what a surface reflects, and an
+   *     additive term in this band would flatten the very separation it is meant
+   *     to be buying.
+   *
+   * The window's upper edge is the number that matters and it was wrong first
+   * time. Rolling off between 0.42 and 0.92 sounds like "midtones" and is not:
+   * a lit forearm sits around 0.35 linear here, so a half-stop window that is
+   * still at full strength there put a stop and a half onto the brightest skin
+   * plane on the plate — through the bloom gate — and printed a blown wrist.
+   * 0.11 → 0.46 is the actual band the note is about: the desk's front face, the
+   * partition, the chair, the wall, the shadow side of a jaw. Everything already
+   * carrying light keeps what it had.
+   *
+   * At uMidLift 0.45 that is +0.54 stop through that band, +9% on a lit forearm
+   * and nothing at all on a practical. It is per-plate (see Stage →
+   * PLATE_FOCUS): a daylit reading room, whose failure mode is the opposite one,
+   * takes none of it. */
+  if (uMidLift > 0.0001) {
+    float mL = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float mw = smoothstep(0.0035, 0.022, mL) * (1.0 - smoothstep(0.11, 0.46, mL));
+    color *= 1.0 + uMidLift * mw;
+  }
 
   // Highlight shoulder. The desk practical was printing its paper as a flat
   // near-white slab — a large area pinned near the top of the range with almost
@@ -839,11 +889,21 @@ diffuseColor.a *= mix(0.15, 1.0, _lit);
 float _expo = fract(vStreak * 43.7585 + 0.3713);
 diffuseColor.a *= mix(0.16, 0.92, _expo);
 // …and the figure fence. Rain falls OUTSIDE; she is at a desk inside. Held at
-// 18% rather than 0 so the two or three streaks crossing the bright bokeh
-// beside her ear still carry a whisper of continuity across the silhouette —
-// a field that stops dead at her outline reads as a matte, which is the very
-// thing this exists to remove.
-diffuseColor.a *= mix(1.0, 0.18, pqFigure(pqScreenUv()));
+// a floor rather than 0 so the streaks crossing the bright bokeh beside her ear
+// still carry a whisper of continuity across the silhouette — a field that
+// stops dead at her outline reads as a matte, which is the very thing this
+// exists to remove.
+//
+// 0.18 → 0.06. The continuity argument is sound and the number was not: 18% of
+// a 0.9-base field over a face is still a visible line, and a fine bright
+// vertical crossing a lit cheek does not read as "rain seen past her" — it
+// reads as a SCRATCH ON THE PRINT, which is the single most damaging thing a
+// frame can be accused of, because it is an accusation about the medium rather
+// than about the picture. At 6% the field is present across her as a texture
+// and absent as a mark. Note that the pane's own water (GLASS_FRAGMENT) still
+// crosses her properly — that layer is genuinely in front of her and is where
+// the through-a-window read is actually earned.
+diffuseColor.a *= mix(1.0, 0.06, pqFigure(pqScreenUv()));
 // …and the interior fence, which unlike the figure is absolute. The pane is a
 // PLANE: a drop cannot be in front of the desk lamp and behind the window at
 // the same time, and the compromise the figure gets (18%, so the field carries
@@ -851,8 +911,22 @@ diffuseColor.a *= mix(1.0, 0.18, pqFigure(pqScreenUv()));
 // prop has no feather, it simply occludes. 2% is left so the ellipse's own
 // shoulder still resolves smoothly rather than terminating on a zero.
 diffuseColor.a *= mix(1.0, 0.02, pqInterior(pqScreenUv()));
-diffuseColor.rgb = mix(diffuseColor.rgb, lightHue(_behind), 0.62 * _lit);
-diffuseColor.rgb *= 0.8 + 1.15 * _lit;
+// …and the SPECULAR TINT, 0.62 → 0.78. A drop on a window is not a white tick
+// that happens to be standing in front of a teal city; it is a lens, and what it
+// shows is the city. Taking three quarters of its hue from what is behind it
+// (rather than three fifths) is what makes a streak crossing the signage read
+// teal and a streak crossing a street practical read amber — i.e. refractive
+// rather than stamped, which is the note.
+diffuseColor.rgb = mix(diffuseColor.rgb, lightHue(_behind), 0.78 * _lit);
+// The FLARE, 1.15 → 0.72 of gain on the lit term. The tint above is free; the
+// gain was not. At 1.95× over a bright bokeh a single drop was the third
+// brightest object in the frame — a bar of light hanging in the window with
+// nothing to explain it, which is exactly how the frame came back describing the
+// one at x≈1060. A drop transmits what is behind it; it does not amplify it by a
+// stop. 1.52× still separates the lit drops from the dead ones by the amount
+// that makes rain visible, and no single one of them can now out-print the
+// practical the composition is hung on.
+diffuseColor.rgb *= 0.8 + 0.72 * _lit;
 outgoingLight = diffuseColor.rgb;
 `;
 
@@ -1015,8 +1089,15 @@ void main() {
   // 52% is a film you have to look for and cannot un-see once you have. The
   // water crosses her CONTINUOUSLY either way, which is the whole point: a
   // window that stops at a silhouette is not a window.
+  // …and 0.52 → 0.34, on the same evidence the falling field just came down on.
+  // The claim ("a window that stops at a silhouette is not a window") is still
+  // the reason this is not zero, and it is a claim about CONTINUITY, not about
+  // density: the pane has to be demonstrably unbroken across her, it does not
+  // have to be as wet over her cheek as it is over the city. A third strength
+  // keeps every rivulet traceable across the silhouette while none of them is
+  // the brightest mark on her face.
   float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.19, 0.42, lit) * sill
-             * mix(1.0, 0.52, fig) * pane;
+             * mix(1.0, 0.34, fig) * pane;
 
   // Refraction. A bead of water is a cylindrical lens: the city behind it does
   // not merely brighten, it SHIFTS. The field's own horizontal derivative gives
@@ -1054,10 +1135,36 @@ void main() {
   // the only surface it can appear on is the glass the camera is behind.
   vec2 rp = uv - uRefl;
   float lobe = exp(-dot(rp / vec2(0.042, 0.021), rp / vec2(0.042, 0.021)));
+  /* …and its GHOST. A window in a tower is double-glazed, so a practical in the
+   * room behind the lens reflects TWICE — once off the inner sheet and once off
+   * the outer, separated by the cavity and therefore offset by a few pixels and
+   * a stop or so down. One lobe is a smudge that happens to be amber; two lobes
+   * at one offset are unmistakably a reflection, because nothing else in a night
+   * interior doubles. It is the cheapest available answer to "the warm mark on
+   * the glass reads as arbitrary", and it costs one exponential. */
+  vec2 rp2 = uv - uRefl - vec2(0.0128, -0.0072);
+  float ghost = exp(-dot(rp2 / vec2(0.050, 0.025), rp2 / vec2(0.050, 0.025)));
   float drag = exp(-pow(rp.x / 0.013, 2.0)) * exp(-pow(max(-rp.y, 0.0) / 0.07, 1.7))
              * step(rp.y, 0.0);
   float reflBand = smoothstep(0.40, 0.54, uv.y);
-  float aRefl = clamp(lobe * 0.8 + drag * 0.3, 0.0, 1.0) * uReflAmt * uOpacity * reflBand * pane;
+  /* …and it is the ONE term on this pane that is thinned over the subject on
+   * grounds of hierarchy rather than optics — 0.68, i.e. about a third off, and
+   * over her face only.
+   *
+   * The rivulets, the tracks and the sheet are all thinned because a window that
+   * stops at a silhouette is not a window: they have to remain traceable across
+   * her or the plane is broken. A REFLECTION has no such obligation. It is a
+   * single large soft amber lobe with a vertical drag, i.e. the biggest, softest,
+   * brightest mark this pass can make, and where it lands on a cheek it does not
+   * read as glass — it reads as the subject being half-eaten. The note was that
+   * the lamp out-reads the protagonist, and this lobe is a piece of the lamp
+   * lying directly on her.
+   *
+   * It is thinned, never removed, and never keyed to anything but the figure
+   * mask: the smear is still continuous across the frame, it simply stops being
+   * the brightest thing on the one face in it. */
+  float aRefl = clamp(lobe * 0.72 + ghost * 0.3 + drag * 0.28, 0.0, 1.0)
+              * uReflAmt * uOpacity * reflBand * pane * mix(1.0, 0.68, fig);
 
   /* ── The sheet itself ────────────────────────────────────────────────────
    * Six rivulets and one reflection describe things ON the glass and still
@@ -1098,9 +1205,19 @@ void main() {
    *   • the lit gate is soft-floored at 0.28 rather than 0.19, because unlike a
    *     bead a dried track is visible against a dark room by its own scatter.
    * Ceiling ~2.2% alpha, and it is fenced by the pane and the sill like
-   * everything else on this sheet. */
+   * everything else on this sheet.
+   *
+   * …and it is fenced HARDEST of all over the figure — 0.66 → 0.22, a third of
+   * what the rivulets keep. The two are not the same object and the frame proves
+   * it: a rivulet is a single wandering line and reads, correctly, as one drop
+   * of water crossing her. The track field is a REGULAR striation — two summed
+   * sines, i.e. a set of near-parallel verticals at an even pitch — and a set of
+   * even parallel verticals running the full height of a face is the textbook
+   * appearance of a scratched print. Every property that makes this term work
+   * across a wall of glass (it is everywhere, it is uniform, it never ends) is
+   * the property that makes it read as damage over skin. */
   float aTrack = clamp(tk, 0.0, 1.0) * uOpacity * mix(0.010, 0.030, lit) * sill
-               * mix(1.0, 0.66, fig) * pane;
+               * mix(1.0, 0.22, fig) * pane;
   vec3 cTrack = mix(vec3(0.66, 0.76, 0.84), lightHue(refr), 0.62 * lit) * (0.62 + 0.75 * lit);
 
   /* ── The mullion ─────────────────────────────────────────────────────────
@@ -1148,8 +1265,15 @@ void main() {
   float mullCore = exp(-pow(mx / 0.0072, 2.0));
   float mullArris = exp(-pow((mx + 0.0086) / 0.0016, 2.0));
   float mullBand = smoothstep(0.13, 0.27, uv.y) * (1.0 - smoothstep(0.88, 1.0, uv.y));
+  /* The arris is the pane's only STRUCTURAL specular, and it is what makes the
+   * frame member read as a member rather than as a soft dark stripe — so when
+   * the water on this pass came down over the figure, the frame it belongs to
+   * had to come UP, or the note ("rain with no plane behind it") would simply be
+   * answered by having less rain. 0.20/0.16 → 0.27/0.21: still a hairline, now
+   * unambiguously a lit metal edge, and it is the term that says the streaks are
+   * lying on something. */
   float aMull = (mullCore * 0.26 + mull2Core * 0.21) * uOpacity * mullBand * pane;
-  float aArris = (mullArris * 0.20 + mull2Arris * 0.16) * uOpacity * mullBand * pane;
+  float aArris = (mullArris * 0.27 + mull2Arris * 0.21) * uOpacity * mullBand * pane;
   vec3 cMull = vec3(0.020, 0.031, 0.036);
   vec3 cArris = mix(vec3(0.50, 0.60, 0.68), lightHue(behind), 0.55 * lit) * (0.45 + 0.85 * lit);
 

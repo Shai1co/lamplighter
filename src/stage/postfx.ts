@@ -47,6 +47,7 @@ interface GradeUniforms {
   uFocus: { value: THREE.Vector4 };
   uFieldBlur: { value: number };
   uShadowBridge: { value: number };
+  uMidLift: { value: number };
   [key: string]: THREE.IUniform;
 }
 
@@ -123,6 +124,7 @@ export class PostFX {
   private themeBloom = 0.65;
   private fieldBlur = 0;
   private shadowBridge = 0;
+  private midLift = 0;
 
   private flashTween: gsap.core.Tween | null = null;
   private glitchTween: gsap.core.Tween | null = null;
@@ -184,6 +186,7 @@ export class PostFX {
       uFocus: { value: new THREE.Vector4(0.5, 0.5, 1, 1) },
       uFieldBlur: { value: 0 },
       uShadowBridge: { value: 0 },
+      uMidLift: { value: 0 },
     };
     this.grade = new ShaderPass({
       name: 'PQGrade',
@@ -256,6 +259,18 @@ export class PostFX {
     this.gradeU.uShadowBridge.value = this.cinematic ? this.shadowBridge : 0;
   }
 
+  /**
+   * The plate's print exposure: a midtone-weighted gain, zero at the black floor
+   * and zero again before the practicals. 0.42 ≈ +0.5 stop through the middle of
+   * the range. See GRADE_FRAGMENT — this is the instrument that stops a night
+   * interior reading as a lamp on a black rectangle, and it is per-plate because
+   * a daylit room's failure mode is the opposite one.
+   */
+  setMidLift(x: number): void {
+    this.midLift = THREE.MathUtils.clamp(x, 0, 1);
+    this.gradeU.uMidLift.value = this.cinematic ? this.midLift : 0;
+  }
+
   /** Focus the DoF on a world-space distance from the camera. */
   setFocus(distance: number): void {
     if (!this.cinematic) return;
@@ -297,6 +312,7 @@ export class PostFX {
     this.bloom.strength = settings.cinematic ? this.themeBloom : 0;
     this.gradeU.uFieldBlur.value = settings.cinematic ? this.fieldBlur : 0;
     this.gradeU.uShadowBridge.value = settings.cinematic ? this.shadowBridge : 0;
+    this.gradeU.uMidLift.value = settings.cinematic ? this.midLift : 0;
     this.refreshGrain();
   }
 

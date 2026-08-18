@@ -81,23 +81,42 @@ function dotTexture(kind: 'dot' | 'streak' | 'hairline'): THREE.Texture {
   cv.height = s;
   const ctx = cv.getContext('2d')!;
   if (kind === 'streak' || kind === 'hairline') {
-    const w = kind === 'streak' ? 0.12 : 0.04;
-    if (kind === 'hairline') {
-      // Soft edges across the width as well as along the length.
-      const h = ctx.createLinearGradient(s * (0.5 - w * 1.6), 0, s * (0.5 + w * 1.6), 0);
-      h.addColorStop(0, 'rgba(255,255,255,0)');
+    /* Half-width of the sprite's HORIZONTAL falloff, in sprite fractions.
+     *
+     * The mid-distance streak used to have none: it was `fillRect(0.44s, 0.12s)`
+     * with a gradient down its length only, i.e. a bar with two perfectly hard
+     * vertical sides. That is fine at four pixels wide and catastrophic at
+     * forty — and forty is what the near end of the size jitter draws, because a
+     * point sprite scales its width with its length. The frame came back naming
+     * one of them ("an arbitrary orange vertical streak at x≈1060"), and it was
+     * exactly that: a single drop crossing an amber bokeh disc, flared warm by
+     * the light coupling, printing as a hard-edged plank of paint hanging in the
+     * window. A drop of water is a cylindrical lens; it has no edges at all, it
+     * has a bright core and a falloff, and the falloff is the entire difference
+     * between refractive and stamped.
+     * Total footprint is kept near the old bar's (0.20s against 0.12s) with only
+     * the middle ~0.08s at full strength, so the field's visual weight does not
+     * change — only its boundary does. */
+    const hw = kind === 'streak' ? 0.1 : 0.064;
+    const h = ctx.createLinearGradient(s * (0.5 - hw), 0, s * (0.5 + hw), 0);
+    h.addColorStop(0, 'rgba(255,255,255,0)');
+    if (kind === 'streak') {
+      h.addColorStop(0.3, 'rgba(255,255,255,0.55)');
       h.addColorStop(0.5, 'rgba(255,255,255,1)');
-      h.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = h;
-      ctx.fillRect(s * (0.5 - w * 1.6), 0, s * w * 3.2, s);
-      ctx.globalCompositeOperation = 'destination-in';
+      h.addColorStop(0.7, 'rgba(255,255,255,0.55)');
+    } else {
+      h.addColorStop(0.5, 'rgba(255,255,255,1)');
     }
+    h.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = h;
+    ctx.fillRect(s * (0.5 - hw), 0, s * hw * 2, s);
+    ctx.globalCompositeOperation = 'destination-in';
     const g = ctx.createLinearGradient(0, 0, 0, s);
     g.addColorStop(0, 'rgba(255,255,255,0)');
     g.addColorStop(0.5, `rgba(255,255,255,${kind === 'streak' ? 0.85 : 1})`);
     g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g;
-    ctx.fillRect(kind === 'streak' ? s * 0.44 : 0, 0, kind === 'streak' ? s * 0.12 : s, s);
+    ctx.fillRect(0, 0, s, s);
     if (kind === 'hairline') {
       const soft = document.createElement('canvas');
       soft.width = s;
@@ -148,8 +167,19 @@ const HALF_D = 2.2;
 
 /** The general atmosphere volume (snow/dust retain their depth spread). */
 const FIELD: Region = { cx: 0, cy: 0, cz: 0, hx: HALF_W, hy: HALF_H, hz: HALF_D };
-/** Rain is a thin plane behind the character, never a volume through her. */
-const RAIN_FIELD: Region = { cx: 0, cy: 0, cz: 0, hx: HALF_W, hy: HALF_H, hz: 0.18 };
+/* Rain is a SHALLOW SLAB behind the character, never a volume through her.
+ *
+ * hz 0.18 → 0.42, and it is the cheapest depth cue on the rig. The field sits at
+ * group z −1.25 and the character plane is at −0.70, so ±0.42 spans −1.67 to
+ * −0.83 — genuinely three quarters of a metre of glass to fall through, and
+ * still clear of her by 0.13. With `sizeAttenuation` on, that spread is what
+ * gives the drops a real PARALLAX SCALE: a near one on the pane draws long and
+ * a far one across the bay draws short, from the perspective divide rather than
+ * from the per-drop jitter, and the two vary independently. At 0.18 every streak
+ * in the window was within a hand's breadth of every other, which is what makes
+ * a rain field read as a decal stamped on the glass instead of as weather with a
+ * depth to it. */
+const RAIN_FIELD: Region = { cx: 0, cy: 0, cz: 0, hx: HALF_W, hy: HALF_H, hz: 0.42 };
 
 /**
  * Foreground rain. A handful of fat, fast streaks parked a metre and a half in
@@ -186,7 +216,28 @@ const RAIN_FIELD: Region = { cx: 0, cy: 0, cz: 0, hx: HALF_W, hy: HALF_H, hz: 0.
  * rather than across a lamp. Slightly narrower with it: the bay it crosses is
  * narrower than the left edge it used to hug.
  */
-const NEAR_RAIN: Region = { cx: 1.6, cy: 0, cz: 0.28, hx: 0.52, hy: 3.5, hz: 0.12 };
+/*
+ * …and then it was moved AGAIN, and this one is the important move: cx 1.6 puts
+ * the box on screen x 0.64–0.77, and the speaker's plate occupies 0.51–0.84 with
+ * her face and hair squarely in 0.60–0.75. Nine fat, fast, near-lens streaks
+ * were falling directly down her features every frame.
+ *
+ * That is the whole of the "rain reads as film scratches / compositing
+ * artefacts" note, and no amount of fencing fixes it: the figure mask can thin
+ * these drops, but a foreground element at 2× the streak length is either
+ * visible — in which case it is a bright line down a face — or it is invisible,
+ * in which case the nine draws buy nothing. A near plane has to be somewhere
+ * there is nothing behind it.
+ *
+ * cx 3.05 → screen 0.84–0.94: the outboard bay, right of her shoulder, inboard
+ * of the frame edge and straddling the second mullion at 0.845. Every argument
+ * that earned this field is intact (it is still a metre and a half nearer the
+ * lens, it still shears against the plate as the camera drifts) and it now
+ * shears past a window member instead of past a cheek — which is strictly a
+ * better read of the same effect, because a foreground streak crossing a frame
+ * member is the depth cue, and one crossing a face is an artefact.
+ */
+const NEAR_RAIN: Region = { cx: 3.05, cy: 0, cz: 0.28, hx: 0.42, hy: 3.5, hz: 0.12 };
 /* Slightly steeper slant than the main field: closer rain shears more. */
 const NEAR_RAIN_WIND = 1.9;
 const RAIN_WIND = 1.4;

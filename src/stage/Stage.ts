@@ -161,6 +161,13 @@ function softenLocalContrast(
  * Confined to the region and feathered to nothing at its boundary, so nothing
  * anywhere acquires an edge; run once, at load, beside the practical shoulder.
  */
+/*
+ * …and it runs BOTH WAYS. `amount` was guarded at > 0 because the only caller
+ * wanted gain, but the arithmetic — `blur + (src − blur)·(1 + amount·w)` — is
+ * symmetric, and a NEGATIVE amount is a region-confined unsharp *soften*: the
+ * one instrument that can answer the note about the sweater specifically.
+ * See PLATE_SOFTEN.
+ */
 function crispenRegion(
   px: Uint8ClampedArray,
   w: number,
@@ -169,7 +176,7 @@ function crispenRegion(
   radius: number,
   region: { cx: number; cy: number; rx: number; ry: number; soft: number },
 ): void {
-  if (amount <= 0 || radius < 1) return;
+  if (amount === 0 || radius < 1) return;
   const n = w * h;
   const src = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
@@ -290,7 +297,16 @@ const PRESENCE = {
    * transparent, which concentrates what is left of the transition back into
    * its outer third — i.e. re-sharpens the very thing the width just fixed.
    */
-  core: 0.75,
+  /* 0.75 → 0.70. The ramp is now ~78px rather than ~59px at the same radii, and
+   * the reason is a specific note rather than a general preference: the cutout
+   * is still findable at her SWEATER SHOULDER and her FOREARM. Everywhere else
+   * on the silhouette the plate dissolves into hair or into dark, both of which
+   * hide a transition; a wool shoulder is a large, smooth, mid-value plane, and
+   * a mid-value plane terminating over 59px against a near-black room is the one
+   * place on this figure where the eye can measure the edge. A quarter more run
+   * costs nothing at the crown (the head dissolve owns it) and is the difference
+   * between an edge and a falloff on the two contours that were being read. */
+  core: 0.7,
   rampGamma: 1.1,
   /** Crown dissolve: alpha 0 at the very top, full by `headStart`. */
   headStart: 0.08,
@@ -334,8 +350,13 @@ const PRESENCE = {
    *  plate read as a pasted cutout. The lamp's actual work is now done by KEY
    *  below, which lands on her cheek and shoulder because it is weighted by the
    *  plate's own values rather than by its matte. This is left as what it
-   *  honestly is: a small warm separation on the outermost lit pixels. */
-  rimAmt: 0.1,
+   *  honestly is: a small warm separation on the outermost lit pixels.
+   *  0.10 → 0.13, and only that: the lamp's rim on her hair and shoulder is now
+   *  drawn where it belongs — on her actual contour, in screen space, by the
+   *  room grade (ui.css → .pq-roomgrade::after layers 10–11) — so this stays
+   *  what it is, a hair more of it because the plate around it got 15% lighter
+   *  in the midtones and a separation term has to keep pace with its ground. */
+  rimAmt: 0.13,
   /** Floor of the directional weight on the shadow side (camera-right). Pulled
    *  down with the strength, so the extra light lands on the lamp side and the
    *  far side of her stays as dark as the room does. */
@@ -402,10 +423,64 @@ const PRESENCE = {
    * which is precisely the octave the painting does not have. Run once, at
    * load, on the CPU beside the presence mask.
    */
-  localContrast: 0.15,
+  /* 0.15 → 0.24. The note came back sharper than it went out — not "the plate
+   * is a little crisp" but "the woman is a colour-graded photograph inside a
+   * painted set", which is a claim about MEDIUM, not about contrast. Fifteen
+   * percent of one octave was a hedge; at 24% the pore-and-stray-hair band is
+   * genuinely below the painted room's own finest mark, which is the condition
+   * for the two to read as one renderer. Form, edge and silhouette are still
+   * untouched — this operator cannot move any of them by construction. */
+  localContrast: 0.24,
   /** Blur radius as a fraction of plate width; ~1.4% ≈ 8px on a 600px plate,
    *  which is a skin-texture radius rather than a form-shadow one. */
   localRadius: 0.014,
+
+  /* ── Midtones ─────────────────────────────────────────────────────────────
+   * Everything above this line is a LIGHT — direction, surface, falloff — and
+   * none of it can answer the note that her torso dissolves into the background
+   * rather than sitting in front of it, because that note is about EXPOSURE.
+   * Her lit planes are keyed, her blacks are correct, and the entire middle of
+   * her range — the wool, the collar, the shadow side of the jaw, the forearm —
+   * was printing within about four values of the room behind it.
+   *
+   * So the plate carries a midtone-weighted gain: `1 + midLift·4L(1−L)`, which
+   * is exactly +15% at L = 0.5 and exactly zero at both ends. It cannot lift a
+   * black (the composited-plate tell this whole block exists to avoid) and it
+   * cannot clip a specular; it only opens the range that separation actually
+   * lives in. Folded into `shade` below, so the falloffs still own it.
+   */
+  /* 0.15 → 0.22. The room's own print exposure has just come up half a stop
+   * (see Stage → PLATE_FOCUS.midLift), and a figure whose midtones do not move
+   * with the room she is standing in loses exactly the separation the room
+   * gained: the note is that she sits within ~10 luminance points of her
+   * background, and that gap is measured, so both sides of it have to be paid.
+   * This is the half that lands on her wool, her collar and the shadow side of
+   * her jaw — the band the separation actually lives in — and it still cannot
+   * lift a black or clip a specular, which is the whole reason the operator is
+   * shaped the way it is. */
+  midLift: 0.19,
+
+  /* ── The knit ─────────────────────────────────────────────────────────────
+   * `localContrast` above is uniform across the plate, and it has to be: it is
+   * removing a photographic OCTAVE, which is everywhere. The sweater needs
+   * something else. A knit rendered photographically carries a regular stitch
+   * lattice — the single most obviously photographic surface on her, and the
+   * one the painted room has no counterpart for anywhere — and knocking the
+   * whole plate down far enough to kill it would take her eyes with it.
+   *
+   * So the region gets its own pass: `crispenRegion` at a negative amount,
+   * confined to the torso and feathered to nothing well before her face, which
+   * is a painterly edge-softening in the literal sense — it dissolves the marks
+   * and leaves the form. Radius is ~4× the skin pass's, because a stitch is a
+   * bigger mark than a pore.
+   */
+  softenAmt: -0.34,
+  softenRadius: 0.0075,
+  softenCx: 0.5,
+  softenCy: 0.78,
+  softenRx: 0.52,
+  softenRy: 0.3,
+  softenSoft: 0.5,
 
   /* ── Torso falloff ────────────────────────────────────────────────────────
    * The alpha tail above dissolves the bottom of the plate, which is right for
@@ -418,11 +493,29 @@ const PRESENCE = {
    * leads the dissolve. She falls into the dark first and only then stops
    * being there, which is what a body at the bottom of a night frame does.
    * Runs on the RGB, not the alpha, so nothing about her outline changes. */
-  shadeStart: 0.7,
-  shadeEnd: 0.86,
-  /** How black the bottom goes. 0.92, not 1.0 — a hair of tone left in the
-   *  deepest part keeps it a shadow rather than a hole cut in the plate. */
-  shadeAmt: 0.92,
+  shadeStart: 0.72,
+  shadeEnd: 0.88,
+  /** How black the bottom goes. 0.92 → 0.76: the band this governs is the same
+   *  band the frame came back calling "a murky undefined mass", and the two
+   *  halves of that read pulled in opposite directions — the alpha tail was
+   *  dissolving her forearm while this was crushing what was left of it to
+   *  within two values of the plate behind. What survived was neither a lit
+   *  torso nor an absence, which is the only outcome that reads as mush. With
+   *  the laptop lid now drawn as an OBJECT in front of her (see ui.css →
+   *  .pq-roomgrade::after) there is something for the bottom of her to be
+   *  occluded BY, so it no longer has to disappear on its own account, and
+   *  0.76 leaves the arm and the near shoulder as forms sitting in shadow. */
+  /* 0.76 → 0.66, with the ramp itself moved down two points (0.70/0.86 →
+   * 0.72/0.88). The note is that her lower body DISSOLVES into the dark laptop
+   * shape rather than being occluded by it, and those are two different pictures:
+   * an object in front of a figure has an edge and the figure continues behind
+   * it; a figure fading out where an object happens to be has neither. The lid is
+   * drawn as a committed silhouette with its own arris (see ui.css →
+   * .pq-roomgrade::after layers 1–4), so the occlusion is real and this term no
+   * longer has to fake it. At 0.66 the near shoulder and the forearm stay legible
+   * FORMS right up to the lid's edge and then stop because something is in front
+   * of them, which is the read the whole pass is after. */
+  shadeAmt: 0.66,
 
   /* ── The key ──────────────────────────────────────────────────────────────
    * Both rims above are matte-driven: they can only ever paint where the alpha
@@ -461,7 +554,28 @@ const PRESENCE = {
    * amount asked for; either one alone would have been worth an eighth of it
    * and would have cost either her skin or the room's key light.
    */
-  keyAmt: 0.34,
+  /* 0.34 → 0.46, and this is the "the lamp outshines the protagonist" note paid
+   * from the subject's side. The previous round fixed the hierarchy by taking
+   * the practical DOWN (compressPracticals) and bringing her up an eighth of a
+   * stop; the frame came back still reading the shade's interior as the brightest
+   * thing in it and her face as merely present. A key is the light that says
+   * which object the frame is about, and at 0.34 hers was a wash. At 0.46 her lit
+   * cheek, the hand at her temple and the lit edge of the shoulder come up about
+   * a third of a stop over the room — she out-reads the lamp, which is the
+   * correct hierarchy for a portrait, and the gate above still keeps every bit of
+   * it off the black cardigan and out of the existing speculars.
+   *
+   * …and it lands at 0.40, not the 0.46 the first pass tried, because 0.46 with
+   * the old highlight roll printed a BLOWN WRIST: the back of the hand at her
+   * temple is the brightest skin plane on the plate, it sits dead centre of the
+   * key's direction ramp, and half a stop on top of a plane already near 0.7
+   * clips. A key that burns out the one gesture in the frame is not a hierarchy
+   * fix, it is a highlight. So the level comes down a step and the ROLL comes up
+   * hard (see keyRoll / keyLumRollFrom): the same light budget is redistributed
+   * off the lit planes and onto the midtones, which is where separation actually
+   * lives and is what the note was about. Net at lum 0.3 — wool, the shadowed
+   * cheek, the forearm — is +18% on the old key; net at lum 0.7 is −50%. */
+  keyAmt: 0.4,
   keyR: 1.0,
   keyG: 0.67,
   keyB: 0.36,
@@ -472,9 +586,14 @@ const PRESENCE = {
    *  top so an existing specular is not driven into clipping. */
   keyLumIn: 0.1,
   keyLumFull: 0.44,
-  keyLumRollFrom: 0.62,
-  keyLumRollTo: 0.95,
-  keyRoll: 0.55,
+  /* The shoulder on the key, and it does most of the work now. 0.62/0.95 at 0.55
+   *  was a token roll-off — barely 8% off a plane at lum 0.7 — which is why
+   *  raising the level at all clipped the brightest skin on the plate. Opened to
+   *  0.50/0.88 at 0.74 the key becomes what a key on a photographed subject has
+   *  to be: full strength on the form, retired before the specular. */
+  keyLumRollFrom: 0.5,
+  keyLumRollTo: 0.88,
+  keyRoll: 0.74,
 
   /* ── The monitor ──────────────────────────────────────────────────────────
    * Her frontal soft key had no source. The lamp above accounts for the warm
@@ -509,7 +628,23 @@ const PRESENCE = {
    * is — light scales what a surface reflects, and an additive fill lifts blacks,
    * which is precisely the composited-plate tell this whole block exists to kill.
    */
-  spillAmt: 0.2,
+  /* 0.20 → 0.32. Not a change of mind about how loud a screen bounce should be:
+   * the EMITTER changed. When this was authored the only motivated cool source
+   * in shot was the relay board across the room, and a panel that far away
+   * justifies a whisper. The frame now has a laptop lid a foot from her chest
+   * with its arris lit and its throw drawn (ui.css → .pq-roomgrade::after
+   * layers 1–5), and a source that is visibly there is allowed — is REQUIRED —
+   * to be doing visible work. This is the fill that separates her jaw and her
+   * hands from the dark, and it is the half of her key the room can point at. */
+  /* 0.32 → 0.42. The note names this source explicitly — a motivated key on her
+   * face from the laptop screen at below-left, cool against the amber lamp — and
+   * asks for it at roughly a stop and a half over ambient. The emitter is in shot
+   * with its arris drawn and its throw painted (ui.css → .pq-roomgrade::after
+   * layers 1–5); a source that visible is required to be doing visible work. The
+   * ratio below is already 5500K-ish against the key's 2700K, so raising the
+   * level is the whole of the change: her jaw, her throat and her near shoulder
+   * separate from the dark on a light the audience can point at. */
+  spillAmt: 0.42,
   spillR: 0.63,
   spillG: 0.9,
   spillB: 1.0,
@@ -518,9 +653,12 @@ const PRESENCE = {
    *  lower and much weaker than the lamp, so its throw is shorter. */
   spillDirStart: -0.34,
   spillDirEnd: 0.06,
-  /** The from-below ramp, in v. Zero at the crown, full by the jaw/shoulder. */
-  spillRiseStart: 0.24,
-  spillRiseEnd: 0.56,
+  /** The from-below ramp, in v. Zero at the crown, full by the jaw/shoulder.
+   *  0.24/0.56 → 0.18/0.48: the lid sits lower and nearer than the relay board
+   *  did, so its throw reaches further up her — onto the underside of the cheek
+   *  and the hand at her temple, not merely the collar. */
+  spillRiseStart: 0.18,
+  spillRiseEnd: 0.48,
   /** Luminance gate — opens in the shadow planes, rolls off before the speculars. */
   spillLumIn: 0.06,
   spillLumFull: 0.3,
@@ -630,7 +768,15 @@ const PLATE_INTERIORS: Record<string, InteriorSpec> = {
     lobes: [
       // The desk vignette: lamp, shade, monitor, mug, headset and the desktop
       // they sit on. Screen x 60→700, y 320→890 at 1920×1080.
-      { cx: 0.2, cy: 0.44, rx: 0.24, ry: 0.32, soft: 0.34 },
+      //
+      // rx 0.24 → 0.27 and ry 0.32 → 0.36. The note is that streaks still render
+      // over the interior desk area, and the geometry says where: at the old
+      // radii this lobe reached x≈0.44 only at its own centre height, so between
+      // y≈0.55 and y≈0.75 (y-up) — the band that holds the top of the monitor,
+      // the lamp's arm and the wall behind them — the fence had a gap the width
+      // of two bays. A drop crossing a lamp arm is the same error as a drop
+      // crossing the shade, one object over.
+      { cx: 0.19, cy: 0.44, rx: 0.27, ry: 0.36, soft: 0.34 },
       // The floor. Wide and flat and hung off the bottom edge, so the whole
       // band below the horizon is room rather than window — the rig used to
       // rain onto the carpet, which is the same error one storey down. The
@@ -640,15 +786,23 @@ const PLATE_INTERIORS: Record<string, InteriorSpec> = {
       // on the far pane that dies where the floor begins is exactly what a
       // window in a lit room does.
       { cx: 0.5, cy: 0.02, rx: 0.9, ry: 0.3, soft: 0.35 },
-      // The chair back at the focal midline (the mass the ::before pass rims).
-      { cx: 0.49, cy: 0.375, rx: 0.1, ry: 0.24, soft: 0.4 },
+      // The chair back at the focal midline (the mass the midlight pass rims).
+      // Re-measured off a framed 1920×1080 capture: the plate's near-mid chair
+      // occupies screen x 835→1041, y 553→661, i.e. cy 0.435 y-up — not 0.375,
+      // which put the fence 70px low and left the chair's own crown out on the
+      // glass. Radii widened to take the run of desk it stands at with it.
+      { cx: 0.489, cy: 0.435, rx: 0.075, ry: 0.115, soft: 0.4 },
       // The wall and ceiling ABOVE the desk. This is the one the first pass
       // missed and it is the most visible of the four: two streaks were falling
       // down a flat dark partition at x≈0.08 and x≈0.15, well clear of any
       // window, and a raindrop over an interior wall is the single most
       // literal version of the note. The window wall does not begin until
       // x≈0.36, so the lobe can be generous.
-      { cx: 0.12, cy: 0.84, rx: 0.28, ry: 0.3, soft: 0.42 },
+      // …widened with the desk lobe, and for the same reason: at rx 0.28 / ry
+      // 0.30 the wall's cover ran out at x≈0.40 and, at the very top of frame,
+      // sooner than that. The window wall does not begin until x≈0.36 at any
+      // height, so there is nothing to lose out there and a gap to close.
+      { cx: 0.11, cy: 0.82, rx: 0.31, ry: 0.34, soft: 0.42 },
     ],
     amount: 1,
   },
@@ -664,6 +818,12 @@ const PLATE_INTERIORS: Record<string, InteriorSpec> = {
  * `bridge` is the shadow-family unifier in the same grade (see uShadowBridge):
  * how hard the band of ungraded murk between the warm pool and the teal city is
  * pulled into the window's own shadow hue.
+ *
+ * `midLift` is the plate's PRINT EXPOSURE (see uMidLift): a midtone-weighted
+ * gain that is zero at the black floor and zero again before the practicals.
+ * It lives here rather than in the theme grade because it is a property of the
+ * PLATE, not of the story — the same grade has to serve a night interior that
+ * prints a stop and a half down and a daylit reading room that prints hot.
  */
 interface FocusSpec {
   cx: number;
@@ -672,13 +832,25 @@ interface FocusSpec {
   ry: number;
   blur: number;
   bridge: number;
+  midLift: number;
 }
 
 const PLATE_FOCUS: Record<string, FocusSpec> = {
-  ops_room: { cx: 0.2, cy: 0.42, rx: 0.2, ry: 0.28, blur: 0.0042, bridge: 0.34 },
-  // A deep-focus daylit reading room: nothing to rack away from, and its murk
-  // is warm rather than green, so neither instrument applies.
-  memory_atrium: { cx: 0.5, cy: 0.5, rx: 1, ry: 1, blur: 0, bridge: 0 },
+  /* midLift 0.45 ≈ +0.54 stop through the shadow-to-low-midtone band.
+   *
+   * The note is a thumbnail test and the plate failed it: at 480px wide the ops
+   * room read as a lamp and a black rectangle rather than as a woman at a desk,
+   * because everything between the practical's pool and the black floor — the
+   * desk's front face, the partition, the chair, the wall, the shadow side of
+   * her jaw — was printing within a handful of code values of the floor itself.
+   * Half a stop into that band is what buys back the midground; the shoulder
+   * above still holds the lamp off the ceiling and the floor below is untouched,
+   * so the range gets wider rather than merely brighter. */
+  ops_room: { cx: 0.2, cy: 0.42, rx: 0.2, ry: 0.28, blur: 0.0042, bridge: 0.34, midLift: 0.45 },
+  // A deep-focus daylit reading room: nothing to rack away from, its murk is
+  // warm rather than green, and its failure mode is an over-lit centre — so all
+  // three instruments are retired here.
+  memory_atrium: { cx: 0.5, cy: 0.5, rx: 1, ry: 1, blur: 0, bridge: 0, midLift: 0 },
 };
 
 /** The board's three queue rows: line id, state, and whether the state is warm. */
@@ -1322,6 +1494,7 @@ export class Stage implements IStage {
     this.plateFocus = PLATE_FOCUS[id] ?? null;
     this.applyFieldFocus();
     this.postfx.setShadowBridge(this.plateFocus?.bridge ?? 0);
+    this.postfx.setMidLift(this.plateFocus?.midLift ?? 0);
 
     this.refreshFocus();
     void this.transitions.play(transition ?? (this.hasBackground ? 'dissolve' : 'crossfade'));
@@ -1949,6 +2122,16 @@ export class Stage implements IStage {
     // multiplies alpha and adds rim light, and a blur taken after either would
     // be pulling feathered edge pixels and painted kicker back into the face.
     softenLocalContrast(px, w, h, PRESENCE.localContrast, Math.max(1, Math.round(w * PRESENCE.localRadius)));
+    // …and then the knit specifically, at four times the radius and confined to
+    // the torso. Same ordering argument as above: before the matte, so the pass
+    // is only ever pulling on painted plate and never on a feather.
+    crispenRegion(px, w, h, PRESENCE.softenAmt, Math.max(1, Math.round(w * PRESENCE.softenRadius)), {
+      cx: PRESENCE.softenCx,
+      cy: PRESENCE.softenCy,
+      rx: PRESENCE.softenRx,
+      ry: PRESENCE.softenRy,
+      soft: PRESENCE.softenSoft,
+    });
     const invPower = 1 / PRESENCE.power;
     for (let y = 0; y < h; y++) {
       const v = (y + 0.5) / h;
@@ -1995,10 +2178,12 @@ export class Stage implements IStage {
         // and differs only in where each of those is aimed. See PRESENCE.spill*.
         const spillDir =
           1 - smoothstep(PRESENCE.spillDirStart, PRESENCE.spillDirEnd, dx);
+        // Read once, used three times: by the two lights below as their surface
+        // gate, and by the midtone lift as its own weight.
+        const lum = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
         let key = 0;
         let spill = 0;
         if ((keyDir > 0 || spillDir * spillRise > 0) && shadeRow > 0) {
-          const lum = (0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]) / 255;
           if (keyDir > 0) {
             const surf =
               smoothstep(PRESENCE.keyLumIn, PRESENCE.keyLumFull, lum) *
@@ -2023,8 +2208,15 @@ export class Stage implements IStage {
           PRESENCE.backdropRight +
           (PRESENCE.backdropLeft - PRESENCE.backdropRight) *
             (1 - smoothstep(-0.1, 0.3, dx));
+        // …and the midtone lift (see PRESENCE.midLift). 4L(1−L) is a parabola
+        // that is 1 at L = 0.5 and 0 at both ends, so this opens her wool, her
+        // collar and the shadow side of her jaw by 15% and provably cannot
+        // touch a black or a specular. Folded into `shade` so every falloff
+        // above still owns it — the feather and the torso dissolve are not
+        // going to be handed exposure back by a grade term.
         const shade =
           shadeRow *
+          (1 + PRESENCE.midLift * 4 * lum * (1 - lum)) *
           (1 - PRESENCE.vignette * (1 - a) ** PRESENCE.vignetteGamma) *
           (1 - backdropAmt * smoothstep(PRESENCE.backdropIn, PRESENCE.backdropOut, d));
         // A band through the middle of the ramp: 0 at both ends by

@@ -152,7 +152,19 @@ const OPENERS = new Set([' ', '\n', '\t', '(', '[', '{', '—', '–', '‘', '�
 
 export function smartQuotes(text: string): string {
   if (!text) return text;
-  const s = text.replace(/---/g, '—').replace(/--/g, '—').replace(/\.\.\./g, '…');
+  const s = text
+    .replace(/---/g, '—')
+    .replace(/--/g, '—')
+    .replace(/\.\.\./g, '…')
+    // …and the space the mark owes the word after it. A true ellipsis is ONE
+    // glyph whose three dots are set on the face's own tight sidebearings, so
+    // "…Hello" prints with the final dot almost touching the H — which reads, at
+    // a glance and in a screenshot, as three typed periods run into a capital.
+    // The compositor's rule is that an ellipsis is followed by a thin space when
+    // a word follows it; U+2009 is already treated as whitespace by the
+    // typewriter's cadence (see DialogueBox.isSpace), so this costs nothing but
+    // the ~3px of air that makes the glyph read as the glyph it is.
+    .replace(/…(?=[A-Za-z0-9‘“(])/g, '… ');
   let out = '';
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];

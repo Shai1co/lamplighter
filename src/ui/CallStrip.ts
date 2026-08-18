@@ -7,62 +7,30 @@
  * score is earned exactly here — a piece of the fiction's software, etched onto
  * the glass the camera is behind, reporting real state.
  *
- * It is a PANEL, not a badge. A 12px-blurred sheet of glass with a single 35%
- * hairline, a 6% interior fill and a soft outer bloom, carrying the line's own
- * state and nothing else: line state + shift clock, the caller's vocal trace and
- * its level, and the relay/callsign footer. A wristwatch-sized chip in the
- * corner reads as a HUD ornament; a panel with rows that move reads as a product
- * embedded in a room, which is the thing being scored.
+ * ── It is a CHIP, not a panel ───────────────────────────────────────────────
  *
- * IT DOES NOT CARRY RESPIRATION / AFFECT / RECEPTIVITY. Those three rows live on
- * the LUMEN PROXY pane at the bottom right, and for a while they lived on BOTH:
- * one fictional product printing the same three instruments twice, six feet
- * apart, with two different needles and two different values. A blind critic
- * reads duplicated telemetry as two teams shipping the same widget — the fastest
- * way there is to make a diegetic UI look un-art-directed. The split is now a
- * real one and it is the split the fiction already has: this panel is the LINE
- * (is it open, how long, is anyone talking), the proxy pane is the CALLER (how
- * they are doing). Neither repeats a number the other prints.
+ * It used to be a panel: a header row, a rule, a 34-stroke vocal trace, a
+ * labelled VOCAL SIGNAL level, a second rule and a relay/callsign footer. Every
+ * one of those rows was well made and the set of them was the frame's worst
+ * idea, because the LUMEN PROXY pane in the opposite corner prints a vocal
+ * waveform and a vocal level of its own. Two telemetry panels on one side of one
+ * screen, each with its own waveform and its own signal number, do not read as a
+ * rich product — they read as a DASHBOARD, and a dashboard is the opposite of a
+ * place. The frame stopped being a room with software in it and became a
+ * monitoring UI with a photograph behind it.
  *
- * All values are DETERMINISTIC functions of the shift clock — a readout that
- * jitters randomly is a screensaver, one that drifts on its own slow period is
- * an instrument. They only breathe once a caller is on the line; a clear board
- * holds its floor.
+ * So the duplicate instrument is gone and what is left is the one fact the proxy
+ * pane cannot state: the LINE. Is it open, who is on it, how long has it been
+ * running. One row, one baseline, three fields — a status chip on the same sheet
+ * of glass the proxy pane is etched on, hung off the same right margin.
+ *
+ * The clock is a DETERMINISTIC function of the shift, never a jitter: a readout
+ * that flickers randomly is a screensaver, one that counts is an instrument.
  *
  * Decorative to assistive tech (aria-hidden): every fact on it is already
  * announced through the dialogue's own live region.
  */
 import { el } from './dom';
-
-/** Strokes in the caller waveform. Enough to read as a trace, not a bar chart. */
-const BARS = 34;
-
-/**
- * Deterministic 0..1 per bar — a waveform, never a random sparkle.
- *
- * The previous shape was `sin(πt)^0.6 × detail` floored at 0.12, and sin^0.6 is
- * almost perfectly flat across the middle 70% of its span: thirty of the
- * thirty-four strokes came out within a few percent of each other and the row
- * read as a picket fence, which is what a placeholder looks like. Speech does
- * not look like that. It arrives in SYLLABLES — bursts of three or four loud
- * samples separated by near-silence — inside an utterance envelope, with
- * sample-to-sample grain on top.
- *
- * Three terms, all incommensurate so nothing repeats across the row:
- *   • envelope — the breath, opening slightly late and closing at the end;
- *   • syllable — the burst gate, and the term that puts real GAPS in the trace;
- *   • grain    — the jitter inside a burst.
- * Floor drops 0.12 → 0.05 so a gap is genuinely a gap; the mapping at the call
- * site widens to match, giving the row about 8× the dynamic range it had.
- */
-function barShape(i: number): number {
-  const t = i / (BARS - 1);
-  const envelope = Math.sin(Math.PI * Math.min(1, t * 1.08)) ** 0.85;
-  const syllable =
-    0.32 + 0.68 * Math.abs(Math.sin(i * 0.62 + 0.35)) * (0.55 + 0.45 * Math.sin(i * 0.27 + 1.9));
-  const grain = 0.45 + 0.55 * Math.abs(Math.sin(i * 2.39 + 0.8) * Math.cos(i * 1.13 + 2.4));
-  return Math.min(1, Math.max(0.05, envelope * syllable * grain));
-}
 
 export class CallStrip {
   readonly root: HTMLElement;
@@ -70,7 +38,6 @@ export class CallStrip {
   private readonly labelEl: HTMLElement;
   private readonly timerEl: HTMLElement;
   private readonly callerEl: HTMLElement;
-  private readonly vocalEl: HTMLElement;
 
   private startedAt = 0;
   private tick = 0;
@@ -80,27 +47,6 @@ export class CallStrip {
     this.labelEl = el('span', { class: 'pq-callstrip__label', text: 'line standby' });
     this.timerEl = el('span', { class: 'pq-callstrip__timer', text: '00:00' });
     this.callerEl = el('span', { class: 'pq-callstrip__caller', text: 'board clear' });
-    this.vocalEl = el('span', { class: 'pq-callstrip__vocalval', text: '0.00' });
-
-    const bars: HTMLElement[] = [];
-    for (let i = 0; i < BARS; i++) {
-      const h = barShape(i);
-      bars.push(
-        el('i', {
-          // --h is the live peak; --i is the idle floor the bar rests at when
-          // the board is clear, so a closed line still shows a noise floor
-          // instead of a dead rule. Range widened (20+74 → 10+88, 15+27 →
-          // 7+34): a trace whose quietest stroke is a fifth of its loudest is
-          // not a trace, and any frame grabbed off it looks like a fence.
-          // The delay mixes an 8-step and a 3-step period so adjacent bars
-          // never share a phase and the animation cannot resolve into a
-          // travelling 8-picket pattern of its own.
-          style:
-            `--d:${(i % 8) * 105 + (i % 3) * 37}ms;` +
-            `--h:${Math.round(10 + h * 88)}%;--i:${Math.round(7 + h * 34)}%`,
-        }),
-      );
-    }
 
     this.root = el(
       'aside',
@@ -112,18 +58,9 @@ export class CallStrip {
         el('div', { class: 'pq-callstrip__head' }, [
           el('span', { class: 'pq-callstrip__dot' }),
           this.labelEl,
-          this.timerEl,
-        ]),
-        el('div', { class: 'pq-callstrip__rule' }),
-        el('div', { class: 'pq-callstrip__wave' }, bars),
-        el('div', { class: 'pq-callstrip__vocal' }, [
-          el('span', { text: 'vocal signal' }),
-          this.vocalEl,
-        ]),
-        el('div', { class: 'pq-callstrip__rule pq-callstrip__rule--foot' }),
-        el('div', { class: 'pq-callstrip__foot' }, [
-          el('span', { text: 'lumen relay 04' }),
+          el('span', { class: 'pq-callstrip__sep', text: '·' }),
           this.callerEl,
+          this.timerEl,
         ]),
       ],
     );
@@ -175,11 +112,6 @@ export class CallStrip {
     const mm = String(Math.floor(secs / 60) % 100).padStart(2, '0');
     const ss = String(secs % 60).padStart(2, '0');
     this.timerEl.textContent = `${mm}:${ss}`;
-
-    // A closed line still reports — at its floor, without the drift. The panel
-    // is never a row of dashes waiting for the story to start.
-    this.vocalEl.textContent = (0.06 + (this.live ? 0.19 : 0.02) *
-      (0.5 + 0.5 * Math.sin((secs / 11) * Math.PI * 2))).toFixed(2);
   }
 
   private stopTick(): void {
