@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "createdAt": "2026-08-18T19:21:54.598Z",
+  "prompt": "A night-market fortune teller in a flooding canal city reads one last palm before the water reaches the lanterns. The visitor is someone she swore she would never see again.",
+  "length": "standard",
+  "provider": "gemini",
+  "model": "gemini-3.7-flash",
+  "promptVersion": "1.1",
+  "durationMs": 44721,
+  "attempts": [
+    {
+      "index": 0,
+      "ok": false,
+      "issues": [
+        "MENUS_COUNT"
+      ]
+    },
+    {
+      "index": 1,
+      "ok": false,
+      "issues": [
+        "LABELS_COUNT"
+      ]
+    },
+    {
+      "index": 2,
+      "ok": true,
+      "issues": []
+    }
+  ],
+  "warnings": [],
+  "art": {
+    "requested": true,
+    "backend": "gemini",
+    "imageModel": "gemini-3.1-flash-image",
+    "state": "done",
+    "assets": [
+      {
+        "path": "assets/backgrounds/booth.png",
+        "state": "ok"
+      },
+      {
+        "path": "assets/backgrounds/canal.png",
+        "state": "ok"
+      },
+      {
+        "path": "assets/backgrounds/steps.png",
+        "state": "ok"
+      },
+      {
+        "path": "assets/characters/soren/guarded.png",
+        "state": "ok"
+      },
+      {
+        "path": "assets/characters/soren/tender.png",
+        "state": "ok"
+      },
+      {
+        "path": "assets/characters/soren/wry.png",
+        "state": "ok"
+      },
+      {
+        "path": "assets/characters/soren/bitter.png",
+        "state": "ok"
+      },
+      {
+        "path": "assets/cg/cover.png",
+        "state": "ok"
+      }
+    ]
+  }
+}

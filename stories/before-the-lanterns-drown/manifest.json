@@ -1,0 +1,119 @@
+{
+  "id": "before-the-lanterns-drown",
+  "title": "Before the Lanterns Drown",
+  "subtitle": "One last reading at high tide",
+  "author": "Lamplighter",
+  "synopsis": "The black canal water is thirty minutes from swallowing the market stalls. A fortune teller prepares to pack her velvet cloth when the one person who abandoned her six winters ago steps out of the rising tide.",
+  "entry": "scene_arrival",
+  "cover": "cover",
+  "credits": [
+    "Before the Lanterns Drown",
+    "",
+    "A Story by Lamplighter",
+    "Made with Lamplighter"
+  ],
+  "artStyle": "Dark atmospheric gouache and cinematic chiaroscuro, deep jade and bruised amber palette, flooded stone textures, soft volumetric lantern glow through mist, no text, no UI, no border, no watermark.",
+  "theme": {
+    "key": "#4aa896",
+    "accent": "#e07a5f",
+    "ink": "#f4f1de",
+    "paper": "#16191d",
+    "grade": {
+      "splitTone": 0.6,
+      "contrast": 1.08,
+      "saturation": 0.85
+    },
+    "bloom": 1.1,
+    "vignette": 0.65,
+    "grain": 0.3
+  },
+  "characters": {
+    "soren": {
+      "name": "Soren",
+      "color": "#e07a5f",
+      "description": "A man in his early thirties with sharp, weathered features, damp raven hair clinging to his temples, wearing a heavy salt-stained wool coat over a faded linen shirt. Cold amber lamplight catches his sharp jaw and the faint silver scar running along his left thumb.",
+      "defaultPose": "guarded",
+      "home": "center",
+      "scale": 1,
+      "poses": {
+        "guarded": {
+          "prompt": "Portrait of Soren — A man in his early thirties with sharp, weathered features, damp raven hair clinging to his temples, wearing a heavy salt-stained wool coat over a faded linen shirt. Cold amber lamplight catches his sharp jaw and the faint silver scar running along his left thumb. — Guarded, cautious expression, eyes narrowed under the brim of his drenched collar. Chest-up portrait framing, painterly, shallow depth of field, opaque dark neutral backdrop. No text, no UI, no border."
+        },
+        "tender": {
+          "prompt": "Portrait of Soren — A man in his early thirties with sharp, weathered features, damp raven hair clinging to his temples, wearing a heavy salt-stained wool coat over a faded linen shirt. Cold amber lamplight catches his sharp jaw and the faint silver scar running along his left thumb. — Vulnerable and weary expression, eyes softened with unspoken regret. Chest-up portrait framing, painterly, shallow depth of field, opaque dark neutral backdrop. No text, no UI, no border."
+        },
+        "wry": {
+          "prompt": "Portrait of Soren — A man in his early thirties with sharp, weathered features, damp raven hair clinging to his temples, wearing a heavy salt-stained wool coat over a faded linen shirt. Cold amber lamplight catches his sharp jaw and the faint silver scar running along his left thumb. — A faint, self-deprecating smirk touching the corner of his lips. Chest-up portrait framing, painterly, shallow depth of field, opaque dark neutral backdrop. No text, no UI, no border."
+        },
+        "bitter": {
+          "prompt": "Portrait of Soren — A man in his early thirties with sharp, weathered features, damp raven hair clinging to his temples, wearing a heavy salt-stained wool coat over a faded linen shirt. Cold amber lamplight catches his sharp jaw and the faint silver scar running along his left thumb. — Tight jaw, defensive and pained stare, eyes fixed straight ahead. Chest-up portrait framing, painterly, shallow depth of field, opaque dark neutral backdrop. No text, no UI, no border."
+        }
+      }
+    }
+  },
+  "backgrounds": {
+    "booth": {
+      "prompt": "A cramped wooden fortune-telling stall in a flooded night market. Dark canal water covers the wooden plank floor up to ankle height. Red silk and velvet drapes hang soaked at the edges. Submerged paper lanterns glow faintly beneath murky green water. Landscape composition, no people.",
+      "parallax": 0.05,
+      "focus": 0.55
+    },
+    "canal": {
+      "prompt": "A narrow Venetian-style flooded canal at midnight during an extreme high tide. Decaying stone tenements flank the dark water where yellow and red lanterns float. Rain ripples across the dark reflective surface. Landscape composition, no people.",
+      "parallax": 0.06,
+      "focus": 0.5
+    },
+    "steps": {
+      "prompt": "Wide ancient stone landing stairs rising out of surging black canal water toward dry upper bridge arches. Fog hangs thick over the submerged lowest steps. Distant amber light washes over wet granite. Landscape composition, no people.",
+      "parallax": 0.04,
+      "focus": 0.6
+    }
+  },
+  "cg": {
+    "cover": {
+      "prompt": "A fortune teller table half-submerged in rising green-black canal water, soaked velvet cloth, brass astrolabe and tarot cards floating adrift, illuminated by drowned amber lanterns beneath the surface. No people."
+    }
+  },
+  "music": {
+    "theme_drone": {
+      "synth": "drone",
+      "loop": true,
+      "volume": 0.5
+    },
+    "theme_pad": {
+      "synth": "pad",
+      "loop": true,
+      "volume": 0.45
+    }
+  },
+  "ambience": {
+    "water_rain": {
+      "synth": "rain",
+      "loop": true,
+      "volume": 0.5
+    },
+    "canal_hum": {
+      "synth": "hum",
+      "loop": true,
+      "volume": 0.35
+    }
+  },
+  "sfx": {
+    "bell_chime": {
+      "synth": "chime",
+      "volume": 0.6
+    },
+    "coin_click": {
+      "synth": "click",
+      "volume": 0.7
+    },
+    "splash_tone": {
+      "synth": "tone",
+      "volume": 0.55
+    }
+  },
+  "vars": {
+    "truth": 0,
+    "regret": 0,
+    "composure": 3
+  }
+}
