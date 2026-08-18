@@ -66,8 +66,24 @@ interface GradeUniforms {
  */
 const APERTURE = 0.0005;
 
-/** Grain clump edge, in CSS pixels before the device pixel ratio. */
-const GRAIN_PX = 2.2;
+/**
+ * Grain clump edge, in CSS pixels before the device pixel ratio.
+ *
+ * 2.2 → 1.55. The note is "horizontal banding / scanline artefacts in the grade
+ * — the noise flattens the paint and reads as compression, not film", and the
+ * arithmetic behind it is exact: the field is hashed per CELL off gl_FragCoord,
+ * so a 2.2px cell is a 2.2px LATTICE, and a lattice whose pitch is a small
+ * non-integer number of pixels beats against the raster at a period of
+ * 1/(1/2.2 − 1/2) ≈ 11px. In motion the per-frame jitter hides it; in a STILL —
+ * which is the only thing the critic is ever shown — what survives is a regular
+ * horizontal ripple over every flat in the picture. That is the banding, and it
+ * is measurable on a crop of dead wall.
+ * Two changes, and neither of them is "less grain": the cell comes down to
+ * roughly the size of a 35mm scan's actual clump at 1080p, and the lattice is
+ * ROTATED off the pixel grid before it is quantised (see GRADE_FRAGMENT), so
+ * there is no axis along which its cells can line up into rows at all.
+ */
+const GRAIN_PX = 1.55;
 
 /**
  * Bloom gate.

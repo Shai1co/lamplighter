@@ -331,7 +331,16 @@ void main() {
     vnoise(tUv * 64.0 + vec2(0.0, 0.24))
   ) - 0.5;
   color *= 1.0 + tooth * 0.038 * tAmt;
-  color *= 1.0 + toothRGB * 0.014 * tAmt;
+  /* 0.014 → 0.009. "Keep the chroma clean" is the second half of the grain note
+   * and this is the only chromatic noise term in the pipeline — the emulsion
+   * below is luminance-only by construction and the DOM plate is desaturated in
+   * its own filter. The argument for a chromatic tooth stands (pigment settling
+   * on a tooth breaks colour as well as value, and it is what stops the
+   * photographic half reading as *cleaner* than the painted half), so it is
+   * trimmed rather than retired: at 0.9% it still decorrelates the three
+   * channels on a lit plane and it no longer puts findable colour speckle into
+   * the near-blacks, where two thirds of this frame lives. */
+  color *= 1.0 + toothRGB * 0.009 * tAmt;
 
   // Saturation.
   float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -533,7 +542,25 @@ void main() {
   float gq = uGrain * (1.0 + 0.5 * gCorner);
   float gt = floor(uTime * 16.0);
   vec2 gjit = vec2(hash13(vec3(gt, 3.7, 11.3)), hash13(vec3(gt, 91.1, 5.9))) * 512.0;
-  vec2 gcell = floor((gl_FragCoord.xy + gjit) / max(uGrainSize, 0.5));
+  /* The lattice is ROTATED before it is quantised, and this one line is the fix
+   * for the "horizontal banding / scanline" note.
+   *
+   * A floor(p / cell) builds an AXIS-ALIGNED grid. However well distributed the
+   * hash inside each cell is, the cell BOUNDARIES all lie on two families of
+   * perfectly horizontal and vertical lines — and when the pitch is a small
+   * non-integer number of device pixels those boundaries beat against the raster
+   * and print as a regular ripple across every flat in the frame. The per-step
+   * jitter above translates the grid; it never rotates it, so it cannot help: a
+   * translated horizontal line is still a horizontal line. Read on a still, that
+   * ripple is indistinguishable from macro-blocking, which is exactly the read
+   * that came back ("reads as compression, not film").
+   * A 31.7° rotation (an angle with no small rational relationship to the pixel
+   * grid, the same trick a halftone screen uses for the identical reason) puts
+   * every cell boundary at an irrational slope, so no run of cells can ever line
+   * up into a row. It costs four multiplies and it is the difference between an
+   * emulsion and a screen door. */
+  mat2 GROT = mat2(0.8508, -0.5255, 0.5255, 0.8508);
+  vec2 gcell = floor((GROT * (gl_FragCoord.xy + gjit)) / max(uGrainSize, 0.5));
   float gFine = hash13(vec3(gcell, gt));
   float gCoarse = hash13(vec3(floor(gcell * 0.3333), gt + 19.0));
   float g = (gFine - 0.5) - (gCoarse - 0.5) * 0.5;

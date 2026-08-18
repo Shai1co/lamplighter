@@ -1521,6 +1521,92 @@
         transparent 100%
       );
 }
+/* ── …and one more lobe while the CHAPTER CARD is up ────────────────────────
+   The card sets a display serif at ~3.4rem across the middle of a wall of glass,
+   and the note is not about the type's contrast — it has a scrim of its own (see
+   .pq-chapter, layer 2) and three shadow passes. It is that vertical STRUCTURE
+   runs through the letterforms: the plate's own glazing members, the pane's
+   rivulets and the far bay's bokeh all resolve at a spatial frequency close to
+   the serifs' own, so the eye reads the counters and the window as one texture.
+   Darkening cannot fix that — a scrim multiplies the streak and the ground alike
+   and the streak stays a streak.
+   A LENS can. Three and a half pixels of defocus over the lockup's footprint
+   dissolves a 2px member into the bay behind it and leaves the type, which is
+   drawn above this layer, exactly as sharp as it was set — which is also the
+   honest reading of the shot: the card is a title plane, and a title plane is
+   not on the same focal plane as a city four hundred metres away.
+   Scoped to the card because in the dialogue framing this footprint is the
+   speaker's, and racking a face is the one thing this pass may never do. The
+   lobe reaches zero ~150px outside the lockup on every side, so there is no
+   boundary anywhere for the eye to find. */
+.pq.is-chapter .pq-atmos__focus {
+  -webkit-mask-image: radial-gradient(
+      11% 20% at 48.8% 56%,
+      #000 0%,
+      rgba(0, 0, 0, 0.82) 42%,
+      rgba(0, 0, 0, 0.34) 72%,
+      transparent 100%
+    ),
+    radial-gradient(26% 8% at 26% 79%, rgba(0, 0, 0, 0.7), transparent 78%),
+    radial-gradient(
+      12% 17% at 41% 31%,
+      rgba(0, 0, 0, 0.88) 0%,
+      rgba(0, 0, 0, 0.5) 52%,
+      transparent 100%
+    ),
+    radial-gradient(
+      19% 21% at 14.5% 14%,
+      rgba(0, 0, 0, 0.66) 0%,
+      rgba(0, 0, 0, 0.4) 54%,
+      transparent 100%
+    ),
+    radial-gradient(3.6% 26% at 40.5% 30%, rgba(0, 0, 0, 0.4), transparent 100%),
+    radial-gradient(
+      16% 9% at 22% 27%,
+      rgba(0, 0, 0, 0.48) 0%,
+      rgba(0, 0, 0, 0.24) 58%,
+      transparent 100%
+    ),
+    radial-gradient(
+      15% 11% at 50% 38.5%,
+      rgba(0, 0, 0, 0.85) 0%,
+      rgba(0, 0, 0, 0.5) 46%,
+      transparent 100%
+    );
+  mask-image: radial-gradient(
+      11% 20% at 48.8% 56%,
+      #000 0%,
+      rgba(0, 0, 0, 0.82) 42%,
+      rgba(0, 0, 0, 0.34) 72%,
+      transparent 100%
+    ),
+    radial-gradient(26% 8% at 26% 79%, rgba(0, 0, 0, 0.7), transparent 78%),
+    radial-gradient(
+      12% 17% at 41% 31%,
+      rgba(0, 0, 0, 0.88) 0%,
+      rgba(0, 0, 0, 0.5) 52%,
+      transparent 100%
+    ),
+    radial-gradient(
+      19% 21% at 14.5% 14%,
+      rgba(0, 0, 0, 0.66) 0%,
+      rgba(0, 0, 0, 0.4) 54%,
+      transparent 100%
+    ),
+    radial-gradient(3.6% 26% at 40.5% 30%, rgba(0, 0, 0, 0.4), transparent 100%),
+    radial-gradient(
+      16% 9% at 22% 27%,
+      rgba(0, 0, 0, 0.48) 0%,
+      rgba(0, 0, 0, 0.24) 58%,
+      transparent 100%
+    ),
+    radial-gradient(
+      15% 11% at 50% 38.5%,
+      rgba(0, 0, 0, 0.85) 0%,
+      rgba(0, 0, 0, 0.5) 46%,
+      transparent 100%
+    );
+}
 /* The atrium is a deep-focus daylit interior with no midground object to rack
    away from — the pass has nothing to describe there and would only soften a
    shelf. */
@@ -2036,20 +2122,26 @@
        so what is left is the anisotropy a poured surface has and not a texture
        swatch. The wall's remaining mush is answered by DEFOCUS instead — see
        .pq-atmos__focus, which now racks the plate behind the practical. */
-      /* Up ~50% on every stop. The seam is the only thing in this pass that says
-         "poured surface" and at 1.6–3% it was arithmetically under one code value
-         over a wall the grade prints in the teens — present in the stylesheet and
-         absent in the picture, which is the exact difference between texture and
-         the note ("textureless mush"). It is still one gauge, still a hair off
-         vertical, still with ramped rather than stepped edges, so what comes back
-         is anisotropy and not a swatch. */
+      /* Up ~20% on every stop, and only ~20%. At 1.6–3% the seam was arithmetically
+         under one code value over a wall the grade prints in the teens — present
+         in the stylesheet and absent in the picture, which is the difference
+         between texture and the note ("textureless mush"). A 50% lift was tried
+         first and it overshot in the one way this pass may not: at ~4.5% the
+         members resolved into a legible vertical every 131px across the most-lit
+         square inch in the frame, i.e. straight back into the "repeating pattern
+         behind the lamp" note this gauge was halved to answer two rounds ago. A
+         repeat is the one thing a painted wall never has, and one visible period
+         is one too many.
+         So the seam gains only what keeps it above the quantiser, and the actual
+         answer to "textureless" is carried by the two NON-repeating sweeps below,
+         which can be as strong as the wall needs without ever printing a rhythm. */
       repeating-linear-gradient(
         91.4deg,
         transparent 0 54px,
-        rgba(10, 14, 17, 0.024) 58px,
-        rgba(10, 14, 17, 0.045) 60px,
-        rgba(226, 190, 146, 0.03) 62px,
-        rgba(226, 190, 146, 0.009) 66px,
+        rgba(10, 14, 17, 0.019) 58px,
+        rgba(10, 14, 17, 0.036) 60px,
+        rgba(226, 190, 146, 0.024) 62px,
+        rgba(226, 190, 146, 0.0072) 66px,
         transparent 72px 131px
       ),
     /* 4 — THE TROWEL. Two broad, soft, NON-repeating sweeps across the concrete,
@@ -2492,8 +2584,21 @@
      field closes the gap to ~20% and leaves the total over the dark quadrants
      within a thousandth of where it was: one stock over the whole composite,
      which is the literal ask. */
-  opacity: 0.052;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='384' height='384'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='384' height='384' filter='url(%23g)'/></svg>");
+  /* 0.052 → 0.038, and the tile goes finer with it (0.85 → 1.02 baseFrequency).
+     The note is that the noise "flattens the paint and reads as compression, not
+     film", and the two halves of that are separable: the RENDER's emulsion has a
+     lattice problem, fixed in the grade shader (see GRAIN_PX and the rotated
+     cell grid); this layer has a SIZE and DOSE problem. It is a source-over grey
+     field, so every thousandth of it is a flat DC lift on a frame whose deepest
+     black is 15 — at 5.2% over a 0.85-frequency tile the clumps ran ~1.4px and
+     carried enough amplitude to sit ON the paint rather than in it, which is
+     precisely what reads as a compressed source. Just under 4% at ~1.2px lands
+     the DOM emulsion inside the band the note asks for, keeps it achromatic (the
+     saturate filter is what makes it luma-only), and leaves it doing the two
+     jobs it exists for: dithering the long DOM gradients and welding the panels
+     to the photograph. */
+  opacity: 0.038;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='384' height='384'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='1.02' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='384' height='384' filter='url(%23g)'/></svg>");
   background-size: 384px 384px;
 }
 /* ── The print's own chromatic cast ─────────────────────────────────────────
@@ -4546,7 +4651,21 @@
       rgba(var(--pq-paper-rgb) / 0.09) 40%,
       rgba(var(--pq-paper-rgb) / 0.25) 70%,
       rgba(var(--pq-paper-rgb) / 0.4) 100%
-    );
+    ),
+    /* …and the FOOT. The card's continue glyph sat at y=92% on bare plate with
+       nothing under it, and the note is the rubric's own words: an orphaned
+       continue mark. A mark is orphaned when it has no ground — the dialogue bar
+       solves the identical problem with a soft bottom fade and the card was the
+       one surface in the game not carrying one. Eighty pixels of the same near
+       -black, reaching 30% at the very edge and zero by 7.4% up, i.e. entirely
+       below the lockup and entirely above nothing: the glyph now sits ON
+       something, and the frame closes at the bottom the way a shot does. */
+      linear-gradient(
+        to top,
+        rgba(var(--pq-paper-rgb) / 0.3) 0,
+        rgba(var(--pq-paper-rgb) / 0.11) 3.4%,
+        transparent 7.4%
+      );
   opacity: 0;
   transition: opacity var(--pq-dur-5) var(--pq-ease);
 }
@@ -4824,46 +4943,79 @@
      • and SLOW. 2s → 3.6s. At two seconds the pulse is quick enough to compete
        with reading; at three and a half it is the tempo of the card itself.
    The lamp halo comes up with it so the mark belongs to the room's own light. */
+/* …and then it was read as a SYSTEM GLYPH: "replace the bottom system-thin
+   chevron with a mark from the title's own design language". That is a fair read
+   and it is a read about material, not size. Two hard-ended 1.8px bars with a
+   1px cap radius, struck at a flat density, are a UI icon — they share nothing
+   with the two marks directly above them, which are 1px HAIRLINES that fade at
+   both ends into the atmosphere (see .pq-chapter__rule). A card whose kicker,
+   rule, title floor and continue mark are drawn in four different weights is a
+   card with no lockup in it.
+   So the chevron is restruck in the rules' own material: 1.3px, no cap radius,
+   full density at the join and dissolving toward each outer end exactly the way
+   the hairlines dissolve toward their tips, with the same drop of contact shade
+   under it. Slightly wider (13 → 16px per stroke) because a hairline needs more
+   length than a bar to read as a deliberate mark, and it now sits on the card's
+   own bottom fade rather than on bare plate. */
 .pq-chapter__more {
   position: absolute;
   left: 50%;
   top: 92%;
-  width: 22px;
+  width: 23px;
   height: 13px;
   transform: translate(-50%, -50%);
   opacity: 0;
   transition: opacity var(--pq-dur-4) var(--pq-ease);
 }
 .pq-chapter.is-in .pq-chapter__more {
-  opacity: 0.9;
+  opacity: 0.95;
   animation: pq-chapter-breathe 3.6s var(--pq-ease-in-out) var(--pq-dur-5) infinite;
 }
 .pq-chapter__more i {
   position: absolute;
   top: 1px;
-  width: 13px;
-  height: 1.8px;
-  border-radius: 1px;
+  width: 14px;
+  height: 1.6px;
   /* Reading white, like every other affordance in the game — the theme ink is
      cool and put a blue mark on a tungsten plate. */
-  background: rgb(var(--pq-warm-rgb));
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 14px rgba(var(--pq-lamp-rgb) / 0.55);
+  /* The contact shade is a drop-shadow rather than a box-shadow so it follows
+     the stroke's own fading alpha instead of squaring it off — the same
+     instrument .pq-chapter__rule uses, for the same reason. */
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6))
+    drop-shadow(0 0 9px rgba(var(--pq-lamp-rgb) / 0.5));
 }
 .pq-chapter__more i:first-child {
   left: 0;
   transform: rotate(38deg);
+  /* The taper is confined to the outer THIRD. The vertex has to stay fully
+     opaque on both strokes — where two translucent ends cross they sum, and a
+     summed alpha at the one point the eye lands on prints as a bead, which is a
+     third material again. Full density from 32% inward, dissolving only toward
+     the tip, exactly like the hairline rules above it. */
+  background: linear-gradient(
+    90deg,
+    rgba(var(--pq-warm-rgb) / 0) 0%,
+    rgb(var(--pq-warm-rgb)) 32%,
+    rgb(var(--pq-warm-rgb)) 100%
+  );
 }
 .pq-chapter__more i:last-child {
   right: 0;
   transform: rotate(-38deg);
+  background: linear-gradient(
+    270deg,
+    rgba(var(--pq-warm-rgb) / 0) 0%,
+    rgb(var(--pq-warm-rgb)) 32%,
+    rgb(var(--pq-warm-rgb)) 100%
+  );
 }
 @keyframes pq-chapter-breathe {
   0%,
   100% {
-    opacity: 0.9;
+    opacity: 0.95;
   }
   50% {
-    opacity: 0.62;
+    opacity: 0.72;
   }
 }
 

@@ -1227,7 +1227,19 @@ const CALL_ROWS: ReadonlyArray<readonly [string, string, boolean]> = [
  * quarters opaque so the painting's own backlight glows through and reads as
  * the board's own backlight.
  */
-const EMISSIVE = 1.9;
+/* …and then it came down a tenth, 1.9 → 1.71.
+ *
+ * "Dim overall screen brightness ~10% so it supports rather than competes with
+ * the lamp key" — and the note is right for one specific reason. The board is
+ * the second-brightest object in the frame and it is the only one whose value
+ * the grade cannot reach: the lamp is plate paint and moves with every exposure
+ * decision the room grade makes, while this is baked emissive canvas. Every time
+ * the desk has been opened up the board has ridden along with it and then some,
+ * and at 1.9 the brightest glyph was measuring within a few code values of the
+ * lamp's own lit wall — i.e. two keys in one shot, which is the definition of a
+ * competing light. A tenth puts it back under the practical without touching the
+ * board's internal contrast, which is where its legibility actually lives. */
+const EMISSIVE = 1.71;
 
 function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number, h: number): void {
   const { bw, bh } = s;
@@ -1384,17 +1396,41 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
     ctx.fillStyle = ink(0.095 * a);
     ctx.fillRect(0, BAR, bw, 1);
 
-    // 3 — the queue. A tick in the gutter, the line id on the content margin,
-    // its state on the right tab.
+    /* 3 — the queue. A tick in the gutter, the line id on the content margin,
+     * its state on the right tab.
+     *
+     * ONE STATE TREATMENT, and it is the tick. The rows used to carry state in
+     * two channels at once and disagree about both: HOLD was warm at 17.5%, OPEN
+     * cool at 14%, CLEAR cool at 7.6% — so the third row was half the ink of the
+     * second for no reason a reader could recover, while the first was a
+     * different hue from either. Read blind that is not a hierarchy, it is three
+     * rows rendered inconsistently, and it was named ("CLEAR is ghosted while
+     * HOLD/OPEN are solid with no stated logic").
+     * A queue on a real terminal states one thing per channel. TYPE is uniform —
+     * every id and every state label at the same 12.8% ink, because they are the
+     * same kind of fact — and the TICK carries the state, in the only vocabulary
+     * this room has: warm for a line the operator is holding, cool for one that
+     * is open, and a HOLLOW tick (a hairline outline at the same ink, no fill)
+     * for one that is cleared. Filled means live, outlined means closed. That is
+     * a logic a reader can state after one glance, which is the whole ask. */
     CALL_ROWS.forEach(([id, state, hot], i) => {
       const y = ROW0 + i * PITCH;
-      ctx.fillStyle = hot ? warm(0.2 * a) : ink((i === 1 ? 0.15 : 0.07) * a);
-      ctx.fillRect(PAD, y - 9, 3, 11);
+      const cleared = i === CALL_ROWS.length - 1;
+      if (cleared) {
+        ctx.fillStyle = ink(0.13 * a);
+        ctx.fillRect(PAD, y - 9, 3, 1);
+        ctx.fillRect(PAD, y + 1, 3, 1);
+        ctx.fillRect(PAD, y - 8, 1, 9);
+        ctx.fillRect(PAD + 2, y - 8, 1, 9);
+      } else {
+        ctx.fillStyle = hot ? warm(0.2 * a) : ink(0.19 * a);
+        ctx.fillRect(PAD, y - 9, 3, 11);
+      }
       ctx.textAlign = 'left';
       ctx.fillStyle = ink(0.128 * a);
       ctx.fillText(id, COL, y);
       ctx.textAlign = 'right';
-      ctx.fillStyle = hot ? warm(0.175 * a) : ink((i === 1 ? 0.14 : 0.076) * a);
+      ctx.fillStyle = hot ? warm(0.15 * a) : ink(0.128 * a);
       ctx.fillText(state, right, y);
       if (i < CALL_ROWS.length - 1 && pass === 1) {
         ctx.fillStyle = ink(0.03);
@@ -1456,6 +1492,21 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
     const s = Math.sin(n * 78.233 + 12.9898) * 43758.5453;
     return s - Math.floor(s);
   };
+  /* The trace's BASELINE, and it is the answer to "align the waveform to a
+   * baseline grid".
+   *
+   * The bars were already struck symmetrically about `mid`, so the geometry was
+   * never wrong — but a set of free-standing ticks of twenty-six different
+   * heights has no visible datum, and without a datum the eye cannot tell a
+   * centred trace from a ragged one. Every instrument that plots a signal draws
+   * its zero. One hairline at 4% ink, inset from both content edges so it dies
+   * before either, is enough: the run now reads as one instrument measured
+   * against one line instead of as a row of misaligned marks. */
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = ink(0.04);
+  ctx.fillRect(x0 + 2, mid, span - 4, 1);
+  ctx.shadowColor = 'rgba(126, 208, 226, 0.5)';
+  ctx.shadowBlur = 7;
   for (let i = 0; i < bars; i++) {
     const t = i / (bars - 1);
     const breath = Math.min(1, t * 5.2) * (1 - 0.62 * t ** 1.6);
@@ -1469,7 +1520,12 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
     const gap = 1 - 0.86 * Math.exp(-(((t - 0.46) / 0.035) ** 2));
     const amp = Math.max(0.05, breath * (syl + plosive) * gap) * amp0;
     ctx.fillStyle = ink(0.05 + 0.095 * (amp / amp0));
-    ctx.fillRect(x0 + t * (span - 2), mid - amp, 2, amp * 2);
+    // Snapped to whole board pixels in both axes. At a 6.5px pitch the bar
+    // origins landed on fractional coordinates, so the rasteriser split every
+    // 2px stroke across three columns at three different alphas — twenty-six
+    // ticks of three different apparent weights, which is most of what reads as
+    // "unaligned" long before anyone checks the datum.
+    ctx.fillRect(Math.round(x0 + t * (span - 2)), Math.round(mid - amp), 2, Math.round(amp) * 2);
   }
 
   // 5 — the lamp, reflected in the panel glass. A SHAPE, not a haze.
