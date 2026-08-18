@@ -62,8 +62,18 @@
      the fade cooled as it darkened while everything above it warmed.
      17/14/11 is the same value (L ≈ 5.5%) rotated to the lamp's side of neutral:
      about a 2% warm shift at the composite, which is nothing to name and exactly
-     enough that the bar stops reading as a black bar laid over a warm frame. */
-  --pq-scrim-warm-rgb: 17 14 11;
+     enough that the bar stops reading as a black bar laid over a warm frame.
+
+     …and one more 2% step toward the practical, 17/14/11 → 21/17/13, which is
+     exactly `mix(17 14 11, --pq-lamp-rgb, 0.02)`. The reason is that the fade is
+     read against the GRADE, and the grade's own split-tone sends everything in
+     this luminance band toward the shadow tint while the print exposure and the
+     black floor above it both carry a warm bias — so a scrim struck one step
+     cooler than the floor it sits on prints, at the bottom of the frame where
+     the ramp is densest, as a very slightly different black from the picture it
+     is fading into. Two percent is under a code value at the ramp's own foot and
+     it is the difference between a fade and an element. */
+  --pq-scrim-warm-rgb: 21 17 13;
 
   /* ── Derived surfaces (glass) ── */
   --pq-glass: rgba(var(--pq-paper-rgb) / 0.52);
@@ -427,7 +437,33 @@
      tabular mono ("00:18") with a hair to spare, which is what stops the chip
      changing width as the minute rolls over. */
   --pq-relay-val: 40px;
-  --pq-proxy-w: clamp(324px, 27.3vw, 524px);
+  /* ── The right rail ────────────────────────────────────────────────────────
+     ONE column, shared by the relay chip and the proxy pane. Both used to size
+     themselves independently — the chip to its own type (max-content, left edge
+     landing near x1635 at 1920) and the pane to --pq-proxy-w (left edge x1340)
+     — so the right column had TWO left verticals ~300px apart. A blind panel
+     reads that instantly and cannot name it: two elements hung off one margin
+     whose other edges miss each other by a hand's width are the cheapest
+     "assembled in a browser" tell a captured frame carries.
+     The rail is the OUTBOARD of the two candidates, and that choice is a
+     composition one rather than a layout one: the speaker's plate occupies
+     screen x 0.51–0.84 with her SOLID CORE (face, hand, near shoulder) reaching
+     x≈1450 at 1920, so a pane hung at 1340 sits a hundred pixels inside her.
+     404px puts the shared left hairline at x≈1468 — outboard of the core, on
+     the dark bay beside her — which is the only rail of the two that leaves the
+     figure uncrossed. Everything inside the pane was restacked for it (see
+     .pq-proxy__telemetry: one column of four instrument rows, not two). */
+  --pq-rail-w: clamp(300px, 21vw, 404px);
+  /* ── One tool, one line ────────────────────────────────────────────────────
+     Every hairline in BOTH right-column panes is struck from this and nothing
+     else: the outer cut, the inner bevel, the telemetry rules, the meter
+     tracks, their end stops and the tag pill. They used to run 0.176 / 0.20 /
+     0.22 / 0.22 / 0.40 across five different elements, plus a lamp-tinted inset
+     on one pane and a key/accent gradient ring on the other — eight gauges of
+     "hairline" inside one 400px column. At these widths the eye cannot resolve
+     a 6% alpha step as a hierarchy; it only resolves it as inconsistency.
+     Etched glass has ONE tool. This is it: a true 1px at 22% ink. */
+  --pq-hairline: rgba(var(--pq-ink-rgb) / 0.22);
   /* The proxy pane's numeric column. Every number on the pane — the vocal level
      and all three telemetry readouts — is right-aligned into a box of exactly
      this width, which is what makes the decimal column STRUCTURAL rather than a
@@ -456,19 +492,32 @@
    *   • rotateX(-0.5deg), so the panes lean back a hair the way a sheet hung in
    *     front of a desk does rather than standing perfectly plumb.
    *
-   * …plus a Z SPLIT, which is what makes it read as depth rather than as skew.
-   * The relay pane sits 7px behind the plane and the proxy pane 7px in front of
-   * it, so at this perspective they scale 0.995 and 1.005 — a 1–2px parallax
-   * offset between the two layers, the same cue that separates two sheets of
-   * real glass at arm's length. Two panes on the EXACT same plane are a
-   * stylesheet; two panes a centimetre apart are a product.
+   * …and the Z SPLIT is GONE, which is a real loss and a necessary one.
+   *
+   * It was ±7px of translateZ — the relay pane behind the plane, the proxy pane
+   * in front of it — scaling them 0.995 and 1.005, on the argument that two panes
+   * on the exact same plane are a stylesheet and two panes a centimetre apart are
+   * a product. The argument is good. What it costs is arithmetic: both panes are
+   * scaled about their RIGHT edge, so a 1% scale difference lands their outer
+   * arrises within half a pixel of each other and spreads their INNER ones by
+   * width × 0.01 — 4.1px at the shared 404px rail. Four pixels is the worst
+   * possible amount of disagreement: far enough that a captured frame shows a
+   * stagger down the left of the right column, close enough that it reads as a
+   * mistake rather than as a decision, and it is exactly the defect the rail was
+   * introduced to remove (see --pq-rail-w).
+   *
+   * Depth between the two sheets is now carried by things that do not move
+   * geometry — the proxy pane's seating cast and 14px bloom against the chip's
+   * frost and its wider ambient — and the plane itself keeps saying the thing
+   * that actually matters, which is that this is glass hanging in a room and not
+   * a div. ONE rail means one scale.
    *
    * transform-origin is pinned to the right edge on both, so the taper opens
    * INBOARD (toward the picture) and neither pane's outer arris can drift off
    * the --pq-chrome-margin the hamburger also terminates on. */
   --pq-glass-plane: perspective(1400px) rotateY(1.35deg) rotateX(-0.5deg);
-  --pq-glass-far: var(--pq-glass-plane) translateZ(-7px);
-  --pq-glass-near: var(--pq-glass-plane) translateZ(7px);
+  --pq-glass-far: var(--pq-glass-plane);
+  --pq-glass-near: var(--pq-glass-plane);
   /* …and the curvature, which is what the skew cannot say on its own. A skewed
      rectangle is still a FLAT plane held at an angle; what reads as a curved
      sheet is what the light does across it — a cylinder bent away from the

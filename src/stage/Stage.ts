@@ -36,6 +36,31 @@ const CHAR_Z = -0.7;
 const WEATHER_Z = -1.25;
 const OVERSCAN = 1.3;
 
+/* ── How much bigger the weather fence is than the plate's solid core ────────
+ *
+ * The published footprint is Character.CORE — a superellipse fitted to the
+ * presence mask, and deliberately conservative, because the SAME bounds also
+ * position and scale the contact shadow under her (a shadow drawn to a generous
+ * bound is a shadow that runs out from under her feet).
+ *
+ * The fence wants the opposite bias. Its job is that no drop, rivulet, dried
+ * track or frame member may cross her SILHOUETTE — which is her face, her hair,
+ * the hand at her temple, the near shoulder and the forearm, i.e. a good deal
+ * more than the core the shadow is struck from. Under-scaled, the fence releases
+ * across her shoulder and her arm, and those are the two large smooth planes
+ * where a stray mark is most visible; over-scaled it starts deleting weather in
+ * the empty bay outboard of her, where nothing is watching.
+ *
+ * 1.20 × 1.10, wider in x than in y because the plate's core is already tall
+ * (hy 0.40 against hx 0.30) and it is her arm and shoulder, not her crown, that
+ * the mask was missing. Read together with pqFigure's 0.82 plateau this puts
+ * full-strength cover out to ~0.98 of the core radius and releases to nothing by
+ * ~1.39 of it — clear of every part of her that reads, still inboard of the
+ * second mullion.
+ */
+const FENCE_SCALE_X = 1.2;
+const FENCE_SCALE_Y = 1.1;
+
 interface RGB {
   r: number;
   g: number;
@@ -1985,7 +2010,7 @@ export class Stage implements IStage {
     v.set(b.x + b.hx, b.y + b.hy, CHAR_Z).project(cam);
     const rx = Math.abs(v.x * 0.5 + 0.5 - cx);
     const ry = Math.abs(v.y * 0.5 + 0.5 - cy);
-    this.weather.setFigureMask(cx, cy, rx, ry, presence);
+    this.weather.setFigureMask(cx, cy, rx * FENCE_SCALE_X, ry * FENCE_SCALE_Y, presence);
     // The focal plane follows her. Only republished when the footprint has
     // actually moved by a pixel or so — the uniform is cheap, but the union
     // arithmetic behind it is not worth running sixty times a second for a

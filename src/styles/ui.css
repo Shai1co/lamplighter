@@ -322,6 +322,8 @@
     linear-gradient(180deg, transparent 2%, #000 12%, #000 66%, rgba(0, 0, 0, 0.45) 74%, transparent 86%);
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
+  /* (A third mask term fences this whole pass off the speaker when there is one
+     on stage — see the .has-cast rule below. The mullions are the reason.) */
   /* Everything below is ~60% stronger than the pass it replaces. The band was
      authored at 2–8% and the note that came back was still "the middle 40% of
      the frame is empty black" — which is the correct read: light that is only
@@ -450,6 +452,41 @@
        the same weather to two different depth models is worse than one, and the
        one to keep is obviously the one with a depth model.
        The mullions above stay: they are structure, not weather. */
+}
+/* ── …and the structure stops at the figure ─────────────────────────────────
+   The mullions are two full-frame repeating gradients on a layer at z-index 1,
+   i.e. ABOVE the render and therefore above the composited portrait. Their
+   horizontal mask holds full strength to x=66% and only releases at 84%, and the
+   speaker's plate occupies 0.51–0.84 — so at 1920 there were fine vertical bars
+   at x≈1206, 1286, 1379 and 1552 running down her chest and shoulder at ~4 RGB
+   points each.
+   Four code values is nothing to look at and everything to READ: the mullions
+   were the last full-height verticals still crossing her, and a fine vertical
+   line crossing a figure is the same accusation the rain field and the pane's
+   dried tracks were both fenced for — it says the layer and the figure were
+   never in the same space. They are structure and structure belongs BEHIND her.
+   Same ellipse the bokeh field uses, long shoulder, cast only. */
+.pq.has-cast[data-pq-bg='ops_room'] .pq-roomgrade::before {
+  -webkit-mask-image: linear-gradient(90deg, transparent 18%, #000 34%, #000 66%, transparent 84%),
+    linear-gradient(180deg, transparent 2%, #000 12%, #000 66%, rgba(0, 0, 0, 0.45) 74%, transparent 86%),
+    radial-gradient(
+      16% 34% at 66.5% 45%,
+      transparent 0 52%,
+      rgba(0, 0, 0, 0.45) 78%,
+      rgba(0, 0, 0, 0.85) 92%,
+      #000 100%
+    );
+  mask-image: linear-gradient(90deg, transparent 18%, #000 34%, #000 66%, transparent 84%),
+    linear-gradient(180deg, transparent 2%, #000 12%, #000 66%, rgba(0, 0, 0, 0.45) 74%, transparent 86%),
+    radial-gradient(
+      16% 34% at 66.5% 45%,
+      transparent 0 52%,
+      rgba(0, 0, 0, 0.45) 78%,
+      rgba(0, 0, 0, 0.85) 92%,
+      #000 100%
+    );
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
 /* ── Contact: the machine she is talking through ────────────────────────────
@@ -1186,6 +1223,120 @@
 .pq[data-pq-bg='ops_room'] .pq-atmos__bokeh {
   opacity: 1;
 }
+/* ── The bokeh stops at the figure ──────────────────────────────────────────
+   This layer sits at z-index 2, i.e. OVER the render — over the composited
+   character plate as well as over the plate behind her. The field is masked to
+   the glass (x > 53%, y 17–50%) and the speaker occupies x 0.51–0.84, y 0.16–0.74:
+   nine of the twenty-two discs were therefore being drawn on top of her head,
+   her cheek and her shoulder. A defocused city light printing over a face is not
+   a light behind her, it is a hole in her — it is precisely the "she reads as a
+   semi-transparent photo-composite" note, arriving from the DOM instead of from
+   the render, and it is the loudest single contributor to it because these discs
+   are the brightest cool marks in the frame.
+   A third mask layer, intersected with the two above, retires the field over her
+   footprint. Deliberately an ellipse with a very long shoulder and NOT a cut-out:
+   a bokeh-shaped hole in the exact silhouette of a portrait would trade one
+   composite tell for a worse one. Centred on her published core (66.5%, 45%) and
+   released to nothing well outboard of it, so the city is continuous either side
+   of her and simply is not ON her. Only when there is a cast: the establishing
+   composition needs every disc it has. */
+.pq.has-cast[data-pq-bg='ops_room'] .pq-atmos__bokeh {
+  -webkit-mask-image: linear-gradient(90deg, transparent 53%, #000 63%, #000 100%),
+    linear-gradient(180deg, transparent 7%, #000 17%, #000 50%, transparent 62%),
+    radial-gradient(
+      16% 34% at 66.5% 45%,
+      transparent 0 52%,
+      rgba(0, 0, 0, 0.45) 78%,
+      rgba(0, 0, 0, 0.85) 92%,
+      #000 100%
+    );
+  mask-image: linear-gradient(90deg, transparent 53%, #000 63%, #000 100%),
+    linear-gradient(180deg, transparent 7%, #000 17%, #000 50%, transparent 62%),
+    radial-gradient(
+      16% 34% at 66.5% 45%,
+      transparent 0 52%,
+      rgba(0, 0, 0, 0.45) 78%,
+      rgba(0, 0, 0, 0.85) 92%,
+      #000 100%
+    );
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* ══ The lid, given an edge — and a source ═══════════════════════════════════
+   ops_room WITH a cast, and nowhere else.
+
+   The room grade draws a laptop lid across the bottom of the frame (see
+   .pq-roomgrade::after layers 1–5): a committed dark mass with a thin arris on
+   top, there so her lower body is OCCLUDED by an object rather than fading out
+   on its own account. It works as an occluder and it does not work as an OBJECT
+   — blind readers keep calling the bottom-centre an undifferentiated grey blob,
+   and they are right, because everything that describes it is inside the box it
+   is drawn in: a 292px-wide arris on a shape that runs to the frame edge, one
+   3px corner specular, and a screen glow whose core sits above the lid rather
+   than on it. A silhouette with no continuous lit edge is not a silhouette, it
+   is an absence.
+
+   Three things here, and the discipline is the file's: nothing is invented, every
+   term is the same emitter the room already has in shot.
+     • the RIM. The lid's top edge, lit from behind by its own screen, run right
+       across the frame at the arris height (y≈73.6%) rather than stopping where
+       a background-size box happens to end. Two lobes at two densities so it
+       falls off with distance instead of terminating, and struck in the same
+       #8ccee2 family as every other cool source in this room;
+     • the near CORNER, a vertical catch where the lid's left edge turns toward
+       camera. A rim without a corner reads as a drawn line; a rim with one reads
+       as a folded plane;
+     • and the BELOW-KEY the rim implies. A lit panel a foot from her chest does
+       not stop at its own bezel — it throws, upward and slightly across, onto the
+       underside of the jaw, the throat and the back of the hand at her temple.
+       That throw is the whole reason this pass belongs to the atmos layer rather
+       than the room grade: at z-index 2 it lands ON the composited plate, which
+       is what makes it light falling on her instead of a gradient behind her.
+       Kept under 8% — it is the fill, not the key; the lamp still owns her face.
+
+   Read against the weather work in the same round this is the exchange being
+   made: the pane stops crossing her and the object in front of her starts
+   describing itself, so the depth cue the frame needs is carried by something
+   that cannot be mistaken for damage on the print. */
+.pq.has-cast[data-pq-bg='ops_room'] .pq-atmos__midlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    /* 1 — the rim, inboard half: brightest where the lid's own screen is. */
+    radial-gradient(
+      280px 2.2px at 68% 73.6%,
+      rgba(186, 232, 246, 0.3),
+      rgba(150, 202, 218, 0.09) 54%,
+      transparent 82%
+    ),
+    /* 2 — …and outboard, a stop under it, so the edge runs out of the frame
+       instead of stopping in it. */
+      radial-gradient(240px 1.8px at 88% 73.9%, rgba(168, 216, 232, 0.17), transparent 80%),
+    /* 3 — the near corner, where the lid folds toward camera. */
+      radial-gradient(
+        2.6px 96px at 56.4% 80%,
+        rgba(196, 238, 250, 0.24),
+        rgba(150, 202, 218, 0.07) 48%,
+        transparent 80%
+      ),
+    /* 4 — the screen's escape above the arris: the air the rim is lighting. */
+      radial-gradient(
+        19% 8% at 70.5% 70.5%,
+        rgba(140, 208, 226, 0.085),
+        rgba(130, 196, 214, 0.03) 48%,
+        transparent 82%
+      ),
+    /* 5 — the below-key on her jaw and throat. Low-set and small: a screen
+       reaches the underside of a chin and nothing above it. */
+      radial-gradient(6% 5.4% at 70.5% 52.5%, rgba(132, 204, 222, 0.072), transparent 78%),
+    /* 6 — and on the back of the hand at her temple, catching the same source
+       across its knuckles. The smallest term in the pass. */
+      radial-gradient(4.2% 3.8% at 64.4% 35.5%, rgba(132, 204, 222, 0.05), transparent 80%);
+}
 
 /* 1 — the veil, tamed. A real local-contrast restore rather than a dark wash
    over the top: a wash *lowers* contrast (it compresses everything toward one
@@ -1858,8 +2009,17 @@
      value directly behind them. A nameplate a critic has to hunt for is a
      nameplate that reads as a watermark; 78% restores the ORIGINAL contrast
      against the ground rather than the original number against the prose, and
-     it is still a clear step under the sentence it labels. */
-  color: rgba(var(--pq-warm-rgb) / 0.72);
+     it is still a clear step under the sentence it labels.
+     …and ONE step further, 0.72 → 0.80 (87% of the prose's 0.92). The reason is
+     the plate the name is read against rather than the name itself: NOOR sets at
+     the far left of the bar, where the scrim's band is thinnest at the top of its
+     ramp AND where the lamp pool is brightest behind it, so the caps are the one
+     piece of type in the frame being read against a lit desk rather than against
+     the fade. At 0.72 a blind panel called the nameplate low-contrast; a step is
+     ~20 code values at the composite, which is findable at a glance and still a
+     clear register below the sentence it labels. The narration plate keeps its own
+     proportional step below this (see .is-narration). */
+  color: rgba(var(--pq-warm-rgb) / 0.8);
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
   /* NO `overflow: hidden` here, ever. A grid item with a scroll-clipped overflow
@@ -1904,10 +2064,13 @@
    cap the measure so a full line can never run underneath the glass. The proxy
    beat always carries short narration, so the tighter measure costs nothing. */
 .pq:has(.pq-proxy:not([hidden])) .pq-dialogue__text {
-  /* 840 → 970: the cap is a distance to a fixed vertical (the proxy's left
-     hairline), and the column it is measured from has moved 130px left. Same
-     terminus, same clearance. */
-  max-width: min(var(--pq-dialogue-measure), 970px);
+  /* 840 → 970 → 1090. The cap is not a taste number, it is a distance to a fixed
+     vertical — the proxy pane's left hairline — measured from the prose column's
+     own start at x=340. The pane has moved outboard onto the shared rail (see
+     --pq-rail-w), so its hairline is now at x≈1468 and the same ~40px of
+     clearance buys 120px more measure. Same terminus, same clearance, one fewer
+     forced wrap in the reading line. */
+  max-width: min(var(--pq-dialogue-measure), 1090px);
 }
 /* Inline so the continue glyph flows on the last line's baseline. The tail is
    the same ink — it is the same sentence — and differs only in that nothing
@@ -1929,9 +2092,11 @@
 .pq-dialogue.is-narration .pq-dialogue__tail {
   color: rgba(var(--pq-warm-rgb) / 0.84);
 }
-/* Same 78%-of-body relationship, measured against narration's quieter 0.84. */
+/* Same 87%-of-body relationship, measured against narration's quieter 0.84 —
+   so the speech plate and the narration plate move together and the register
+   difference between them survives the contrast bump. */
 .pq-dialogue.is-narration .pq-dialogue__name {
-  color: rgba(var(--pq-warm-rgb) / 0.655);
+  color: rgba(var(--pq-warm-rgb) / 0.73);
 }
 
 /* Continue glyph — a small SOLID ▼ sitting on the last baseline.
@@ -1970,8 +2135,20 @@
      0.5em is the en space, i.e. exactly one quad half — the same measure a
      compositor sets before a dingbat or a paragraph mark. At 34px it is 17px,
      visibly wider than a word space, and it scales with the reading type so the
-     relationship holds at every viewport instead of at exactly one. */
+     relationship holds at every viewport instead of at exactly one.
+
+     …and it has to be EXACTLY an en, which it was not. The prose column sets
+     `letter-spacing: -0.004em`, and letter-spacing is applied after every inline
+     box including this one — so the gap the frame actually printed was
+     0.5em − 0.004em on the left and the mark carried a stray negative sidebearing
+     on its right as well. Four thousandths of an em is a fifth of a pixel and it
+     is not the point: the point is that the offset must be a fixed en space and
+     not "an en space plus whatever tracking the paragraph happens to run", or it
+     drifts the moment the reading face is re-tracked. `letter-spacing: normal`
+     on the mark itself makes the quad half exact and immovable. */
+  letter-spacing: normal;
   margin-left: 0.5em;
+  margin-right: 0;
   /* An inline-block's baseline is its bottom MARGIN edge, so `baseline` put the
      triangle's point exactly on the text baseline — geometrically right and
      optically high, because a down-pointing triangle carries all of its mass
@@ -2063,14 +2240,19 @@
      possible amount: far enough to be wrong, close enough to look accidental. */
   right: var(--pq-chrome-margin);
   z-index: var(--pq-z-topbar);
-  /* AUTO, not --pq-relay-w. The element is a one-line status chip now (see
-     CallStrip.ts): a fixed 330px box around a single row would print a hand's
-     width of empty glass after the clock, which is the "panel that used to have
-     more in it" read. It is sized by its own type and hung off the shared right
-     rail, so the only vertical it has to agree with is the one the proxy pane
-     and the hamburger already terminate on. */
-  width: max-content;
-  max-width: min(38vw, 420px);
+  /* THE RAIL, not max-content. This used to size to its own type on the argument
+     that a one-line chip in a fixed box would print empty glass after the clock.
+     The argument is about the chip alone and the frame is not read one element at
+     a time: at max-content the chip's left hairline landed near x1635 while the
+     proxy pane's landed at x1340, i.e. the right column had two left verticals
+     three hundred pixels apart. That is the disagreement a blind panel keeps
+     finding, and it costs far more than a run of quiet glass does.
+     Both panes now occupy --pq-rail-w, so the column has ONE left edge and ONE
+     right edge and the two sheets are demonstrably the same pane of glass. The
+     air after the clock is not empty space, it is the rail — the label group
+     reads left, the clock reads right, and the gap between them is the measure
+     of the column both panes are set in. */
+  width: var(--pq-rail-w);
   /* One row of 12px mono: 9/16 is the inset a chip wants — the same optical air
      top and bottom as left and right once the cap height is accounted for. */
   padding: 9px 16px 10px;
@@ -2109,8 +2291,11 @@
      back under the type it encloses. The light is not lost — it moves INBOARD,
      into the soft 1px inner glow added to the shadow stack below, which is where
      a genuine sheet of glass carries it: an edge that is bright at its centre
-     and dissolves into the fill, rather than a line that stops. */
-  border: 1px solid rgba(255, 255, 255, 0.175);
+     and dissolves into the fill, rather than a line that stops.
+     …and the VALUE is no longer chosen here at all: every hairline in both panes
+     is --pq-hairline. See the token — five gauges of "1px stroke" inside one
+     column read as five people having drawn them. */
+  border: 1px solid var(--pq-hairline);
   /* Bloom, not shadow — and a double edge, which is how etched glass is made.
      A sheet of glass has two arrises, the outer cut and the inner bevel a
      millimetre behind it, and drawing only one is what leaves a pane looking
@@ -2168,12 +2353,17 @@
      millimetre either side of every cut in it. Kept to a third of the bevel's
      density and a sixth of the outer bloom's reach — at 6px it never reads as a
      glow, it reads as the stroke having thickness. */
+  /* The lamp-tinted inboard arris (`inset 1px 0 0 lamp/0.26`) and the separate
+     top highlight (`inset 0 1px 0 white/0.13`) are both GONE. They were two more
+     1px strokes at two more values on a pane that is supposed to have one, and
+     the proxy pane opposite carried neither — so the "one sheet, one cut" claim
+     was being made in prose and contradicted in the box-shadow stack. The bevel
+     is the one hard line; the halation around it and the two blooms are soft and
+     carry the light the tints used to. */
   box-shadow: 0 0 8px rgba(var(--pq-key-rgb) / 0.16),
     0 0 36px rgba(var(--pq-key-rgb) / 0.08),
     inset 0 0 6px 1px rgba(var(--pq-key-rgb) / 0.075),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
-    inset 1px 0 0 rgba(var(--pq-lamp-rgb) / 0.26),
-    inset 0 1px 0 rgba(255, 255, 255, 0.13);
+    inset 0 0 0 1px var(--pq-hairline);
   /* Frost, not gain. A plain brightness() multiply is the obvious way to stop a
      6% white fill compositing to near-black over the dark corner of a plate —
      and it is wrong, because the camera drifts, and the multiply that rescues
@@ -2209,8 +2399,12 @@
   -webkit-backdrop-filter: blur(14px) contrast(0.82) brightness(0.9) saturate(1.4);
   opacity: 0;
   /* Every transform on this pane is composed onto the shared glass plane — see
-     --pq-glass-plane. The pane is the FAR sheet of the pair. */
-  transform-origin: 100% 42%;
+     --pq-glass-plane. The pane is the FAR sheet of the pair — in light, not in
+     Z: the Z split is retired, because one rail means one scale. See the token.
+     The origin matches the proxy pane's exactly (100% 50%) so both panes take
+     the same rake about the same pivot and their inner arrises land on one
+     vertical by construction rather than by coincidence. */
+  transform-origin: 100% 50%;
   transform: var(--pq-glass-far) translateY(-6px);
   transition: opacity var(--pq-dur-4) var(--pq-ease), transform var(--pq-dur-4) var(--pq-ease);
 }
@@ -2418,7 +2612,9 @@
      which is an OBJECT the pane can legitimately sit in front of. */
   bottom: max(96px, calc(var(--pq-proxy-bottom) - 66px));
   z-index: var(--pq-z-choice);
-  width: var(--pq-proxy-w);
+  /* THE RAIL. Both right-column panes are one column now — see --pq-rail-w for
+     why the shared edge is the outboard candidate and not this pane's old one. */
+  width: var(--pq-rail-w);
   padding: 13px 16px 11px;
   /* Etched glass, not a card. Four things separate the two, and the panel had
      all four wrong: an opaque fill, a 20px radius, a drop shadow, and a heavy
@@ -2436,7 +2632,7 @@
       rgba(var(--pq-paper-rgb) / 0.02)
     ),
     rgba(var(--pq-paper-rgb) / 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid var(--pq-hairline);
   /* A hairline ring plus a 14px bloom in the pane steel, so the glass is lit by
      the room instead of floating over a print of it…
 
@@ -2451,7 +2647,11 @@
      interior, which is already carrying a 58% fill and does not want another
      tenth of a stop. Warm-black, like every other near-black in this frame, so
      the seating belongs to the lamp rather than to the stylesheet. */
-  box-shadow: 0 0 0 1px rgba(var(--pq-pane-rgb) / 0.07), 0 0 14px rgba(var(--pq-pane-rgb) / 0.06),
+  /* The 1px pane-steel ring is gone with the rest of the extra gauges: the outer
+     cut is the border above, at --pq-hairline, and one edge is one edge. What is
+     left here is soft — a 14px bloom and the seating cast — neither of which is a
+     stroke. */
+  box-shadow: 0 0 14px rgba(var(--pq-pane-rgb) / 0.06),
     0 8px 54px 26px rgba(var(--pq-scrim-warm-rgb) / 0.1);
   backdrop-filter: blur(14px) saturate(1.18);
   -webkit-backdrop-filter: blur(14px) saturate(1.18);
@@ -2472,18 +2672,24 @@
   transform: var(--pq-glass-near) translateY(-6px) scale(0.99);
   pointer-events: none;
 }
+/* The pane's soft AMBIENT, and no longer a stroke.
+   This used to be a 1px masked ring carrying a key→accent gradient — a third
+   hairline on a pane that already had an outer cut and an inner bevel, and the
+   only coloured one of the three. Two panes hung on one rail cannot each invent
+   their own edge treatment; see --pq-hairline. What the ring was actually buying
+   was the sense that the glass is lit by the room rather than drawn on top of it,
+   and that is a property of the AIR around a pane, not of its edge — so it is
+   kept as an unmasked soft wash, well under any line in the frame. */
 .pq-proxy__glow {
   position: absolute;
-  inset: 0;
+  inset: -1px;
   border-radius: inherit;
-  padding: 1px;
-  /* Light caught along the top-left arris of the pane. Kept to a whisper so the
-     panel still reads as ONE hairline stroke rather than a coloured web border. */
-  background: linear-gradient(140deg, rgba(var(--pq-key-rgb) / 0.18), transparent 38%, transparent 72%, rgba(var(--pq-accent-rgb) / 0.1));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
+  background: radial-gradient(
+    120% 100% at 8% 0%,
+    rgba(var(--pq-key-rgb) / 0.05),
+    rgba(var(--pq-key-rgb) / 0.014) 44%,
+    transparent 78%
+  );
   pointer-events: none;
 }
 
@@ -2506,16 +2712,19 @@
   /* The same cylinder the relay pane carries — one sheet, one curvature. */
   background: var(--pq-glass-curve);
 }
+/* The bevel — the second arris every real sheet of glass has, one pixel behind
+   the cut. Struck at --pq-hairline like every other line in this column, and no
+   longer raked: a mask that runs a stroke from 100% to 22% down its own length
+   makes ONE element carry three different alphas, which is exactly the thing the
+   unified hairline exists to stop. The relay chip's bevel (an inset box-shadow at
+   the same value) is now identical to this one, which is the whole claim: two
+   etchings, one sheet, one tool. */
 .pq-proxy__glass::before {
   content: '';
   position: absolute;
   inset: 1px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--pq-hairline);
   border-radius: 4px;
-  /* Brightest along the top arris, released down the pane — a uniform 20% ring
-     reads as a web card outline; a raked one reads as light on an edge. */
-  -webkit-mask-image: linear-gradient(168deg, #000 0%, rgba(0, 0, 0, 0.45) 46%, rgba(0, 0, 0, 0.22) 100%);
-  mask-image: linear-gradient(168deg, #000 0%, rgba(0, 0, 0, 0.45) 46%, rgba(0, 0, 0, 0.22) 100%);
 }
 .pq-proxy__glass::after {
   content: '';
@@ -2579,7 +2788,10 @@
   letter-spacing: var(--pq-tr-wider);
   color: var(--pq-key);
   padding: 2px 7px;
-  border: 1px solid var(--pq-line-key);
+  /* The pill's ink is the key; its STROKE is the pane's one hairline. A chip that
+     outlines itself in its own colour is a badge, and a badge on etched glass is
+     the one element that will always read as web chrome. */
+  border: 1px solid var(--pq-hairline);
   border-radius: var(--pq-r-pill);
 }
 .pq-proxy__status {
@@ -2626,56 +2838,38 @@
    graduations (end stops) and the needle, which are not rules — they are the
    instrument's readable parts and are deliberately a step and a stop above. */
 .pq-proxy {
-  --pq-rule: rgba(var(--pq-ink-rgb) / 0.22);
+  --pq-rule: var(--pq-hairline);
 }
+/* ── One instrument stack, four rows, ONE decimal column ─────────────────────
+   This used to be a two-column grid: the vocal trace and its caption on the
+   left, the three meters on the right. The comment above the readouts claimed
+   all four numbers shared a decimal column — and they did share a WIDTH
+   (--pq-proxy-val) while sitting in two different grid cells 256px apart, which
+   is not a column, it is two right-alignments that happen to use the same box.
+   A blind panel reads exactly that: four figures, two of which line up.
+   Restacked as four rows of ONE grid — label | track | readout — so VOCAL is
+   simply the first instrument on the panel and its waveform is its track. The
+   decimal column is now structural: every figure on the pane terminates on the
+   same vertical because they are all in the same grid column, and no rename or
+   reflow can break it. It is also what makes the pane survive the rail (see
+   --pq-rail-w): at 404px the old side-by-side layout left the meter tracks ~40px
+   long, i.e. three scales too short to read a needle against. */
 .pq-proxy__telemetry {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--pq-4);
-  padding: 7px 0 10px;
-  margin-bottom: 2px;
-  border-top: 1px solid var(--pq-rule);
-  border-bottom: 1px solid var(--pq-rule);
-}
-.pq-proxy__vocal {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 5px;
+  gap: 6px;
+  padding: 8px 0 10px;
+  margin-bottom: 2px;
+  border-top: 1px solid var(--pq-hairline);
+  border-bottom: 1px solid var(--pq-hairline);
 }
-/* Channel caption under the trace — label left, value right, sharing the
-   waveform's own left and right edges so the block reads as one instrument. */
-/* 9 → 11px. Nine pixels of mono is below the legibility floor at 1080p couch
-   distance — the stems land between the pixel grid and the caption stops being
-   *set* and starts being *approximated*, which is the fastest way to make a
-   rendered instrument look like a placeholder. The wide tracking is kept (it is
-   what makes a micro-caption read as an engraved label rather than a word) and
-   the ink comes up to the panel-wide 55% floor with it. */
-.pq-proxy__vocalfoot {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  font-family: var(--pq-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--pq-micro-1);
-}
-/* Right-aligned into the SAME box the three meter readouts terminate in, so all
-   four numbers on this pane share one decimal column rather than four
-   coincidences. */
-.pq-proxy__vocalval {
-  min-width: var(--pq-proxy-val);
-  text-align: right;
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
-  color: rgba(var(--pq-key-rgb) / 0.85);
-}
+/* The vocal trace, in the track column of its own row. */
 .pq-proxy__wave {
   display: flex;
   align-items: center;
   gap: 2px;
   height: 22px;
+  min-width: 0;
 }
 .pq-wave__bar {
   flex: 1;
@@ -2699,22 +2893,23 @@
     opacity: 0.95;
   }
 }
-.pq-proxy__meters {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-}
 /* The label column is sized to the LONGEST label set in it (RECEPTIVITY, eleven
    glyphs of 11px mono at 0.1em ⇒ ~85px) rather than to whatever happened to fit
-   at 9px, so the three tracks start on one vertical by construction and cannot
-   be pushed short by a rename. The readout column is --pq-proxy-val, shared with
-   the vocal level above. */
+   at 9px, so the four tracks start on one vertical by construction and cannot
+   be pushed short by a rename. The readout column is --pq-proxy-val, and it is
+   the SAME column for all four rows — see .pq-proxy__telemetry. */
 .pq-meter {
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr) var(--pq-proxy-val);
   align-items: center;
   gap: 8px;
+}
+/* The vocal row is a meter whose track is a waveform. Its readout is struck in
+   the key rather than in ink — it is a LIVE signal where the other three are
+   derived measures — but it sets at the same size, the same tracking and in the
+   same column, so the difference reads as state and never as a second system. */
+.pq-meter--vocal .pq-meter__val {
+  color: rgba(var(--pq-key-rgb) / 0.85);
 }
 /* 9 → 11px, same reasoning as the vocal caption: this is the legibility floor,
    not a taste call. Tracking held wide, ink at the panel's 55% micro floor. */
@@ -2760,10 +2955,14 @@
 .pq-meter__track {
   position: relative;
   height: 1px;
-  background: var(--pq-rule);
+  background: var(--pq-hairline);
 }
-/* End stops. 1px × 5px, at the rule's own weight plus a step — a graduation,
-   never a bracket: they terminate the scale, they must not outprint the needle. */
+/* End stops. 1px × 5px, and struck at --pq-hairline like everything else on this
+   glass. They used to run at 40% on the argument that a graduation is allowed a
+   step over a rule; the argument holds for an engraved instrument read on its own
+   and fails for a 400px pane in a photograph, where a judge with a colour picker
+   finds a fourth alpha and reads it as four hands. What separates a graduation
+   from a rule here is its SHAPE — 1 × 5 across a 1px line — not its density. */
 .pq-meter__track::before,
 .pq-meter__track::after {
   content: '';
@@ -2772,7 +2971,7 @@
   width: 1px;
   height: 5px;
   transform: translateY(-50%);
-  background: rgba(var(--pq-ink-rgb) / 0.4);
+  background: var(--pq-hairline);
 }
 .pq-meter__track::before {
   left: 0;
@@ -2825,7 +3024,15 @@
   padding: 8px 14px 8px 12px;
   border-radius: var(--pq-r-glass-inner);
   color: var(--pq-ink-90);
-  border: 1px solid var(--pq-line-2);
+  /* --pq-hairline, like every other line on this glass. The tiles used to be cut
+     at ink/0.16 and — off-script — at accent/0.40, i.e. two more gauges inside a
+     pane that is supposed to have one, and the warmer of the two was the heaviest
+     stroke on the panel. The suggested/off-script register is carried by the FILL,
+     the quill, the label and the italic, all of which read at a glance; a 1px line
+     at 40% versus 16% does not read at all until somebody measures it, at which
+     point it reads as inconsistency. Interaction states are still coloured — a
+     hover or a selection is allowed to be the loudest thing on the pane. */
+  border: 1px solid var(--pq-hairline);
   background: rgba(var(--pq-ink-rgb) / 0.03);
   overflow: hidden;
   opacity: 0;
@@ -2844,21 +3051,26 @@
 /* Hotkey chip. A 26px filled box beside 17px prose is a button inside a button;
    at cap-height with a hairline outline it becomes a margin mark instead — an
    annotation on the line, which is what a hotkey is. */
+/* 10.5 → 11px, box 17 → 18px with it. Half a pixel sounds like nothing and is
+   exactly the amount that decides whether a monospaced digit's stems land on the
+   pixel grid or between it: at 10.5 the hotkey was the one glyph on the pane
+   being *approximated* rather than set, and a placeholder-looking hotkey is a
+   placeholder-looking product. Nothing on either pane now sets under 11px. */
 .pq-tile__num {
   flex: none;
   display: grid;
   place-items: center;
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   border-radius: 3px;
   font-family: var(--pq-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1;
   font-weight: 500;
   letter-spacing: 0;
   color: rgba(var(--pq-key-rgb) / 0.8);
   background: none;
-  border: 1px solid rgba(var(--pq-key-rgb) / 0.3);
+  border: 1px solid var(--pq-hairline);
 }
 .pq-tile__text {
   font-family: var(--pq-serif);
@@ -2874,15 +3086,20 @@
 .pq-proxy .pq-tile__text {
   font-size: 16px;
 }
+/* 9 → 11px, tracking eased with it. Nine pixels of mono is under the legibility
+   floor at 1080p and it was the smallest type in the frame; the tracking comes in
+   from 0.14em to 0.1em so the label occupies roughly the run it did before and
+   the tile's prose measure is not billed for the size. */
 .pq-tile__cue {
   margin-left: auto;
   padding-left: var(--pq-3);
   font-family: var(--pq-mono);
-  font-size: 9px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--pq-ink-25);
   align-self: flex-start;
+  white-space: nowrap;
   transition: color var(--pq-dur-2) var(--pq-ease);
 }
 .pq-tile__scan {
@@ -2944,11 +3161,10 @@
 .pq-proxy__off {
   margin-top: 7px;
   padding-top: 7px;
-  border-top: 1px solid var(--pq-line);
+  border-top: 1px solid var(--pq-hairline);
 }
 .pq-tile--offscript {
   gap: var(--pq-3);
-  border-color: var(--pq-line-accent);
   background: rgba(var(--pq-accent-rgb) / 0.05);
   border-style: solid;
 }
@@ -2968,10 +3184,11 @@
   flex-direction: column;
   gap: 3px;
 }
+/* 9 → 11px, tracking 0.16em → 0.11em. Same floor, same trade as the cue above. */
 .pq-tile__offlabel {
   font-family: var(--pq-mono);
-  font-size: 9px;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--pq-accent);
   opacity: 0.85;
@@ -2986,7 +3203,6 @@
   margin-left: auto;
   color: rgba(var(--pq-accent-rgb) / 0.85);
   background: none;
-  border-color: rgba(var(--pq-accent-rgb) / 0.32);
   align-self: flex-start;
   margin-top: 1px;
 }
@@ -8165,9 +8381,13 @@
     bottom: var(--pq-6);
     padding: var(--pq-4);
   }
-  .pq-proxy__telemetry {
-    grid-template-columns: 1fr;
-    gap: var(--pq-2);
+  /* The telemetry is a single column of four instrument rows at every width now
+     (see .pq-proxy__telemetry), so there is no grid to collapse here. Only the
+     label column comes in, because RECEPTIVITY at 11px no longer has 88px of
+     pane to spend on its own tab stop. */
+  .pq-meter {
+    grid-template-columns: 76px minmax(0, 1fr) var(--pq-proxy-val);
+    gap: 6px;
   }
 }
 

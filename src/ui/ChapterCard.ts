@@ -10,7 +10,7 @@
  * behind `.pq.is-chapter`), so the shot never carries a second, unexplained
  * affordance. Dismissed by the next advance.
  */
-import { el } from './dom';
+import { el, smartQuotes } from './dom';
 
 export class ChapterCard {
   readonly root: HTMLElement;
@@ -68,8 +68,13 @@ export class ChapterCard {
     this.open = true;
     this.count += 1;
     this.overline.textContent = `Chapter ${roman(this.count)}`;
-    this.titleEl.textContent = title;
-    this.subEl.textContent = subtitle ?? '';
+    // Through smartQuotes like every other authored string the reader sees. This
+    // card was the one surface still setting raw script text: a chapter title is
+    // display type at ~5rem, so a straight apostrophe or a typed "..." in one is
+    // the largest piece of wrong typography the game can put on screen — and it
+    // is on screen alone, with nothing else in frame to look at.
+    this.titleEl.textContent = smartQuotes(title);
+    this.subEl.textContent = subtitle ? smartQuotes(subtitle) : '';
     this.subEl.hidden = !subtitle;
 
     this.root.hidden = false;

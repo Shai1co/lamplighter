@@ -47,22 +47,37 @@ export class ProxyPanel {
             el('span', { text: 'channel open' }),
           ]),
         ]),
+        // FOUR ROWS OF ONE GRID, never two columns.
+        //
+        // The vocal trace used to sit in its own left-hand cell with its caption
+        // under it and the three meters stacked in a cell beside it. Both halves
+        // right-aligned their numbers into a box of the same width and the CSS
+        // called that a shared decimal column — which it was not: two right
+        // alignments 256px apart are two alignments, and a reader sees four
+        // figures of which two line up.
+        //
+        // VOCAL is simply the first instrument on the panel now, and its waveform
+        // is its track. Every row is label | track | readout in the same grid, so
+        // the decimal column is structural: no rename, no reflow and no viewport
+        // can pull the four figures off one vertical. Every trace still terminates
+        // in its own readout — AFFECT is a signed deflection about a midpoint
+        // (hence the sign and the centred bar); the other two are plain 0–1
+        // levels, so bar and number always agree.
         el('div', { class: 'pq-proxy__telemetry', aria: { hidden: true } }, [
-          el('div', { class: 'pq-proxy__vocal' }, [
-            el('div', { class: 'pq-proxy__wave' }, buildWave(28)),
-            el('div', { class: 'pq-proxy__vocalfoot' }, [
-              el('span', { text: 'VOCAL' }),
-              el('span', { class: 'pq-proxy__vocalval', text: '0.2' }),
-            ]),
+          el('div', { class: 'pq-meter pq-meter--vocal' }, [
+            el('span', { class: 'pq-meter__label', text: 'VOCAL' }),
+            // 28 → 40 bars. The trace now spans the full track column (≈228px at
+            // the shared rail) instead of half the pane, and at 28 the bars came
+            // out ~6px wide against a 5px minimum height — i.e. wider than they
+            // were tall, so the pill radius rounded them off and the "waveform"
+            // printed as a row of dots. 40 puts them back under 4px: a trace made
+            // of strokes, which is what a vocal trace is.
+            el('div', { class: 'pq-proxy__wave' }, buildWave(40)),
+            el('span', { class: 'pq-meter__val', text: '0.2' }),
           ]),
-          // Every trace terminates in its own readout. AFFECT is a signed
-          // deflection about a midpoint (hence the sign and the centred bar);
-          // the other two are plain 0–1 levels, so bar and number always agree.
-          el('div', { class: 'pq-proxy__meters' }, [
-            meter('AFFECT', 0.6, '+0.1'),
-            meter('RECEPTIVITY', 0.8, '0.8'),
-            meter('COHERENCE', 0.5, '0.5'),
-          ]),
+          meter('AFFECT', 0.6, '+0.1'),
+          meter('RECEPTIVITY', 0.8, '0.8'),
+          meter('COHERENCE', 0.5, '0.5'),
         ]),
         el('div', { class: 'pq-proxy__label', text: 'PROXY RESPONSE' }),
         this.listEl,

@@ -402,28 +402,35 @@ export class Weather {
     });
     this.glass = new THREE.Mesh(new THREE.PlaneGeometry(HALF_W * 2.4, HALF_H * 2.4), this.glassMat);
     this.glass.position.z = 0.2;
-    /* 12 → 40, and this is the change that finally puts the speaker in a PLACE.
+    /* 12 → 40 → 12 again, and the round trip is the whole argument, so it is
+     * worth stating both halves.
      *
-     * The pass has always described itself as "the pane the camera is behind",
-     * and at renderOrder 12 it was not: character sprites sort at 20 + index and
-     * the glass has depthTest off, so every drop, every rivulet and the whole
-     * reflected practical were drawn BEHIND her and then painted over. The
-     * result is exactly the read the frame came back with — she floats in an
-     * undefined darkness, unattached to any surface, because the only surface
-     * the shot contains was demonstrably not in front of her.
+     * At 40 the pane was the last thing drawn in the scene — genuinely in front
+     * of the cast — on the reasoning that a shot which contains no surface in
+     * front of the subject cannot read as a PLACE. The optics of that are
+     * correct and the picture it produced was not. Character sprites sort at
+     * 20 + index; with the pane at 40 every rivulet, every dried track, the
+     * sheet's own specular, the reflected practical and a mullion were composited
+     * ON TOP of a lit face. However hard each of those terms was thinned (and
+     * they were thinned, repeatedly, over three rounds), the frame kept coming
+     * back read as a SEMI-TRANSPARENT PHOTO-COMPOSITE: a woman with weather
+     * crossing her features is not a woman behind a window, she is two layers.
      *
-     * At 40 the pane is the last thing drawn in the scene, which is what it is:
-     * the nearest object to the lens. Her face and shoulder now carry a faint,
-     * CONTINUOUS film of what is on the glass — a couple of streaks, the sheet's
-     * own specular, the lamp's reflection, and the mullion crossing her arm —
-     * and the frame stops being a portrait composited onto a photograph and
-     * starts being a woman seen through a rain-streaked window.
+     * The window is not the thing the shot is about. She is. So the pane goes
+     * back behind her and the room does the work instead: the fence order is now
+     * fog (9) → rain (10) → glass (12) → contact shadow (19) → cast (20+), i.e.
+     * every piece of weather in the rig belongs to the far side of her and
+     * NOTHING draws over her. What says "there is a surface in this room" is now
+     * carried by things that cannot cross a face — the pane's own mullions and
+     * arrises out in the bays, the rivulets over the city, the contact shadow
+     * under her, the lamp rim on her contour and the laptop's screen-glow rim in
+     * front of her (see ui.css → the ops_room lid pass).
      *
-     * The consumers in GLASS_FRAGMENT were retuned for it in the same change:
-     * anything that now lands ON her is thinned, because a term calibrated to
-     * read through a feathered edge is far too strong once it is genuinely on
-     * top of a lit cheek. */
-    this.glass.renderOrder = 40;
+     * The consumers in GLASS_FRAGMENT are fenced against her footprint on top of
+     * this, because her plate is a 78px feather with a dissolving torso: without
+     * the fence the water would simply show THROUGH her lower body, which is the
+     * same read arriving by the other door. */
+    this.glass.renderOrder = 12;
     this.glass.frustumCulled = false;
     this.glass.visible = false;
     this.group.add(this.glass);

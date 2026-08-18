@@ -29,6 +29,7 @@ interface SpriteUniforms {
   uCanvas: { value: number };
   uPaint: { value: number };
   uBrush: { value: number };
+  uMidGain: { value: number };
 }
 
 /**
@@ -56,9 +57,44 @@ interface SpriteUniforms {
  * A painted flesh tone is mixed from a limited palette and lands lower in
  * chroma than a sensor's; 21% is the point at which hers measures inside the
  * range the desk still-life occupies and still, unmistakably, has blood in it. */
-const PLATE_DESAT = 0.21;
+/* 0.21 → 0.15. The chroma argument above is sound and it was being asked to do a
+ * job it cannot do. Two separate notes were being paid out of one number: "she is
+ * a photograph in a painted set" (a MEDIUM note, now answered by PLATE_PAINT, the
+ * canvas tooth and localContrast, none of which existed when 0.21 was struck) and
+ * "her skin is the only saturated surface in a night interior" (a PALETTE note,
+ * which is what this operator is actually for). Stacked on top of PLATE_ENV's 12%
+ * and the composite grade's own saturation the plate arrived at the frame with
+ * roughly a third of its chroma gone, and a figure with no blood in her does not
+ * separate from a dark plate — she joins it. 15% still lands her inside the range
+ * the desk still-life occupies and leaves her the warmest object in the room,
+ * which is what a portrait in a lamp-lit interior has to be. */
+const PLATE_DESAT = 0.15;
 const PLATE_SPLIT = 0.22;
 const PLATE_COOL = 0.3;
+
+/**
+ * The plate's own print exposure — a midtone-weighted gain in the sprite's
+ * material, on top of everything the plate bake already did on the CPU. See
+ * SPRITE_DIFFUSE_PATCH for the shape and why it is weighted perceptually rather
+ * than linearly.
+ *
+ * 0.13, i.e. +13% at mid and ≥10% across the band a colourist means by midtones.
+ * The note is that her torso dissolves into the dark plates rather than sitting
+ * in front of them, and it is a note about the COMPOSITE: the room's own print
+ * exposure has come up (Stage → PLATE_FOCUS.midLift, +0.54 stop through the
+ * shadow-to-low-midtone band) and the room's bokeh field has come up half a stop
+ * with it, so a figure whose midtones did not move lost exactly the separation
+ * the room gained. This is her half of that, and it is the half that lands on the
+ * wool, the collar, the forearm and the shadow side of the jaw.
+ *
+ * Deliberately at the bottom of the 10–15% band rather than the top: the window
+ * is zero at white by construction and therefore cannot clip, but the frame's
+ * highlight shoulder downstream begins at 0.27 linear and her lit cheek sits
+ * near 0.35, so anything that puts a stop onto her lit planes gets spent in the
+ * roll-off rather than in the picture. Thirteen percent is what the midtones can
+ * actually keep.
+ */
+const PLATE_MIDGAIN = 0.13;
 
 /**
  * PLATE_ENV — 12%. The room's ambient teal laid over ALL of her, not only her
@@ -143,6 +179,7 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     uCanvas: { value: PLATE_CANVAS },
     uPaint: { value: PLATE_PAINT },
     uBrush: { value: PLATE_BRUSH },
+    uMidGain: { value: PLATE_MIDGAIN },
   };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uBright = uniforms.uBright;
@@ -156,6 +193,7 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     shader.uniforms.uCanvas = uniforms.uCanvas;
     shader.uniforms.uPaint = uniforms.uPaint;
     shader.uniforms.uBrush = uniforms.uBrush;
+    shader.uniforms.uMidGain = uniforms.uMidGain;
     shader.fragmentShader = SPRITE_UNIFORMS_DECL + shader.fragmentShader.replace(
       '#include <map_fragment>',
       SPRITE_DIFFUSE_PATCH,
@@ -407,12 +445,28 @@ export class Character {
       this.targetDesat = 0;
       this.breathAmp = 1.25;
     } else if (state === 'listener') {
-      this.targetBright = 0.62;
-      this.targetDesat = 0.45;
+      /* 0.62/0.45 → 0.74/0.30. A listener is dimmer than a speaker and is still
+       * a person in the room: at 0.62 a plate whose midtones already sit within
+       * ten luminance points of a night interior was being printed nearly two
+       * thirds of a stop under it, which is not "dimmed", it is "gone". */
+      this.targetBright = 0.74;
+      this.targetDesat = 0.3;
       this.breathAmp = 0.7;
     } else {
-      this.targetBright = 0.85;
-      this.targetDesat = 0.18;
+      /* NEUTRAL is the state the frame is actually captured in — the narrator
+       * speaks, nobody on stage is the speaker, and every dialogue/proxy/chapter
+       * still in the review set was shot with her sitting here. So 0.85/0.18 was
+       * not a resting level, it was the level: she was being printed 15% down and
+       * 18% desaturated in every frame a panel has ever looked at, on top of a
+       * plate grade that desaturates her another 15% and a room that is nearly
+       * black. That is most of "she dissolves into the background", and it is
+       * paid here rather than by turning the plate grade off, because the
+       * speaker/listener hierarchy is worth keeping.
+       * 0.96/0.06: a hair under a speaking key so the hierarchy still reads, and
+       * near enough to unity that the frame's default state is a woman lit by the
+       * room rather than a woman being faded out of it. */
+      this.targetBright = 0.96;
+      this.targetDesat = 0.06;
       this.breathAmp = 1;
     }
   }

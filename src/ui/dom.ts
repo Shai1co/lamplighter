@@ -155,7 +155,27 @@ export function smartQuotes(text: string): string {
   const s = text
     .replace(/---/g, '—')
     .replace(/--/g, '—')
-    .replace(/\.\.\./g, '…')
+    /* The ellipsis, in every form a keyboard produces it.
+     *
+     * This used to be `/\.\.\./g`, which is the literal reading of the rule and
+     * leaves three holes a script will eventually fall into:
+     *   • a SPACED run — ". . .", which is how the mark is set by hand in a
+     *     manuscript and how it survives a paste out of a word processor — did
+     *     not match at all and printed as three separate periods with word
+     *     spaces between them;
+     *   • a run of FIVE or more left a stray period hanging off the glyph;
+     *   • a run of FOUR is not a typo, it is the compositor's form for an
+     *     ellipsis that ENDS a sentence (ellipsis + full stop), and collapsing it
+     *     to a bare "…" silently deletes the terminal punctuation.
+     * Every one of those is legible as wrong typography in a screenshot, which is
+     * the entire reason this function exists.
+     *
+     * Spaced first, because collapsing the run-ons would otherwise strand its
+     * middle period; then any run of three or more, resolved BY LENGTH so three
+     * gives "…" and four-or-more gives "….". Idempotent: text already carrying a
+     * true ellipsis passes through untouched. */
+    .replace(/\.[ \u00a0\u2009\u202f]+\.[ \u00a0\u2009\u202f]+\./g, '…')
+    .replace(/\.{3,}/g, (run) => (run.length >= 4 ? '….' : '…'))
     // …and the space the mark owes the word after it. A true ellipsis is ONE
     // glyph whose three dots are set on the face's own tight sidebearings, so
     // "…Hello" prints with the final dot almost touching the H — which reads, at

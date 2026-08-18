@@ -566,6 +566,7 @@ uniform float uEnvTint;
 uniform float uCanvas;
 uniform float uPaint;
 uniform float uBrush;
+uniform float uMidGain;
 
 /** Cheap 2->1 hash + smoothed value noise, local to the sprite program. The
  *  stage's shared GLSL_NOISE is only injected into the post passes; a plate
@@ -708,6 +709,39 @@ diffuseColor.rgb = mix(
   vec3(_envLuma) * _envHue,
   clamp(uEnvTint, 0.0, 1.0)
 );
+/* ── The print exposure, on HER ────────────────────────────────────────────
+ *
+ * Everything above this line is a HUE operation. uPlateDesat pulls her chroma,
+ * uPlateSplit bends it toward the room's two lights, uPlateCool and uEnvTint lay
+ * the window over her — all of it correct, all of it value-preserving by
+ * construction, and none of it able to answer the note that she does not
+ * separate from the plate behind her. That note is about VALUE, and the only
+ * value operations this material carried were uBright (a flat multiply, which
+ * moves her blacks and her speculars along with everything else) and the plate
+ * bake's own midLift, which is applied once at load in 8-bit sRGB and cannot
+ * know what the composite grade downstream will do to the room around her.
+ *
+ * So the sprite carries a midtone-weighted GAIN of its own, and three properties
+ * are what make it usable rather than merely brighter:
+ *   • it is weighted in PERCEPTUAL space, not linear. The window 4L(1−L) is
+ *     the right shape and the wrong argument here: three decodes an sRGB plate
+ *     to linear before this runs, and a lit forearm sits near 0.10 LINEAR, where
+ *     4L(1−L) is already down to a third of its peak. Taking the ~1/2.2 root
+ *     first puts the peak of the window back on the band a colourist means by
+ *     "midtones" — the wool, the collar, the shadow side of the jaw, the
+ *     forearm — which is the band the separation actually lives in;
+ *   • it is a GAIN. Light scales what a surface reflects; an additive lift of
+ *     the same size would raise her blacks, which is the single most legible
+ *     signature of a badly composited plate and the thing this whole material
+ *     exists to avoid;
+ *   • it is ZERO at both ends by construction, so it cannot lift a black and it
+ *     cannot drive a specular into the highlight shoulder downstream. At
+ *     uMidGain 0.13 it is +13% at mid, ≥10% across the whole midtone band, +2%
+ *     on a lit cheek's brightest plane and 0% on white.
+ */
+float _midLum = clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
+float _midW = pow(_midLum, 0.4545);
+diffuseColor.rgb *= 1.0 + clamp(uMidGain, 0.0, 1.0) * 4.0 * _midW * (1.0 - _midW);
 /* Painterly tooth — the last difference between the two renderers.
  *
  * The room is a painting: every surface in it carries a mottle at the scale of
@@ -818,14 +852,25 @@ vec3 lightHue(vec3 c) {
 /**
  * 1 deep inside the speaker, 0 clear of her, with a long soft shoulder.
  *
- * The falloff is deliberately wide (0.70 → 1.10 of the core radius): a crisp
- * cut-out would trade one seam for another — a rain-shaped hole in the exact
- * silhouette of a portrait — and the plate's own edge is a 200px feather, not
- * a line. A gradient is the only honest boundary here.
+ * The falloff is deliberately wide: a crisp cut-out would trade one seam for
+ * another — a rain-shaped hole in the exact silhouette of a portrait — and the
+ * plate's own edge is a ~78px feather, not a line. A gradient is the only honest
+ * boundary here.
+ *
+ * 0.70/1.10 → 0.82/1.16, and it is the PLATEAU that matters rather than the
+ * shoulder. The published footprint is the plate's solid core (see
+ * Character.CORE), and at a plateau of 0.70 of that radius the fence reached
+ * full strength over her face and had already begun releasing across her near
+ * shoulder and her forearm — so the terms this gates were at half strength over
+ * exactly the two large smooth planes where a stray mark is most visible. At
+ * 0.82, read against the 1.20 × / 1.10 × over-scale the Stage now publishes (see
+ * publishFigureMask), the full-strength region covers her from crown to forearm
+ * and the shoulder releases out in the dark bay beside her, where there is
+ * nothing for a boundary to be seen against.
  */
 float pqFigure(vec2 uv) {
   vec2 d = (uv - uFigure.xy) / max(uFigure.zw, vec2(1e-4));
-  return uFigureAmt * (1.0 - smoothstep(0.70, 1.10, length(d)));
+  return uFigureAmt * (1.0 - smoothstep(0.82, 1.16, length(d)));
 }
 /** One interior ellipse: 1 deep inside, 0 clear of it, with a long shoulder. */
 float pqInteriorLobe(vec2 uv, vec4 e, float soft) {
@@ -1081,23 +1126,20 @@ void main() {
   // vanish over her coat and over the dead middle — correct as a light model,
   // wrong as a picture, because rain on a window is still visible against a
   // dark room by refraction alone. The floor is that refraction term.
-  // 0.74 → 0.52 over the figure. Not a retreat from the claim — the opposite.
-  // The pane now genuinely renders in FRONT of her (see Weather: renderOrder 40),
-  // so this factor stopped being "how much of the water survives her feathered
-  // edge" and became "how much water is lying on her face". 74% of the pane's
-  // full density across a lit cheek is a portrait with rain stickered onto it;
-  // 52% is a film you have to look for and cannot un-see once you have. The
-  // water crosses her CONTINUOUSLY either way, which is the whole point: a
-  // window that stops at a silhouette is not a window.
-  // …and 0.52 → 0.34, on the same evidence the falling field just came down on.
-  // The claim ("a window that stops at a silhouette is not a window") is still
-  // the reason this is not zero, and it is a claim about CONTINUITY, not about
-  // density: the pane has to be demonstrably unbroken across her, it does not
-  // have to be as wet over her cheek as it is over the city. A third strength
-  // keeps every rivulet traceable across the silhouette while none of them is
-  // the brightest mark on her face.
+  //
+  // Over the FIGURE: 0.74 → 0.52 → 0.34 → 0.04, and the last step is a change of
+  // position rather than of dose. The three before it were all trying to find a
+  // density at which water lying on a lit cheek reads as a window instead of as
+  // a compositing artefact, and there is no such density — the pane is now drawn
+  // BEHIND her (see Weather: renderOrder 12) and the only thing this factor still
+  // governs is how much of it shows THROUGH her matte, which is a 78px feather
+  // with a dissolving torso in it. Four percent is what keeps the rivulets from
+  // terminating on her outline like a stencil while leaving nothing on her that
+  // could be mistaken for a mark. The "a window that stops at a silhouette is not
+  // a window" claim is answered by the pane's own structure out in the bays,
+  // where a mullion and a run of water can be seen crossing nothing at all.
   float aRiv = clamp(riv, 0.0, 1.0) * uOpacity * mix(0.19, 0.42, lit) * sill
-             * mix(1.0, 0.34, fig) * pane;
+             * mix(1.0, 0.04, fig) * pane;
 
   // Refraction. A bead of water is a cylindrical lens: the city behind it does
   // not merely brighten, it SHIFTS. The field's own horizontal derivative gives
@@ -1147,24 +1189,25 @@ void main() {
   float drag = exp(-pow(rp.x / 0.013, 2.0)) * exp(-pow(max(-rp.y, 0.0) / 0.07, 1.7))
              * step(rp.y, 0.0);
   float reflBand = smoothstep(0.40, 0.54, uv.y);
-  /* …and it is the ONE term on this pane that is thinned over the subject on
-   * grounds of hierarchy rather than optics — 0.68, i.e. about a third off, and
-   * over her face only.
+  /* …and over the subject it is now GONE, 0.68 → 0.0, which is the one term on
+   * this pane that gets deleted rather than thinned.
    *
-   * The rivulets, the tracks and the sheet are all thinned because a window that
-   * stops at a silhouette is not a window: they have to remain traceable across
-   * her or the plane is broken. A REFLECTION has no such obligation. It is a
-   * single large soft amber lobe with a vertical drag, i.e. the biggest, softest,
-   * brightest mark this pass can make, and where it lands on a cheek it does not
-   * read as glass — it reads as the subject being half-eaten. The note was that
-   * the lamp out-reads the protagonist, and this lobe is a piece of the lamp
-   * lying directly on her.
+   * The rivulets and the tracks are held at a whisper because they are fine lines
+   * and a fine line that terminates on a silhouette reads as a stencil. A
+   * REFLECTION is the opposite object: a single large soft amber lobe with a
+   * ghost and a vertical drag, i.e. the biggest, softest, brightest mark this
+   * pass can make. There is no strength at which it reads as glass when it lands
+   * on a face — at any density it reads as the subject being half-eaten, and the
+   * blind note ("she reads as a semi-transparent photo-composite") is in large
+   * part this lobe lying across her jaw.
    *
-   * It is thinned, never removed, and never keyed to anything but the figure
-   * mask: the smear is still continuous across the frame, it simply stops being
-   * the brightest thing on the one face in it. */
+   * Deleting it costs nothing, because a reflection is a local event: the smear
+   * is still there on the pane either side of her, where the eye can see it lying
+   * on a surface with nothing behind it. A reflection that stops where a person
+   * is standing in front of the glass is, in fact, exactly what a reflection
+   * does. */
   float aRefl = clamp(lobe * 0.72 + ghost * 0.3 + drag * 0.28, 0.0, 1.0)
-              * uReflAmt * uOpacity * reflBand * pane * mix(1.0, 0.68, fig);
+              * uReflAmt * uOpacity * reflBand * pane * (1.0 - fig);
 
   /* ── The sheet itself ────────────────────────────────────────────────────
    * Six rivulets and one reflection describe things ON the glass and still
@@ -1186,14 +1229,15 @@ void main() {
   float diag = uv.x * 0.62 + uv.y * 0.78;
   float sheenBand = exp(-pow((diag - 0.86) / 0.30, 2.0));
   float haze = 0.55 + 0.45 * pqHash21(floor(uv * uLightRes / 3.0));
-  // The sheet is the one term that does NOT thin over her — 0.72 → 0.88. Every
-  // other thing on this pane is an object lying on it and objects may be sparse;
-  // the sheet is the pane ITSELF, and a sheet of glass that fades out where a
-  // figure is behind it is not a sheet. At a ceiling of ~4% alpha it costs her
-  // nothing and it is the term that actually carries the "she is on the far side
-  // of a surface" read across her face.
+  // The sheet used to be the one term that did NOT thin over her (0.88), on the
+  // argument that a sheet of glass which fades out behind a figure is not a
+  // sheet. That argument was made when the pane was drawn in FRONT of her; with
+  // the pane behind her (see Weather: renderOrder 12) the only thing this can
+  // still do over the figure is haze her matte's feather, which is the exact
+  // mechanism by which a plate reads as semi-transparent. 0.88 → 0.10: the sheet
+  // still crosses the whole frame, it simply stops crossing HER.
   float aSheen = sheenBand * haze * (0.006 + 0.022 * lit) * uOpacity * sill
-               * mix(1.0, 0.88, fig) * pane;
+               * mix(1.0, 0.1, fig) * pane;
   vec3 cSheen = mix(vec3(0.70, 0.80, 0.88), lightHue(behind), 0.55 * lit);
 
   /* ── The tracks ──────────────────────────────────────────────────────────
@@ -1216,8 +1260,14 @@ void main() {
    * appearance of a scratched print. Every property that makes this term work
    * across a wall of glass (it is everywhere, it is uniform, it never ends) is
    * the property that makes it read as damage over skin. */
+  // …and 0.22 → 0.0. The reasoning above is the reasoning for deleting it: a set
+  // of even parallel verticals running the full height of a face is the textbook
+  // appearance of a scratched print, and "a third of the rivulets' strength" is
+  // still a set of even parallel verticals. It is the single term on this pass
+  // whose failure mode is an accusation about the MEDIUM rather than about the
+  // picture, so it gets no allowance at all over her.
   float aTrack = clamp(tk, 0.0, 1.0) * uOpacity * mix(0.010, 0.030, lit) * sill
-               * mix(1.0, 0.22, fig) * pane;
+               * (1.0 - fig) * pane;
   vec3 cTrack = mix(vec3(0.66, 0.76, 0.84), lightHue(refr), 0.62 * lit) * (0.62 + 0.75 * lit);
 
   /* ── The mullion ─────────────────────────────────────────────────────────
@@ -1272,8 +1322,25 @@ void main() {
    * answered by having less rain. 0.20/0.16 → 0.27/0.21: still a hairline, now
    * unambiguously a lit metal edge, and it is the term that says the streaks are
    * lying on something. */
-  float aMull = (mullCore * 0.26 + mull2Core * 0.21) * uOpacity * mullBand * pane;
-  float aArris = (mullArris * 0.27 + mull2Arris * 0.21) * uOpacity * mullBand * pane;
+  /* …and BOTH members are now fenced against the figure, which reverses the
+   * paragraph above and is the point of this round.
+   *
+   * "It crosses her, and that is the entire point of it" was the strongest
+   * argument in this file and it was answered by the frame: a soft dark bar and a
+   * lit arris drawn over a forearm is a depth cue only if the eye reads them as
+   * an object in front of her, and blind readers did not — they read a woman with
+   * a vertical seam through her, i.e. the compositing tell the bar was placed to
+   * disprove. A frame member cannot prove she is behind glass while it is the
+   * thing making her look composited.
+   *
+   * The near member at x=0.632 sits squarely on her plate, so the fence takes it
+   * off her and leaves the ~500px of it that runs through the empty bays above and
+   * below — which is where a mullion proves there is a wall of window anyway. The
+   * outboard member at 0.845 is clear of her at every camera position and is
+   * untouched by construction (fig is 0 out there). */
+  float mullFig = 1.0 - fig;
+  float aMull = (mullCore * 0.26 + mull2Core * 0.21) * uOpacity * mullBand * pane * mullFig;
+  float aArris = (mullArris * 0.27 + mull2Arris * 0.21) * uOpacity * mullBand * pane * mullFig;
   vec3 cMull = vec3(0.020, 0.031, 0.036);
   vec3 cArris = mix(vec3(0.50, 0.60, 0.68), lightHue(behind), 0.55 * lit) * (0.45 + 0.85 * lit);
 
