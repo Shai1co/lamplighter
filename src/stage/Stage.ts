@@ -24,6 +24,7 @@ import { KenBurns } from './camera';
 import { Layer } from './Layer';
 import { Character } from './Character';
 import { Weather } from './weather';
+import type { PaneSpec } from './weather';
 import { Transitions } from './transitions';
 import { PostFX } from './postfx';
 
@@ -331,8 +332,25 @@ const PRESENCE = {
    * place on this figure where the eye can measure the edge. A quarter more run
    * costs nothing at the crown (the head dissolve owns it) and is the difference
    * between an edge and a falloff on the two contours that were being read. */
-  core: 0.7,
-  rampGamma: 1.1,
+  /* 0.70 → 0.83, and the ramp gamma inverts with it (1.10 → 0.90).
+   *
+   * The note that came back is no longer "a curved cutout" — it is the opposite
+   * failure and it is worse: SHE IS SEMI-TRANSPARENT. A 30%-of-radius ramp on
+   * the right reaches ~87px inboard of the matte's zero, and the matte's zero on
+   * that side sits at u≈0.95 — i.e. off the plate entirely — so the whole outer
+   * third of her near shoulder and forearm was printing at alpha 0.4–0.8 over a
+   * wall of city bokeh. Every bright disc behind her came through her wool. A
+   * critic reads that in one glance and calls it a composite, correctly.
+   *
+   * The two operators are dosed together because they answer opposite failures.
+   * A 17%-of-radius ramp is ~50px on the right and ~35px on the left — still a
+   * falloff and not an edge (the note that set 0.70 measured the failure at 21px)
+   * — and a gamma UNDER one pulls the ramp toward OPAQUE, so what is left of the
+   * transition is spent in its outermost pixels, where the plate has already been
+   * crushed by `vignette` and the backdrop falloff. Solid where she is a person,
+   * dissolving only where she is already dark. */
+  core: 0.83,
+  rampGamma: 0.9,
   /** Crown dissolve: alpha 0 at the very top, full by `headStart`. */
   headStart: 0.08,
   headEnd: 0.0,
@@ -342,8 +360,14 @@ const PRESENCE = {
   /** Edge darkening, applied as rgb *= 1 - v·(1-a)^g, so the feather sinks into
    *  the scene's depth instead of hazing over it. Kept light on purpose: too
    *  much and the falloff becomes a dark smear over bright backgrounds. */
-  vignette: 0.3,
-  vignetteGamma: 1.2,
+  /* 0.30 → 0.44, gamma 1.2 → 1.0. The feather is now half as wide (see `core`),
+   * so the same darkening has half the area to work in and has to be twice as
+   * decided to do the same job: sink the last 50px of plate into the room's own
+   * black rather than haze it over the window behind. A linear gamma starts the
+   * darkening the moment the alpha does, which is what makes the transition read
+   * as a form turning away from the light instead of as a matte running out. */
+  vignette: 0.44,
+  vignetteGamma: 1,
 
   /* ── Edge light ───────────────────────────────────────────────────────────
    * The darkening above answers half the question — it stops the feather
@@ -381,7 +405,11 @@ const PRESENCE = {
    *  room grade (ui.css → .pq-roomgrade::after layers 10–11) — so this stays
    *  what it is, a hair more of it because the plate around it got 15% lighter
    *  in the midtones and a separation term has to keep pace with its ground. */
-  rimAmt: 0.13,
+  /* 0.13 → 0.095. Both rim bands live in ALPHA space, so halving the ramp's
+   * width (see `core`) doubles their density per pixel for free; the note is a
+   * "milky haze/halo along her camera-right edge", and a band that just got
+   * twice as concentrated is most of it. */
+  rimAmt: 0.095,
   /** Floor of the directional weight on the shadow side (camera-right). Pulled
    *  down with the strength, so the extra light lands on the lamp side and the
    *  far side of her stays as dark as the room does. */
@@ -428,7 +456,12 @@ const PRESENCE = {
    *  same reason the amber came down — over a 59px feather the band has three
    *  times the area it had over a 21px one, so the same amount is three times
    *  as much light, and what it would be lighting is the dissolve. */
-  rimCoolAmt: 0.045,
+  /* 0.045 → 0.024, for the reason rimAmt came down and one more: this is the
+   * TEAL band, it sits on the side of her the window is on, and "a milky halo on
+   * her camera-right edge" is a literal description of a cool lift painted into
+   * a dissolving matte. The separation it buys is real; at a quarter of the
+   * ramp's old area it only needs half the level to buy the same amount. */
+  rimCoolAmt: 0.024,
   /** Floor on the camera-right side — the wrap never fully closes. */
   rimCoolDirMin: 0.34,
   rimCoolR: 116,
@@ -712,10 +745,22 @@ const PRESENCE = {
    * in her plate falls off away from its own source — which is why it can be
    * this strong without reading as a mask.
    */
-  backdropIn: 0.46,
+  /* backdropIn 0.46 → 0.41 and backdropRight 0.34 → 0.52.
+   *
+   * With the matte now solid out to d = 0.83 (see `core`) this falloff stops
+   * being a nicety and becomes the term that pays for it: everything the eye
+   * would call "her backdrop" is now printed at full alpha, so the plate's own
+   * painted wall has to be taken to the room's black by the operator that knows
+   * where it is. The right side is where the note lands — "an ambiguous flat
+   * blue patch behind her head" is exactly the plate's painted backdrop arriving
+   * at 66% strength over a window — and half is the level at which it reads as
+   * the dark side of a room rather than as a second, bluer one. Still well short
+   * of the left's 0.72, because that side holds a whole lit wall and this one
+   * holds shadow. */
+  backdropIn: 0.41,
   backdropOut: 0.95,
   backdropLeft: 0.72,
-  backdropRight: 0.34,
+  backdropRight: 0.52,
 } as const;
 
 /* ── Screen props baked into a plate ─────────────────────────────────────────
@@ -811,12 +856,35 @@ const PLATE_INTERIORS: Record<string, InteriorSpec> = {
       // on the far pane that dies where the floor begins is exactly what a
       // window in a lit room does.
       { cx: 0.5, cy: 0.02, rx: 0.9, ry: 0.3, soft: 0.35 },
-      // The chair back at the focal midline (the mass the midlight pass rims).
-      // Re-measured off a framed 1920×1080 capture: the plate's near-mid chair
-      // occupies screen x 835→1041, y 553→661, i.e. cy 0.435 y-up — not 0.375,
-      // which put the fence 70px low and left the chair's own crown out on the
-      // glass. Radii widened to take the run of desk it stands at with it.
-      { cx: 0.489, cy: 0.435, rx: 0.075, ry: 0.115, soft: 0.4 },
+      // The OPERATOR'S CHAIR, re-measured a second time and this time off the
+      // establishing frame rather than the dialogue one.
+      //
+      // The previous numbers (cx 0.489, cy 0.435, rx 0.075, ry 0.115) described a
+      // chair the size of a mug at the height of the desk lamp. The mass the
+      // plate actually paints in the centre of the empty composition runs screen
+      // x 875→1245, y 612→1005 at 1920×1080 — i.e. x 0.456→0.649, y-up
+      // 0.069→0.433 — nearly four times the area and 150px lower. Everything
+      // above the floor lobe's own shoulder (y-up ≳ 0.30) was therefore
+      // unfenced, which is precisely the band the critic names: streaks falling
+      // down the crown and the shoulders of a chair that is on the camera's side
+      // of the window.
+      //
+      // A chair back is also not an ellipse-shaped hole in the weather, it is a
+      // padded rectangle with rounded corners; the lobe is sized to the object's
+      // INSCRIBED ellipse plus its shoulder, so the fence is at full strength
+      // across the mass and releases in the bay either side of it rather than
+      // cutting a shape out of the rain.
+      //
+      // The shoulder is also pulled in, 0.40 → 0.28. Every other lobe on this
+      // plate fences a soft object against a soft ground and wants the long
+      // release; this one fences the single largest opaque mass in the frame,
+      // and at a 0.40 shoulder the fence was only reaching ~85% over the crown —
+      // i.e. a sixth of the field was still falling down it, which at this
+      // field's exposure is exactly the "streaks visibly cross the office chair"
+      // note. 0.28 still spends 63px of frame on the transition, so there is no
+      // edge for the eye to find; it simply reaches full strength on the object
+      // instead of just short of it.
+      { cx: 0.552, cy: 0.235, rx: 0.118, ry: 0.225, soft: 0.28 },
       // The wall and ceiling ABOVE the desk. This is the one the first pass
       // missed and it is the most visible of the four: two streaks were falling
       // down a flat dark partition at x≈0.08 and x≈0.15, well clear of any
@@ -831,6 +899,41 @@ const PLATE_INTERIORS: Record<string, InteriorSpec> = {
     ],
     amount: 1,
   },
+};
+
+/* ── …and where the glass IS ─────────────────────────────────────────────────
+ *
+ * The interior spec above is the SUBTRACTIVE half of the statement: name every
+ * prop between the lens and the pane and take the weather off it. Four soft
+ * ellipses cannot spell "window", though, and the frame kept proving it — the
+ * complement of a union of ellipses leaks between them, above them and past
+ * their shoulders, and every leak printed as a vertical streak standing on a
+ * concrete wall, a desk edge or a chair back. Read at a glance that is the
+ * screen-space-overlay tell in its purest form, and no amount of extra ellipses
+ * fixes it, because the problem is that the description is inside-out.
+ *
+ * So the window wall is declared POSITIVELY, once, as the rectangle of frame it
+ * occupies, with a long shoulder on each side (a hard boundary in a weather
+ * field is a matte — the same rule the ellipses live by). Outside it there is no
+ * weather at all: not thinned, absent. See weather.ts → setPaneMask and
+ * LIGHTFIELD_GLSL → pqPane.
+ *
+ * Measured off a framed 1920×1080 capture, like everything else in this file:
+ * the concrete partition runs out at x≈760 (0.396) and the glass runs from there
+ * to the frame edge; the glass/floor junction sits at y≈745, i.e. y-up 0.310.
+ * Both extents are pushed a little past the frame so the shoulder is spent
+ * outside the picture rather than inside it.
+ */
+const PLATE_PANES: Record<string, PaneSpec> = {
+  // …and x0 lands at 0.425, not the 0.396 the partition's own silhouette
+  // suggests. The concrete runs out at 0.396 and the near partition MEMBER —
+  // its lit leading edge, its body and the catch on its far side (see ui.css →
+  // .pq-roomgrade::before, layer 0a) — occupies 0.4135 to 0.429. That member is
+  // interior: it is the jamb the glass is set into, on the camera's side of the
+  // sheet. Starting the pane at the concrete put the first two centimetres of
+  // weather on the frame rather than in it, which is the same error one object
+  // in from the one this matte exists to fix.
+  ops_room: { x0: 0.425, y0: 0.31, x1: 1.06, y1: 1.08, softX: 0.05, softY: 0.055 },
 };
 
 /* ── Where the lens is focused ───────────────────────────────────────────────
@@ -964,61 +1067,117 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, bw, bh);
 
-  // A hair of bloom on everything drawn from here on — a lit screen scatters in
-  // the glass in front of it, and this is the only "emissive" this stack has.
-  // Widened 5 → 8 with the level: a brighter source scatters further, and a
-  // sharp-edged bright glyph is the one thing on this board that could still
-  // read as type composited onto a photograph rather than as light coming off a
-  // panel. The halo is what makes it the latter.
-  ctx.shadowColor = 'rgba(126, 208, 226, 0.55)';
-  ctx.shadowBlur = 8;
+  /* 1b — THE PHOSPHOR. A scanline field, drawn on the ground and UNDER the type.
+   *
+   * The board's failure was named as "soft, column-misaligned" — i.e. it reads as
+   * an image of a UI rather than as a UI. Half of that is the type (see the glow
+   * split below) and half is that the panel had no SURFACE: a flat gradient with
+   * words on it is a poster, and the one thing every lit display in a photograph
+   * has and no poster does is a line structure. Three design px of pitch is ~4
+   * screen px through the 1.3× overscan — coarse enough to survive the plate
+   * upscale, fine enough that it never resolves into stripes — and it is drawn
+   * beneath the glyphs on purpose: a scanline over 12px type eats the counters.
+   *
+   * Under 5%: it must be felt as a texture on the panel, never seen as an effect.
+   */
+  for (let y = 1.5; y < bh; y += 3) {
+    ctx.fillStyle = 'rgba(2, 9, 12, 0.30)';
+    ctx.fillRect(0, y, bw, 1);
+  }
+
   ctx.textBaseline = 'alphabetic';
   const styled = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
   styled.letterSpacing = '0.05em';
-
-  // 2 — title bar. A gradient, not a flat slab: a solid lighter rectangle across
-  // the full width is the one shape on this board that would read as an HTML
-  // header rather than as a lit row on a screen.
-  const bar = ctx.createLinearGradient(0, 0, bw, 0);
-  bar.addColorStop(0, ink(0.05));
-  bar.addColorStop(0.7, ink(0.028));
-  bar.addColorStop(1, ink(0.014));
-  ctx.fillStyle = bar;
-  ctx.fillRect(0, 0, bw, 24);
   ctx.font = '12px "JetBrains Mono", ui-monospace, monospace';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = ink(0.14);
-  ctx.fillText('LUMEN RELAY', 9, 16);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = ink(0.115);
-  ctx.fillText('04', right, 16);
-  ctx.fillStyle = ink(0.095);
-  ctx.fillRect(0, 24.5, bw, 1);
 
-  // 3 — the queue. A tick in the margin, the line id, its state on a right tab.
-  CALL_ROWS.forEach(([id, state, hot], i) => {
-    const y = 42 + i * 21;
-    ctx.fillStyle = hot ? warm(0.2) : ink(i === 1 ? 0.15 : 0.07);
-    ctx.fillRect(9, y - 8, 3, 9);
-    ctx.textAlign = 'left';
-    ctx.fillStyle = ink(0.128);
-    ctx.fillText(id, 19, y);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = hot ? warm(0.175) : ink(i === 1 ? 0.14 : 0.076);
-    ctx.fillText(state, right, y);
-    if (i < CALL_ROWS.length - 1) {
-      ctx.fillStyle = ink(0.03);
-      ctx.fillRect(19, y + 6.5, right - 19, 1);
+  /* ── Type: two passes, and this is the fix for "soft" ──────────────────────
+   *
+   * There used to be one pass, drawn with `shadowBlur = 8` on. A canvas shadow
+   * does not add a halo around a crisp glyph; it draws a BLURRED COPY of the
+   * glyph and the glyph on top of it in the same operation, at the same alpha —
+   * so at 8px of blur on a 12px face, most of what the eye integrates on a
+   * two-pixel stroke IS the blur. The board was therefore emitting its own
+   * softness, and then being upscaled 1.3× by the plate's overscan on top of
+   * that. Nothing downstream could recover it.
+   *
+   * Split in two. The GLOW pass draws every mark at a third of its alpha with the
+   * scatter on — that is the light the panel throws into the glass in front of it,
+   * and it is a property of the room. The CRISP pass then draws the identical
+   * marks at full alpha with the shadow switched off, so the glyph's own edge is
+   * exactly as the rasteriser cut it. Same total emission, all of the halo, none
+   * of the mush.
+   *
+   * `column` is the second half of the note. The header label sat at x=9 and the
+   * queue ids at x=19, i.e. the panel had two different left margins nine pixels
+   * apart with a tick column running between them — which at this scale reads as
+   * exactly what the critic called it, a misaligned column. Everything textual
+   * now hangs off ONE content margin at 19 with the 10px tick gutter to its left,
+   * and everything on the right tab hangs off `right`. Two edges, no exceptions.
+   */
+  const COL = 19;
+  const paint = (pass: 0 | 1): void => {
+    const a = pass === 0 ? 0.34 : 1;
+    if (pass === 0) {
+      ctx.shadowColor = 'rgba(126, 208, 226, 0.5)';
+      ctx.shadowBlur = 7;
+    } else {
+      ctx.shadowBlur = 0;
     }
-  });
+
+    // 2 — title bar. A gradient, not a flat slab: a solid lighter rectangle
+    // across the full width is the one shape on this board that would read as an
+    // HTML header rather than as a lit row on a screen. Drawn on the crisp pass
+    // only — a soft copy of a 24px-tall wash buys nothing and fogs the glyphs.
+    if (pass === 1) {
+      const bar = ctx.createLinearGradient(0, 0, bw, 0);
+      bar.addColorStop(0, ink(0.05));
+      bar.addColorStop(0.7, ink(0.028));
+      bar.addColorStop(1, ink(0.014));
+      ctx.fillStyle = bar;
+      ctx.fillRect(0, 0, bw, 24);
+    }
+    ctx.textAlign = 'left';
+    ctx.fillStyle = ink(0.14 * a);
+    ctx.fillText('LUMEN RELAY', COL, 16);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = ink(0.115 * a);
+    ctx.fillText('04', right, 16);
+    ctx.fillStyle = ink(0.095 * a);
+    ctx.fillRect(0, 24, bw, 1);
+
+    // 3 — the queue. A tick in the gutter, the line id on the content margin,
+    // its state on the right tab.
+    CALL_ROWS.forEach(([id, state, hot], i) => {
+      const y = 42 + i * 21;
+      ctx.fillStyle = hot ? warm(0.2 * a) : ink((i === 1 ? 0.15 : 0.07) * a);
+      ctx.fillRect(9, y - 8, 3, 9);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = ink(0.128 * a);
+      ctx.fillText(id, COL, y);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = hot ? warm(0.175 * a) : ink((i === 1 ? 0.14 : 0.076) * a);
+      ctx.fillText(state, right, y);
+      if (i < CALL_ROWS.length - 1 && pass === 1) {
+        ctx.fillStyle = ink(0.03);
+        ctx.fillRect(COL, y + 7, right - COL, 1);
+      }
+    });
+  };
+  paint(0);
+  paint(1);
+  ctx.shadowColor = 'rgba(126, 208, 226, 0.5)';
+  ctx.shadowBlur = 7;
 
   ctx.fillStyle = ink(0.07);
-  ctx.fillRect(0, 94.5, bw, 1);
+  ctx.fillRect(0, 94, bw, 1);
 
   // 4 — the vocal trace, the same instrument the relay panel carries in the
   // corner, so the two pieces of UI in this frame are demonstrably one product.
   // Deterministic, and shaped like speech: syllable bursts inside a breath.
-  const x0 = 9;
+  // Born on the same content margin as the queue ids above it: the trace used to
+  // start at x=9, in the tick gutter, so the panel's one wide instrument was the
+  // only element not hanging off either of the board's two edges.
+  const x0 = COL;
   const span = right - x0;
   const mid = 116;
   for (let i = 0; i < 26; i++) {
@@ -1294,10 +1453,19 @@ export class Stage implements IStage {
     shadowCanvas.height = 64;
     const shadowCtx = shadowCanvas.getContext('2d');
     if (shadowCtx) {
+      // A CONTACT shadow, not an ambient one, and the profile is the whole of
+      // the difference: an occlusion where a body meets a surface is nearly
+      // opaque for the first third of its run and then releases fast. The old
+      // curve (1 → 0.72 at half radius → 0 at the edge) is the profile of a soft
+      // ambient pool — it has no core, so what it printed was a wide grey smudge
+      // that darkened the desk without ever saying anything touched it, which is
+      // exactly the "she floats like a composited cutout" read.
       const shadow = shadowCtx.createRadialGradient(128, 32, 2, 128, 32, 126);
-      shadow.addColorStop(0, 'rgba(5, 8, 9, 1)');
-      shadow.addColorStop(0.48, 'rgba(5, 8, 9, 0.72)');
-      shadow.addColorStop(1, 'rgba(5, 8, 9, 0)');
+      shadow.addColorStop(0, 'rgba(4, 6, 8, 1)');
+      shadow.addColorStop(0.3, 'rgba(4, 6, 8, 0.93)');
+      shadow.addColorStop(0.58, 'rgba(4, 6, 8, 0.44)');
+      shadow.addColorStop(0.82, 'rgba(4, 6, 8, 0.12)');
+      shadow.addColorStop(1, 'rgba(4, 6, 8, 0)');
       shadowCtx.fillStyle = shadow;
       shadowCtx.fillRect(0, 0, shadowCanvas.width, shadowCanvas.height);
     }
@@ -1516,6 +1684,7 @@ export class Stage implements IStage {
     // neither. See PLATE_INTERIORS / PLATE_FOCUS.
     const interior = PLATE_INTERIORS[id];
     this.weather.setInteriorMask(interior?.lobes ?? [], interior?.amount ?? 0);
+    this.weather.setPaneMask(PLATE_PANES[id] ?? null);
     this.plateFocus = PLATE_FOCUS[id] ?? null;
     this.applyFieldFocus();
     this.postfx.setShadowBridge(this.plateFocus?.bridge ?? 0);
@@ -2000,9 +2169,18 @@ export class Stage implements IStage {
 
     const b = best.coreBounds();
     this.contactShadow.visible = true;
-    this.contactShadow.position.set(b.x, b.y - b.hy * 1.04, CHAR_Z - 0.02);
-    this.contactShadow.scale.set(b.hx * 2.35, b.hy * 0.24, 1);
-    (this.contactShadow.material as THREE.SpriteMaterial).opacity = 0.12 * presence;
+    // Tighter, lower and four times as dense. 0.12 over a 2.35 × 0.24 ellipse is
+    // an ambient darkening of the whole desk in front of her; a contact shadow is
+    // a small, hard, nearly-black mark directly under the mass that is casting
+    // it, and it is the single cheapest cue that a figure is ON a surface rather
+    // than IN FRONT OF a picture of one. Narrowed to 1.72 (her torso's own width,
+    // not her plate's), thinned to 0.17, dropped a further 4% so it sits at the
+    // desk line rather than hovering over it, and printed at 0.46 — which against
+    // this plate's lamp-lit wood is a shadow, and against its blacks is nothing,
+    // because a multiply-like darkening on an already-black floor cannot show.
+    this.contactShadow.position.set(b.x, b.y - b.hy * 1.08, CHAR_Z - 0.02);
+    this.contactShadow.scale.set(b.hx * 1.72, b.hy * 0.17, 1);
+    (this.contactShadow.material as THREE.SpriteMaterial).opacity = 0.46 * presence;
     const v = this.figureProbe;
     v.set(b.x, b.y, CHAR_Z).project(cam);
     const cx = v.x * 0.5 + 0.5;

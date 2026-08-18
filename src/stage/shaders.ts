@@ -343,6 +343,35 @@ void main() {
   vec3 split = mix(shadowTint, highTint, smoothstep(0.0, 0.9, luma));
   color = mix(color, color * (0.55 + 0.9 * split), clamp(uSplitTone, 0.0, 1.0) * 0.55);
 
+  /* ── The window side, cooled ──────────────────────────────────────────────
+   *
+   * The shadow bridge below unifies the DARKS and the split-tone bends whatever
+   * already has chroma. Between the two of them sits the band this frame keeps
+   * losing: the low midtones of the window wall — the glazing bars, the far
+   * bench, the wet floor under the glass, the chair's own mass. The plate paints
+   * them a warm-neutral, the split-tone reads them as "not dark enough to be
+   * shadow, not bright enough to be highlight" and hands them the middle of its
+   * ramp, and the middle of a teal↔amber ramp is OLIVE. Half the picture then
+   * drifts yellow-green against a window that is unambiguously teal, which is a
+   * palette-incoherence read the rubric fails outright.
+   *
+   * So the window side is given the window's own hue, on exactly the terms the
+   * shadow bridge is given it: the mix target is LUMINANCE × the pane teal,
+   * divided by its own luma, i.e. value-preserving by construction — it moves the
+   * hue of the band and never its exposure. Ramped in x so the lamp's own third
+   * is untouched (the room really does have two colour temperatures in it and
+   * that is the point of the shot), and windowed in luminance so it starts above
+   * the bridge's band and has closed again well under the practicals.
+   */
+  {
+    float wSide = smoothstep(0.40, 0.70, vUv.x);
+    float wLum  = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float wBand = smoothstep(0.006, 0.030, wLum) * (1.0 - smoothstep(0.10, 0.34, wLum));
+    // Peak-normalised pane steel, ÷ its own luma (0.849).
+    vec3 wHue = vec3(0.56, 0.92, 1.00) * 1.177;
+    color = mix(color, vec3(wLum) * wHue, 0.30 * wSide * wBand);
+  }
+
   /* ── The shadow family ────────────────────────────────────────────────────
    *
    * Between the warm desk pool and the teal city there is a band of floor and
@@ -416,7 +445,25 @@ void main() {
   // Deliberately NEUTRAL: the previous floor was blue enough that anywhere the
   // vignette bit went cyan-muddy rather than simply dark. White is untouched.
   const vec3 BLACK_FLOOR = vec3(0.0148, 0.0150, 0.0139);
-  color = BLACK_FLOOR + color * (1.0 - BLACK_FLOOR);
+  /* …and the OUTBOARD FLOOR gets a second one on top of it.
+   *
+   * Two operators bite hardest in the same corner — the radial vignette, and the
+   * frame-right exit guard immediately above — and they compound: the bottom
+   * right of this frame is the one region where the picture reaches the floor and
+   * simply stays there, so roughly a fifth of the canvas prints as a single
+   * undifferentiated value. That is not a vignette, it is a hole, and the
+   * difference between the two is entirely whether the eye can find a plane
+   * inside the darkness.
+   *
+   * ~4 code values at the output, ramped over half the frame in x and most of it
+   * in y so there is no boundary anywhere to be seen, and struck a hair COOL
+   * (unlike the neutral floor below it) because what is dark out there is a wet
+   * floor under a wall of city glass — the same emitter the whole right half is
+   * lit by. Applied with the floor rather than as a lift, so it cannot touch a
+   * midtone and cannot move a highlight by a thousandth. */
+  float fEdge = smoothstep(0.60, 0.94, vUv.x) * (1.0 - smoothstep(0.08, 0.60, vUv.y));
+  vec3 floorHere = BLACK_FLOOR + vec3(0.0030, 0.0038, 0.0044) * fEdge;
+  color = floorHere + color * (1.0 - floorHere);
 
   // Film grain. Six disciplines keep it emulsion and not a screen door:
   //   • the field is hashed per grain CELL straight off gl_FragCoord — no value
@@ -446,7 +493,12 @@ void main() {
   //     falloffs.
   float gLum = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float gw = 1.0 - 0.55 * smoothstep(0.25, 1.2, gLum);       // roll off in highlights
-  gw *= 0.34 + 0.66 * smoothstep(0.0020, 0.0185, gLum);       // and eased into the toe
+  // …and eased into the toe. The floor comes 0.34 → 0.24: the note is that the
+  // grain in the deep shadows reads as NOISE masking unfinished area rather than
+  // as emulsion, and a deep shadow is precisely where a real stock has the least
+  // silver to scatter. Roughly a third off the blacks; the midtone term below
+  // comes up by a ninth to keep the frame's filmic weight where it belongs.
+  gw *= 0.24 + 0.76 * smoothstep(0.0020, 0.0185, gLum);
   float gToe = 1.0 - smoothstep(0.004, 0.045, gLum);          // 1 in the blacks, 0 by mid
   // Bottom-right weighting. Not a second emulsion and not a quadrant with an
   // edge: one very long, very soft ramp over the corner where BOTH deep-shadow
@@ -457,7 +509,13 @@ void main() {
   // The ramps are half a frame wide, so there is no boundary anywhere for the
   // eye to find; vUv.y is 0 at the bottom of the frame.
   float gCorner = smoothstep(0.40, 0.95, vUv.x) * (1.0 - smoothstep(0.06, 0.56, vUv.y));
-  float gq = uGrain * (1.0 + 0.8 * gCorner);
+  // 0.8 → 0.5. Same note as the toe floor above, one axis over: the corner
+  // weighting was authored as dither for the longest gradient in the game and it
+  // lands on the darkest region of the frame, so the two boosts compounded and
+  // the bottom-right read as noise over an unfinished area. Half the boost still
+  // covers the scrim's ramp — which has also just been shortened and neutralised
+  // (see --pq-scrim-foot) — without being visible as a quadrant of sparkle.
+  float gq = uGrain * (1.0 + 0.5 * gCorner);
   float gt = floor(uTime * 16.0);
   vec2 gjit = vec2(hash13(vec3(gt, 3.7, 11.3)), hash13(vec3(gt, 91.1, 5.9))) * 512.0;
   vec2 gcell = floor((gl_FragCoord.xy + gjit) / max(uGrainSize, 0.5));
@@ -468,10 +526,20 @@ void main() {
   // a third (see .pq-plate), because a source-over grey field lifts blacks and
   // this one does not — it is a relative modulation. Same total grain in the
   // finished frame, redistributed onto the term that costs the toe nothing.
-  color *= 1.0 + g * gq * 0.212 * gw;
+  // 0.212 → 0.236. The two operators above take about a third out of the deep
+  // shadows; this puts an eighth back into the MIDTONES, which is where the note
+  // says the filmic feel has to survive — and, crucially, where the composited
+  // portrait lives. Her lit cheek, her forearm and the collar are the only large
+  // midtone surfaces in the frame, and they were the region reading as pasted
+  // from a cleaner source.
+  color *= 1.0 + g * gq * 0.236 * gw;
   // The additive term is the one that actually dithers near zero (there is
   // nothing to modulate down there), so it carries the corner weighting hardest.
-  color += g * gq * (0.0008 + 0.0038 * gToe) * (1.0 + 0.5 * gCorner);
+  // 0.0038 → 0.0025 on the toe term, for the third time and the same reason:
+  // this is the ONLY grain that survives near zero, so it is also the whole of
+  // what "grain in the deep shadows" means. A third off. The 0.0008 base is
+  // untouched — it is the dither the long falloffs need and it is inaudible.
+  color += g * gq * (0.0008 + 0.0025 * gToe) * (1.0 + 0.5 * gCorner);
 
   // Glitch scanline darkening.
   if (uGlitch > 0.0001) {
@@ -830,6 +898,32 @@ uniform vec4 uInteriorSoft;
  *  exactly the weather it had. */
 uniform float uInteriorAmt;
 /**
+ * ── The pane matte ───────────────────────────────────────────────────────────
+ *
+ * The interior fence above is a SUBTRACTIVE description of the room: name every
+ * prop between the lens and the glass and take the water off it. That is the
+ * right instrument for a lamp and a mug — objects with no straight edge — and it
+ * is the wrong one for the question the frame kept failing, which is not "what
+ * occludes the pane" but "WHERE IS THE PANE AT ALL". Four ellipses can never
+ * spell the answer, because the complement of a union of ellipses is not a
+ * window: it leaks between them, above them and past their shoulders, and every
+ * leak prints as a streak standing on a wall, a chair back or a desk.
+ *
+ * So the glass is declared POSITIVELY as well — the rectangle of frame the
+ * window wall actually occupies, with a soft shoulder on each side (a hard
+ * boundary in a weather field is a matte, exactly as for the ellipses). The two
+ * fences compose: rain exists only inside the pane rect AND outside the
+ * furniture. Everything on this rig is on the far side of the glass by
+ * construction, so this is simply that statement made once, in the coordinates
+ * the statement is about.
+ *
+ * uPane is (x0, y0, x1, y1) in the framed screen, 0..1, y up. uPaneAmt 0 retires
+ * the matte — a plate with no window keeps exactly the weather it had.
+ */
+uniform vec4 uPane;
+uniform vec2 uPaneSoft;
+uniform float uPaneAmt;
+/**
  * Where this fragment is on screen, 0..1, y up.
  *
  * Straight off gl_FragCoord, NEVER off an interpolated gl_Position.xy/w. Both
@@ -877,6 +971,15 @@ float pqInteriorLobe(vec2 uv, vec4 e, float soft) {
   if (e.z <= 0.0 || e.w <= 0.0) return 0.0;
   float d = length((uv - e.xy) / max(e.zw, vec2(1e-4)));
   return 1.0 - smoothstep(max(1.0 - soft, 0.0), 1.0 + soft, d);
+}
+/** 1 out on the glass, 0 off it, with a long shoulder on all four sides. */
+float pqPane(vec2 uv) {
+  if (uPaneAmt <= 0.0) return 1.0;
+  float mx = smoothstep(uPane.x - uPaneSoft.x, uPane.x + uPaneSoft.x, uv.x)
+           * (1.0 - smoothstep(uPane.z - uPaneSoft.x, uPane.z + uPaneSoft.x, uv.x));
+  float my = smoothstep(uPane.y - uPaneSoft.y, uPane.y + uPaneSoft.y, uv.y)
+           * (1.0 - smoothstep(uPane.w - uPaneSoft.y, uPane.w + uPaneSoft.y, uv.y));
+  return mix(1.0, mx * my, clamp(uPaneAmt, 0.0, 1.0));
 }
 /** 1 where the room's own furniture occludes the pane, 0 out on the glass. */
 float pqInterior(vec2 uv) {
@@ -956,6 +1059,13 @@ diffuseColor.a *= mix(1.0, 0.06, pqFigure(pqScreenUv()));
 // prop has no feather, it simply occludes. 2% is left so the ellipse's own
 // shoulder still resolves smoothly rather than terminating on a zero.
 diffuseColor.a *= mix(1.0, 0.02, pqInterior(pqScreenUv()));
+// …and the PANE MATTE, which is absolute in the other direction: a drop that is
+// not on the glass is not a drop, it is an overlay. Multiplied rather than
+// floored — the ellipses above keep a 2% shoulder so their own falloff resolves
+// smoothly, but there is nothing on the far side of THIS boundary for a shoulder
+// to resolve into. The smoothstep in pqPane is what keeps the edge off the
+// picture; the value it reaches is zero.
+diffuseColor.a *= pqPane(pqScreenUv());
 // …and the SPECULAR TINT, 0.62 → 0.78. A drop on a window is not a white tick
 // that happens to be standing in front of a teal city; it is a lens, and what it
 // shows is the city. Taking three quarters of its hue from what is behind it
@@ -1041,26 +1151,26 @@ float rivuletField(vec2 uv) {
        + rivulet(uv, 0.668, 0.039, 5.7, 0.0014, 6.1) * 0.60
        + rivulet(uv, 0.742, 0.031, 2.1, 0.0012, 7.8) * 0.55
        + rivulet(uv, 0.906, 0.047, 4.4, 0.0018, 4.4) * 0.70
-       // Two more across the dead middle third. Every rivulet used to live at
-       // x > 0.58 — all of the water was on the right half of the pane and the
-       // centre of the frame carried no weather at all, which is half of why
-       // that band read as an undesigned hole. Deliberately the faintest two of
-       // the six: over near-black the lit gate keeps them around 5%, which is
-       // enough to say "there is glass here" and not enough to be seen.
-       + rivulet(uv, 0.335, 0.043, 1.3, 0.0013, 5.5) * 0.44
-       + rivulet(uv, 0.452, 0.036, 3.9, 0.0010, 8.6) * 0.38
-       // …and two ACROSS THE LAMP, which is the one place on this pane where
-       // water can be properly seen. Everything in the field so far runs over
-       // city bokeh or over near-black, so every drop in the frame was cool or
-       // invisible and the weather belonged to a different light than the room
-       // did. These two cross the practical at x≈0.15–0.21, where the light
-       // field behind them is
-       // the lamp's own amber: lightHue() below then flares them warm, for free
-       // and entirely motivated — the same coupling that makes a streak crossing
-       // the skyline flare teal. Two or three beads catching the lamp is what
-       // welds the glass to the room instead of laying it over the top.
-       + rivulet(uv, 0.148, 0.050, 2.7, 0.0021, 4.0) * 0.62
-       + rivulet(uv, 0.209, 0.034, 0.6, 0.0012, 7.0) * 0.40;
+       // Four more across the INBOARD bays. They used to sit at 0.335 / 0.452 and
+       // — the two loudest — at 0.148 / 0.209, "across the lamp", on the argument
+       // that a drop lit by the practical is the one that welds the glass to the
+       // room. The argument is good and the geometry was not: the lamp, the mug
+       // and the monitor are on the CAMERA's side of that window, so those two
+       // rivulets were water running down the front of a desk lamp. The interior
+       // ellipses already thinned them to nothing and the pane matte now deletes
+       // them outright; carrying them was buying a fence twice and a picture
+       // never.
+       //
+       // Re-pointed onto the first two bays of actual glass, which is also where
+       // the frame needed them: the run between the partition arris (0.416) and
+       // the near mullion (0.632) was the emptiest stretch of pane in the shot.
+       // Deliberately the faintest four of the eight — over the darker inboard
+       // bays the lit gate keeps them near 5%, enough to say "there is glass
+       // here", not enough to be seen as a mark.
+       + rivulet(uv, 0.428, 0.043, 1.3, 0.0013, 5.5) * 0.44
+       + rivulet(uv, 0.505, 0.036, 3.9, 0.0010, 8.6) * 0.38
+       + rivulet(uv, 0.472, 0.050, 2.7, 0.0021, 4.0) * 0.50
+       + rivulet(uv, 0.556, 0.034, 0.6, 0.0012, 7.0) * 0.36;
 }
 
 /**
@@ -1094,8 +1204,12 @@ void main() {
   float behindLum = dot(behind, vec3(0.2126, 0.7152, 0.0722));
   float lit = mix(1.0, smoothstep(0.03, 0.30, behindLum), uHasLight);
   // Everything this pass draws lives on the far side of the pane, so every
-  // term below is fenced by the room's own furniture. See pqInterior().
-  float pane = 1.0 - pqInterior(uv);
+  // term below is fenced twice: OUT of the room's own furniture (pqInterior) and
+  // IN to the window wall itself (pqPane). The second is the one that stops the
+  // sheet, the tracks and the specular reading as a full-frame overlay — a run
+  // of water with no left edge anywhere in the picture is a filter, whatever is
+  // drawn inside it.
+  float pane = (1.0 - pqInterior(uv)) * pqPane(uv);
 
   float riv = rivuletField(uv);
   // The pane has a bottom. The rivulets used to run the full height of the
@@ -1165,6 +1279,23 @@ void main() {
   // Gated on lit: lightHue() peak-normalises, so over dead black it would
   // amplify sensor noise into a confetti of saturated hues.
   cRiv = mix(cRiv, lightHue(refr) * (0.55 + 1.35 * lit), 0.45 * uHasLight * lit);
+  /* ── The caustic ──────────────────────────────────────────────────────────
+   * A bead of water is a cylindrical lens, and the whole of what separates one
+   * from a coloured line is that a lens has a FOCUS. The displacement above
+   * already shifts what is behind the bead; it shifts it evenly, so the drop
+   * carries the city and never concentrates it.
+   *
+   * The concentration happens on the FLANKS — where the surface is steepest,
+   * which is exactly where the field's own horizontal derivative peaks — so the
+   * derivative already in hand is the lens power, and the highlight is that power
+   * carrying the refracted hue. Two consequences the frame needs: a runnel
+   * crossing the signage throws a teal core, one crossing a street practical
+   * throws an amber one, and both of them are BRIGHTER than the pane around
+   * them, so the water reads as refractive rather than as a tinted stroke.
+   * Gated on the lit term and on uHasLight for the same reason as the line
+   * above it. */
+  float caustic = smoothstep(0.08, 0.34, abs(gx)) * lit * uHasLight;
+  cRiv += lightHue(refr) * caustic * 0.38;
 
   // Reflected practical: a small soft lobe plus the vertical drag wet glass
   // gives it.

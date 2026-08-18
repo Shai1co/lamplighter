@@ -100,8 +100,24 @@ const GRAIN_PX = 2.2;
  * and the atrium's upper midtones stay well outside it — it simply now has
  * something on the far side of it.
  */
+/*
+ * …and then the RADIUS came down, 0.34 → 0.25.
+ *
+ * The note is specific and it is about the one asset in the frame worth
+ * protecting: the relay board's cyan was smearing past its own bezel and onto
+ * the wall behind it as a soft structureless blob, so the sharpest, most
+ * legible, most diegetic object in the picture was being surrounded by the
+ * blurriest. That is the wrong way round — bloom exists to say a source is
+ * BRIGHT, and a halo wider than the source it comes from says instead that the
+ * renderer could not resolve it.
+ *
+ * 0.25 keeps the scatter inside roughly a bezel's width of whatever emits it,
+ * which still buys the air the gate note above is about (the shade's interior
+ * and the brightest discs of city bokeh both still flare) and stops the board's
+ * 12px type from being wrapped in a glow four times its own stroke.
+ */
 const BLOOM_THRESHOLD = 0.82;
-const BLOOM_RADIUS = 0.34;
+const BLOOM_RADIUS = 0.25;
 
 const v3 = (a?: [number, number, number], d = 0): THREE.Vector3 =>
   a ? new THREE.Vector3(a[0], a[1], a[2]) : new THREE.Vector3(d, d, d);

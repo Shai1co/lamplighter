@@ -45,6 +45,23 @@ export interface InteriorLobe {
   soft: number;
 }
 
+/**
+ * The window wall itself, as a rectangle of the framed screen (0..1, y-up) with
+ * a soft shoulder on each side. See LIGHTFIELD_GLSL → pqPane: the interior lobes
+ * say what is IN FRONT of the glass, and this says where the glass IS. Both are
+ * needed — the complement of four ellipses leaks around them, and every leak is
+ * a streak standing on a wall.
+ */
+export interface PaneSpec {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  /** Shoulder widths in x and y, in frame fractions. */
+  softX: number;
+  softY: number;
+}
+
 /** Where a scene's brightest practical should be thrown back onto the glass. */
 export interface ReflectionSpec {
   /** Screen-space position, 0..1 (y up). */
@@ -283,6 +300,10 @@ export class Weather {
   private readonly uInteriorD: THREE.IUniform<THREE.Vector4>;
   private readonly uInteriorSoft: THREE.IUniform<THREE.Vector4>;
   private readonly uInteriorAmt: THREE.IUniform<number>;
+  /** …and the positive half of the same statement: where the glass is. */
+  private readonly uPane: THREE.IUniform<THREE.Vector4>;
+  private readonly uPaneSoft: THREE.IUniform<THREE.Vector2>;
+  private readonly uPaneAmt: THREE.IUniform<number>;
 
   private readonly rnd = mulberry32(STAGE_SEED ^ 0x51ed270b);
   private readonly tweens = new Set<gsap.core.Tween>();
@@ -317,15 +338,32 @@ export class Weather {
     this.uInteriorD = { value: new THREE.Vector4(0, 0, 0, 0) };
     this.uInteriorSoft = { value: new THREE.Vector4(0.3, 0.3, 0.3, 0.3) };
     this.uInteriorAmt = { value: 0 };
+    // Amount 0 ⇒ pqPane returns 1 everywhere ⇒ a plate that declares no window
+    // keeps exactly the weather it had.
+    this.uPane = { value: new THREE.Vector4(0, 0, 1, 1) };
+    this.uPaneSoft = { value: new THREE.Vector2(0.05, 0.05) };
+    this.uPaneAmt = { value: 0 };
 
     // Field opacities are the PRE-jitter base: each drop then keeps 30–80% of it
     // (RAIN_DIFFUSE_PATCH), mean 0.55, so these carry the old effective density.
+    /* Velocity spread 9–13 → 6.5–16.5, i.e. ±44% about the mean rather than
+     * ±18%, and it is the second half of the "vary streak length AND velocity"
+     * note (RAIN_POINTSIZE_PATCH already spreads length by a factor of four).
+     *
+     * The two axes are independently drawn from the same stream and that is the
+     * point: with a ±18% spread every drop in a captured STILL crossed the same
+     * number of pixels per exposure, so however varied their painted lengths
+     * were, the field animated as one sheet — and a sheet moving at one speed is
+     * a texture being scrolled, which is exactly the overlay read. At ±44% the
+     * near drops visibly outrun the far ones between frames while their lengths
+     * disagree with their speeds, which is what a real fall through two metres
+     * of depth and a gusting wind actually looks like. */
     this.rain = this.buildField(360, this.streakTex, {
-      size: 0.5, color: 0xbcd2dc, opacity: RAIN_BASE, additive: false, velMin: 9, velMax: 13,
+      size: 0.5, color: 0xbcd2dc, opacity: RAIN_BASE, additive: false, velMin: 6.5, velMax: 16.5,
     }, RAIN_FIELD);
     this.patchRainMaterial(this.rain.material);
     this.rainNear = this.buildField(9, this.hairlineTex, {
-      size: 0.92, color: 0xcfd9de, opacity: RAIN_NEAR_BASE, additive: false, velMin: 10, velMax: 13.5,
+      size: 0.92, color: 0xcfd9de, opacity: RAIN_NEAR_BASE, additive: false, velMin: 9, velMax: 17,
     }, NEAR_RAIN);
     this.patchRainMaterial(this.rainNear.material);
     this.snow = this.buildField(240, this.dotTex, {
@@ -396,6 +434,9 @@ export class Weather {
         uInteriorD: this.uInteriorD,
         uInteriorSoft: this.uInteriorSoft,
         uInteriorAmt: this.uInteriorAmt,
+        uPane: this.uPane,
+        uPaneSoft: this.uPaneSoft,
+        uPaneAmt: this.uPaneAmt,
       },
       vertexShader: GLASS_VERTEX,
       fragmentShader: GLASS_FRAGMENT,
@@ -500,6 +541,9 @@ export class Weather {
       shader.uniforms.uInteriorD = this.uInteriorD;
       shader.uniforms.uInteriorSoft = this.uInteriorSoft;
       shader.uniforms.uInteriorAmt = this.uInteriorAmt;
+      shader.uniforms.uPane = this.uPane;
+      shader.uniforms.uPaneSoft = this.uPaneSoft;
+      shader.uniforms.uPaneAmt = this.uPaneAmt;
       shader.vertexShader =
         RAIN_VERTEX_DECL + shader.vertexShader.replace('gl_PointSize = size;', RAIN_POINTSIZE_PATCH);
       shader.fragmentShader =
@@ -550,6 +594,22 @@ export class Weather {
       }
     }
     this.uInteriorAmt.value = THREE.MathUtils.clamp(amount, 0, 1);
+  }
+
+  /**
+   * Publish the window wall itself. Every system on this rig lives on the far
+   * side of the glass, so outside this rectangle there is no weather at all —
+   * not thinned, absent. Pass null (or amount 0) to retire the matte, which is
+   * what a plate with no window does.
+   */
+  setPaneMask(pane: PaneSpec | null, amount = 1): void {
+    if (!pane || amount <= 0) {
+      this.uPaneAmt.value = 0;
+      return;
+    }
+    this.uPane.value.set(pane.x0, pane.y0, pane.x1, pane.y1);
+    this.uPaneSoft.value.set(Math.max(pane.softX, 1e-3), Math.max(pane.softY, 1e-3));
+    this.uPaneAmt.value = THREE.MathUtils.clamp(amount, 0, 1);
   }
 
   setLightField(map: THREE.Texture | null, refl: ReflectionSpec | null): void {

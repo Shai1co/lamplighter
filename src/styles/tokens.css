@@ -423,6 +423,20 @@
      all read THROUGH the bottom of the frame the way Eliza's couch and carpet
      read through its own. */
   --pq-scrim-band: clamp(320px, 42vh, 454px);
+  /* …and the FOOT: the short, NEUTRAL ramp under the reading line itself.
+     The band and the tail above are struck warm (--pq-scrim-warm-rgb), which is
+     correct for a fade that has to belong to a lamp-lit room and is exactly
+     wrong for the job this one does. The prose crosses the frame from a warm,
+     comparatively bright lamp pool on the left to a near-black laptop lid on the
+     right, and a warm fade over that pair grounds the two halves by different
+     amounts: the speaker plate and the serif line end up sitting on two
+     different values, which is the note.
+     220px of true black on a smoothstep is the ground the type actually stands
+     on — short enough that it lives entirely under the first baseline (so it can
+     never be read as the top of anything), neutral so it costs the left and the
+     right the same, and low enough that composited with the pair above it moves
+     the bottom edge by about five points. */
+  --pq-scrim-foot: clamp(160px, 20.4vh, 220px);
 
   /* ── Proxy panel geometry ───────────────────────────────────────────────
      The panel shares the frame with the speaker's face, and a UI edge across a
