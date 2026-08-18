@@ -996,6 +996,40 @@ uniform vec4 uPane;
 uniform vec2 uPaneSoft;
 uniform float uPaneAmt;
 /**
+ * ── The rain window ─────────────────────────────────────────────────────────
+ *
+ * The pane matte above is one rectangle, and one rectangle is not enough to say
+ * where a wall of glass is once anything stands in front of it. The ops room is
+ * the case that proves it: the glass runs from the partition jamb to the frame
+ * edge, and a task chair — the largest opaque mass in the composition — sits in
+ * the middle of that run with its crown two fifths of the way up the picture.
+ * A single rect either includes the chair (and rains down it, which is the note
+ * four consecutive reads came back with) or excludes the whole middle of the
+ * window with it. Ellipses cannot fix that either: they are a SUBTRACTIVE
+ * description, and every gap between them leaks a streak onto something solid.
+ *
+ * So the glass is declared as a UNION OF UP TO TWO FEATHERED RECTANGLES —
+ * "here, and here, is where a raindrop can be seen at all" — authored per plate
+ * off a framed 1920×1080 capture, in the same 0..1 y-up screen the light field
+ * is sampled in. Two is the whole budget on purpose: a description that needs
+ * three is a description that has started tracing a silhouette, and a traced
+ * silhouette in a weather field is a matte.
+ *
+ * The second rect is what carries the VERTICAL clip. In the ops room the upper
+ * rect stops at the chair's crown and the outboard rect continues past it down
+ * to the sill, so the field terminates in mid-frame only where the chair is
+ * standing in it — which is what occlusion looks like — and runs to the floor
+ * line out in the bay, where nothing interrupts it.
+ *
+ * Each rect is (x0, x1, y0, y1). uRainWinAmt 0 retires the window entirely: a
+ * plate that declares none keeps exactly the weather it had.
+ */
+uniform vec4 uRainWinA;
+uniform vec4 uRainWinB;
+/** Feather half-widths in x and y, frame fractions. Never zero — see pqWinRect. */
+uniform vec2 uRainWinSoft;
+uniform float uRainWinAmt;
+/**
  * Where this fragment is on screen, 0..1, y up.
  *
  * Straight off gl_FragCoord, NEVER off an interpolated gl_Position.xy/w. Both
@@ -1052,6 +1086,31 @@ float pqPane(vec2 uv) {
   float my = smoothstep(uPane.y - uPaneSoft.y, uPane.y + uPaneSoft.y, uv.y)
            * (1.0 - smoothstep(uPane.w - uPaneSoft.y, uPane.w + uPaneSoft.y, uv.y));
   return mix(1.0, mx * my, clamp(uPaneAmt, 0.0, 1.0));
+}
+/**
+ * One rain-window rectangle: 1 inside, 0 outside, with a smooth shoulder on all
+ * four sides. A degenerate rect (unset slot) returns 0 and drops out of the max.
+ *
+ * The shoulder is the entire reason this is a smoothstep and not a step: a hard
+ * boundary in a weather field is a matte, and a matte is the exact artefact the
+ * window exists to remove. Ranges that reach a frame edge are pushed past it by
+ * the Stage (see Weather.setRainWindow) so their feather is spent off-picture
+ * and the field runs full strength to the edge rather than halving at it.
+ */
+float pqWinRect(vec2 uv, vec4 r) {
+  if (r.y <= r.x || r.w <= r.z) return 0.0;
+  vec2 s = max(uRainWinSoft, vec2(1e-3));
+  float mx = smoothstep(r.x - s.x, r.x + s.x, uv.x)
+           * (1.0 - smoothstep(r.y - s.x, r.y + s.x, uv.x));
+  float my = smoothstep(r.z - s.y, r.z + s.y, uv.y)
+           * (1.0 - smoothstep(r.w - s.y, r.w + s.y, uv.y));
+  return mx * my;
+}
+/** 1 where this plate has glass, 0 where it has room. See the uniforms above. */
+float pqRainWindow(vec2 uv) {
+  if (uRainWinAmt <= 0.0) return 1.0;
+  float m = max(pqWinRect(uv, uRainWinA), pqWinRect(uv, uRainWinB));
+  return mix(1.0, m, clamp(uRainWinAmt, 0.0, 1.0));
 }
 /** 1 where the room's own furniture occludes the pane, 0 out on the glass. */
 float pqInterior(vec2 uv) {
@@ -1138,6 +1197,15 @@ diffuseColor.a *= mix(1.0, 0.02, pqInterior(pqScreenUv()));
 // to resolve into. The smoothstep in pqPane is what keeps the edge off the
 // picture; the value it reaches is zero.
 diffuseColor.a *= pqPane(pqScreenUv());
+// …and the RAIN WINDOW, which is the same statement made per plate and with a
+// vertical extent (see pqRainWindow). It is multiplied, absolute and last of the
+// three fences because it is the one that can say "there is a chair in front of
+// this bay": the pane rect above knows only that the wall of glass begins at
+// x=0.425, and a wall of glass with a task chair standing in the middle of it
+// still has no rain over the chair. Zero outside, no floor, no allowance — a
+// drop that is not on glass is not a drop, it is an overlay, and this is the
+// only fence in the file that gets to see that per background.
+diffuseColor.a *= pqRainWindow(pqScreenUv());
 // …and the SPECULAR TINT, 0.62 → 0.78. A drop on a window is not a white tick
 // that happens to be standing in front of a teal city; it is a lens, and what it
 // shows is the city. Taking three quarters of its hue from what is behind it
@@ -1281,7 +1349,15 @@ void main() {
   // sheet, the tracks and the specular reading as a full-frame overlay — a run
   // of water with no left edge anywhere in the picture is a filter, whatever is
   // drawn inside it.
-  float pane = (1.0 - pqInterior(uv)) * pqPane(uv);
+  // …and fenced a THIRD time by the plate's own rain window, which is what
+  // stops the rivulets, the sheet, the tracks and the frame members from being
+  // drawn over a chair back or a desk that happens to stand inside the pane
+  // rect. Every term below reads this same "pane" factor, so declaring the
+  // window once here gates the whole pass — including the mullions, which is
+  // correct in the same way the water is: a frame
+  // member behind an object in the room is occluded by it exactly as the water
+  // on the same sheet is.
+  float pane = (1.0 - pqInterior(uv)) * pqPane(uv) * pqRainWindow(uv);
 
   float riv = rivuletField(uv);
   // The pane has a bottom. The rivulets used to run the full height of the

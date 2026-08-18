@@ -638,17 +638,23 @@
   inset: 0;
   background-repeat: no-repeat;
   /* Five BOXED layers (the lid's own surface: cool arris, warm arris, wear,
-     sheen, mass) and fifteen full-frame ones. The two lists are positional and
+     sheen, mass) and seventeen full-frame ones. The two lists are positional and
      have to stay in lockstep with `background-image` below — box entries are
-     `44% 27%` / `100% 100%`, everything else `100% 100%` / `0 0`. Twenty entries
-     each; the five boxed ones are at indices 1–4 and 7, and everything after
-     index 7 is full-frame, which is why new terms are always appended into the
-     trailing run rather than threaded through it. */
-  background-position: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 0 0, 0 0, 100% 100%,
-    0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
-  background-size: 44% 27%, 44% 27%, 44% 27%, 44% 27%, 100% 100%, 100% 100%, 44% 27%,
+     `44% 27%` / `100% 100%`, everything else `100% 100%` / `0 0`. TWENTY-TWO
+     entries each; the five boxed ones are at indices 1–4 and 9, and everything
+     after index 9 is full-frame.
+     Two full-frame terms (2b, the lid's warm near edge; 2c, its throw onto the
+     chair) were inserted at indices 6–7 rather than appended, and the reason is
+     the only rule that matters in this list: CSS paints the FIRST layer on top,
+     so anything that has to be seen ON the lid must sit ahead of the mass at
+     index 9. Appending a rim highlight would have buried it under a 0.90 black.
+     Terms that light the room rather than the lid still go on the end. */
+  background-position: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 0 0, 0 0, 0 0, 0 0,
+    100% 100%, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0;
+  background-size: 44% 27%, 44% 27%, 44% 27%, 44% 27%, 100% 100%, 100% 100%, 100% 100%,
+    100% 100%, 44% 27%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%,
     100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%,
-    100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+    100% 100%;
   background-image:
     /* 1 — THE ARRIS. Boxed to the lid and listed first, i.e. painted over it:
        the top edge of the panel, seen against the glow escaping from the screen
@@ -666,9 +672,23 @@
        gradient to read instead of one flat value. Ceiling on the spill is 5.5%
        over a 0.90 mass, i.e. ~6 code values: felt at 100%, unnameable at a
        glance. */
+    /* …and it now opens on a CRISP CORE. The stop list below described a rise
+       from nothing at 1.1% of the box to 34% at 2.5% — 3.2px to 7.3px at 292px,
+       i.e. a four-pixel ramp — and a four-pixel ramp is not an arris, it is a
+       soft edge on a soft mass, which is the whole of the "untextured black
+       slab" note: the panel had a gradient where it needed a LINE. A closed lid
+       catches its own screen along the top of its shell in a highlight about a
+       pixel and a half wide and very bright, and that specific mark is the only
+       thing in the frame that says the slab is a lit object rather than a hole.
+       So one stop is inserted ahead of the old ramp at 1.72% (≈5px down the box,
+       three pixels above where the mass commits) at 0.58 — a ~1.7px core with a
+       ~2.3px shoulder into the 0.34 the ramp already carried, which then runs on
+       into the spill exactly as before. Nothing after this stop changed: the
+       edge got a highlight, the panel kept its gradient. */
     linear-gradient(
       178deg,
-      rgba(170, 224, 240, 0) 1.1%,
+      rgba(170, 224, 240, 0) 1.15%,
+      rgba(228, 250, 255, 0.58) 1.72%,
       rgba(206, 244, 252, 0.34) 2.5%,
       rgba(158, 216, 234, 0.13) 4.2%,
       rgba(140, 200, 220, 0.055) 7%,
@@ -757,6 +777,50 @@
         rgba(196, 238, 250, 0.26),
         rgba(150, 206, 224, 0.07) 46%,
         transparent 80%
+      ),
+    /* 2b — …and the LAMP's answer on that same near edge. Layer 2 lights the
+       lid's left corner with the screen it is folded over, which is the source
+       on the far side of the panel; the room's other source is a tungsten
+       practical 1400px away at camera-left, and it has an unobstructed line to
+       this exact edge — it is the one plane of the lid actually turned toward
+       it. An edge that catches one of a room's two lights and not the other is
+       an edge that was drawn rather than lit, which is the same argument layer
+       1b makes for the top arris, applied to the corner the eye reads first.
+       A 2px core rather than the cool line's 3px, set a hair further inboard
+       (56.5% against 56.3%) and — the part that actually matters — parked HIGHER
+       up the edge. Both terms are radial and therefore symmetric about their own
+       centres, so two concentric ones simply average into a neutral stripe: at a
+       shared 83–87% the warm was arithmetically present and optically absent,
+       which is the same thing as not existing. Centred at 79.5% with two thirds
+       the reach, it owns the top of the edge and the cool one owns the bottom.
+       That split is also the physically right one — the practical is up and away
+       to camera-left, so its graze lands on the segment nearest the arris and
+       falls off down the corner as the shell turns out of its light. */
+      radial-gradient(
+        2px 82px at 56.5% 79.5%,
+        rgba(250, 202, 138, 0.34),
+        rgba(240, 176, 110, 0.1) 44%,
+        transparent 80%
+      ),
+    /* 2c — the lid's THROW onto what is above and behind it. Layers 3 and 5
+       carry the screen's escape up the frame's centre-right, on her; nothing
+       carried it LEFT, onto the chair's right shoulder and the near edge of her
+       torso, which is the band the lid's own arris runs into. A slab whose light
+       stops at its own outline is a slab that has been pasted in — the cheapest
+       proof that a panel is emitting is a soft lobe of its colour lying on the
+       first surface above it.
+       Wide (≈240 × 70px at 1920), centred just above the arris at x 62.5%, and
+       held at FIVE PERCENT: the file has already lost this argument twice in the
+       other direction (see layers 3 and 7, both cut back for reading as "a milky
+       haze"), so this one is placed on the chair and the torso's edge rather
+       than on her blouse, and it is set below the level at which a wash can be
+       seen on its own account. Same teal as every other term the screen lights,
+       never a fourth colour. */
+      radial-gradient(
+        12.5% 6.5% at 62.5% 66.5%,
+        rgba(138, 208, 224, 0.05),
+        rgba(130, 198, 214, 0.017) 46%,
+        transparent 82%
       ),
     /* 3 — the screen's escape ACROSS that arris: the soft cool wash a lit panel
        throws onto the air, the desk and the underside of everything above its
@@ -3977,7 +4041,24 @@
        radius, so what the eye reads is the same haze the bleed above puts in the
        air, thickening a little where the type is. A box would be a hard fail;
        this is a falloff. */
-      radial-gradient(33% 14% at 50% 41%, rgba(var(--pq-paper-rgb) / 0.42), transparent 78%),
+      /* …and it comes up 0.42 → 0.56 with a mid stop and a slightly wider reach
+         (33 × 14% → 36 × 15.5%). The note is unchanged and so is the diagnosis —
+         the display line lands on the brightest run of city bokeh in the plate —
+         but at 0.42 across a single falloff the scrim was doing most of its work
+         in the middle of the ellipse, where the type is thinnest, and running
+         out under 'Shift', which is the end that overhangs the window. The extra
+         stop at 52% is what changes: it holds a fifth of the density out to the
+         lockup's shoulders instead of decaying straight to nothing, so the whole
+         line sits on one ground rather than on a bulge. Roughly twelve per cent
+         more separation at the letterforms — enough that the type stops fighting
+         mid-grey clutter, still nowhere near the black box this file has spent
+         three rounds refusing. There is no edge on it at any radius. */
+      radial-gradient(
+        36% 15.5% at 50% 41%,
+        rgba(var(--pq-paper-rgb) / 0.56),
+        rgba(var(--pq-paper-rgb) / 0.2) 52%,
+        transparent 80%
+      ),
     /* …and one more, off-centre and lower, on the MONITOR. The lockup's left
        shoulder overhangs the relay screen's top-right corner: 'The' and the
        display line's descenders were landing within a few code values of a lit
@@ -4150,8 +4231,16 @@
   letter-spacing: 0.34em;
   text-indent: 0.34em;
   text-transform: uppercase;
-  color: rgba(var(--pq-warm-rgb) / 0.88);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 1px 12px rgba(0, 0, 0, 0.5),
+  /* 0.88 → 1. The kicker is 11px of 0.34em-tracked caps over a wall of window,
+     and at 88% of a warm off-white it was measuring within a few code values of
+     the bokeh behind its own counters — a label that has to be hunted for is not
+     a label. Struck at full density it is still the quietest type on the card by
+     size and weight, which is the hierarchy the lockup wants; what it stops
+     being is faint. The contact shadow comes up with it (0.55 → 0.62) so the
+     ground immediately under each stem is pushed down at the stroke's own
+     scale, which is what actually buys separation on a busy plate. */
+  color: rgb(var(--pq-warm-rgb));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.62), 0 1px 12px rgba(0, 0, 0, 0.5),
     0 0 22px rgba(var(--pq-lamp-rgb) / 0.2);
 }
 /* A deliberate hairline, not an ambiguous fading dash. At 24px it was shorter
@@ -4164,16 +4253,24 @@
    step (500/72% → 600/88%), so the hairline follows it to 0.84 — a hair under,
    because a 1px rule struck at a caps line's full density reads heavier than the
    caps do. */
+/* …and it follows the kicker up again, 0.84 → 0.94, for the reason it followed
+   it the first time: the two are one mark. A 1px rule under caps struck at full
+   density reads heavier than the caps do, so it stays a step under rather than
+   matching — but a step under FULL, not a step under 88%. */
 .pq-chapter__rule {
   width: 46px;
   height: 1px;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(var(--pq-warm-rgb) / 0.84) 26%,
-    rgba(var(--pq-warm-rgb) / 0.84) 74%,
+    rgba(var(--pq-warm-rgb) / 0.94) 26%,
+    rgba(var(--pq-warm-rgb) / 0.94) 74%,
     transparent
   );
+  /* The rule sits on the same bokeh the kicker does and has no shadow of its
+     own to sit in; one hairline of contact shade under it is what keeps a 1px
+     warm line from dissolving into a 40%-luma window. */
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
 }
 /* The title's floor, 24px below the last baseline (8px margin + the 16px stack
    gap). Longer than the eyebrow's rule because it answers a display line rather
@@ -4245,30 +4342,44 @@
    same haze the title sits in, so it belongs to the frame's light rather than to
    the browser), and breathing over a range that is unmistakably an animation
    rather than a rendering accident. */
+/* …and it came back reading ORPHANED anyway, which is a different complaint
+   from "invisible" and needs a different answer. 18px at 68% breathing down to
+   34% over two seconds is a mark that (a) is small enough to be mistaken for a
+   plate artefact and (b) spends half its cycle disappearing — and a thing that
+   blinks out is a thing the eye files as noise rather than as an invitation.
+   Three changes, all in the direction of DELIBERATE:
+     • bigger and heavier — 18 × 11 → 22 × 13 with a 1.8px stroke, so it is
+       unambiguously a drawn glyph at 1:1 and not a highlight on the floor;
+     • brighter and struck at a density that does not move much — 0.9 at the top
+       of the cycle, 0.62 at the bottom. A third of a stop of breath reads as a
+       thing that is alive; two thirds reads as a thing that is failing;
+     • and SLOW. 2s → 3.6s. At two seconds the pulse is quick enough to compete
+       with reading; at three and a half it is the tempo of the card itself.
+   The lamp halo comes up with it so the mark belongs to the room's own light. */
 .pq-chapter__more {
   position: absolute;
   left: 50%;
   top: 92%;
-  width: 18px;
-  height: 11px;
+  width: 22px;
+  height: 13px;
   transform: translate(-50%, -50%);
   opacity: 0;
   transition: opacity var(--pq-dur-4) var(--pq-ease);
 }
 .pq-chapter.is-in .pq-chapter__more {
-  opacity: 0.68;
-  animation: pq-chapter-breathe 2s var(--pq-ease-in-out) var(--pq-dur-5) infinite;
+  opacity: 0.9;
+  animation: pq-chapter-breathe 3.6s var(--pq-ease-in-out) var(--pq-dur-5) infinite;
 }
 .pq-chapter__more i {
   position: absolute;
   top: 1px;
-  width: 11px;
-  height: 1.5px;
+  width: 13px;
+  height: 1.8px;
   border-radius: 1px;
   /* Reading white, like every other affordance in the game — the theme ink is
      cool and put a blue mark on a tungsten plate. */
-  background: rgba(var(--pq-warm-rgb) / 0.92);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55), 0 0 10px rgba(var(--pq-lamp-rgb) / 0.4);
+  background: rgb(var(--pq-warm-rgb));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), 0 0 14px rgba(var(--pq-lamp-rgb) / 0.55);
 }
 .pq-chapter__more i:first-child {
   left: 0;
@@ -4281,10 +4392,10 @@
 @keyframes pq-chapter-breathe {
   0%,
   100% {
-    opacity: 0.68;
+    opacity: 0.9;
   }
   50% {
-    opacity: 0.34;
+    opacity: 0.62;
   }
 }
 

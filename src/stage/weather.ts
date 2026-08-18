@@ -62,6 +62,37 @@ export interface PaneSpec {
   softY: number;
 }
 
+/**
+ * One rectangle of "there is glass here", in the framed screen (0..1, y-up).
+ *
+ * `y0`/`y1` default to the full height, so a plate whose glass has no sill in
+ * frame can be written as a pure X range — which is what the name is about: a
+ * rain WINDOW is first a horizontal statement (where, across the frame, does
+ * the wall of glass run) and only secondarily a vertical one (where does that
+ * run stop, because a chair, a desk or a floor is standing in it).
+ */
+export interface RainWindowRange {
+  x0: number;
+  x1: number;
+  y0?: number;
+  y1?: number;
+}
+
+/**
+ * A plate's rain window: up to two ranges, unioned, with one shared feather.
+ *
+ * See LIGHTFIELD_GLSL → pqRainWindow for why this exists alongside the pane
+ * matte and the interior ellipses, and why the budget is two.
+ */
+export interface RainWindowSpec {
+  ranges: ReadonlyArray<RainWindowRange>;
+  /** Feather half-widths, frame fractions. 0.03–0.05 is the working range. */
+  softX: number;
+  softY: number;
+  /** 0 retires the window (weather everywhere, as before). Defaults to 1. */
+  amount?: number;
+}
+
 /** Where a scene's brightest practical should be thrown back onto the glass. */
 export interface ReflectionSpec {
   /** Screen-space position, 0..1 (y up). */
@@ -304,6 +335,11 @@ export class Weather {
   private readonly uPane: THREE.IUniform<THREE.Vector4>;
   private readonly uPaneSoft: THREE.IUniform<THREE.Vector2>;
   private readonly uPaneAmt: THREE.IUniform<number>;
+  /** …and the per-plate rain window: up to two (x0,x1,y0,y1) glass rectangles. */
+  private readonly uRainWinA: THREE.IUniform<THREE.Vector4>;
+  private readonly uRainWinB: THREE.IUniform<THREE.Vector4>;
+  private readonly uRainWinSoft: THREE.IUniform<THREE.Vector2>;
+  private readonly uRainWinAmt: THREE.IUniform<number>;
 
   private readonly rnd = mulberry32(STAGE_SEED ^ 0x51ed270b);
   private readonly tweens = new Set<gsap.core.Tween>();
@@ -343,6 +379,13 @@ export class Weather {
     this.uPane = { value: new THREE.Vector4(0, 0, 1, 1) };
     this.uPaneSoft = { value: new THREE.Vector2(0.05, 0.05) };
     this.uPaneAmt = { value: 0 };
+    // Degenerate rects (x1 ≤ x0) ⇒ pqWinRect returns 0 for both ⇒ with amount 0
+    // pqRainWindow returns 1 everywhere, so a plate that declares no window is
+    // rendered exactly as it was before this fence existed.
+    this.uRainWinA = { value: new THREE.Vector4(0, 0, 0, 0) };
+    this.uRainWinB = { value: new THREE.Vector4(0, 0, 0, 0) };
+    this.uRainWinSoft = { value: new THREE.Vector2(0.04, 0.04) };
+    this.uRainWinAmt = { value: 0 };
 
     // Field opacities are the PRE-jitter base: each drop then keeps 30–80% of it
     // (RAIN_DIFFUSE_PATCH), mean 0.55, so these carry the old effective density.
@@ -437,6 +480,10 @@ export class Weather {
         uPane: this.uPane,
         uPaneSoft: this.uPaneSoft,
         uPaneAmt: this.uPaneAmt,
+        uRainWinA: this.uRainWinA,
+        uRainWinB: this.uRainWinB,
+        uRainWinSoft: this.uRainWinSoft,
+        uRainWinAmt: this.uRainWinAmt,
       },
       vertexShader: GLASS_VERTEX,
       fragmentShader: GLASS_FRAGMENT,
@@ -544,6 +591,10 @@ export class Weather {
       shader.uniforms.uPane = this.uPane;
       shader.uniforms.uPaneSoft = this.uPaneSoft;
       shader.uniforms.uPaneAmt = this.uPaneAmt;
+      shader.uniforms.uRainWinA = this.uRainWinA;
+      shader.uniforms.uRainWinB = this.uRainWinB;
+      shader.uniforms.uRainWinSoft = this.uRainWinSoft;
+      shader.uniforms.uRainWinAmt = this.uRainWinAmt;
       shader.vertexShader =
         RAIN_VERTEX_DECL + shader.vertexShader.replace('gl_PointSize = size;', RAIN_POINTSIZE_PATCH);
       shader.fragmentShader =
@@ -610,6 +661,48 @@ export class Weather {
     this.uPane.value.set(pane.x0, pane.y0, pane.x1, pane.y1);
     this.uPaneSoft.value.set(Math.max(pane.softX, 1e-3), Math.max(pane.softY, 1e-3));
     this.uPaneAmt.value = THREE.MathUtils.clamp(amount, 0, 1);
+  }
+
+  /**
+   * Publish the plate's RAIN WINDOW — up to two screen-space rectangles of
+   * "there is glass here", unioned. Outside them no system on this rig draws
+   * anything at all: not the falling field, not the rivulets, not the sheet,
+   * not the frame members. Pass null (or amount 0) to retire it, which is what
+   * a plate with no authored window does.
+   *
+   * A range that reaches a frame edge is pushed PAST that edge by two feathers
+   * before it goes to the GPU. Without this an authored `x1: 1.0` would put the
+   * smoothstep's own midpoint on the last column of the picture and halve the
+   * field there — a soft vertical seam a frame-width from nothing, which is the
+   * artefact this whole fence exists to avoid. Authors write 0 and 1 meaning
+   * "to the edge"; the edge is where the feather is spent, not where it starts.
+   */
+  setRainWindow(spec: RainWindowSpec | null): void {
+    const amount = spec?.amount ?? 1;
+    if (!spec || spec.ranges.length === 0 || amount <= 0) {
+      this.uRainWinAmt.value = 0;
+      return;
+    }
+    const sx = Math.max(spec.softX, 1e-3);
+    const sy = Math.max(spec.softY, 1e-3);
+    this.uRainWinSoft.value.set(sx, sy);
+    const slots = [this.uRainWinA, this.uRainWinB];
+    for (let i = 0; i < slots.length; i++) {
+      const r = spec.ranges[i];
+      if (!r) {
+        slots[i].value.set(0, 0, 0, 0);
+        continue;
+      }
+      const y0 = r.y0 ?? 0;
+      const y1 = r.y1 ?? 1;
+      slots[i].value.set(
+        r.x0 <= 0.001 ? r.x0 - 2 * sx : r.x0,
+        r.x1 >= 0.999 ? r.x1 + 2 * sx : r.x1,
+        y0 <= 0.001 ? y0 - 2 * sy : y0,
+        y1 >= 0.999 ? y1 + 2 * sy : y1,
+      );
+    }
+    this.uRainWinAmt.value = THREE.MathUtils.clamp(amount, 0, 1);
   }
 
   setLightField(map: THREE.Texture | null, refl: ReflectionSpec | null): void {

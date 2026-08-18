@@ -24,7 +24,7 @@ import { KenBurns } from './camera';
 import { Layer } from './Layer';
 import { Character } from './Character';
 import { Weather } from './weather';
-import type { PaneSpec } from './weather';
+import type { PaneSpec, RainWindowSpec } from './weather';
 import { Transitions } from './transitions';
 import { PostFX } from './postfx';
 
@@ -979,6 +979,108 @@ const PLATE_PANES: Record<string, PaneSpec> = {
   ops_room: { x0: 0.425, y0: 0.31, x1: 1.06, y1: 1.08, softX: 0.05, softY: 0.055 },
 };
 
+/* ── …and where the glass is, PER PLATE, with a vertical extent ──────────────
+ *
+ * The pane matte above is one rectangle and it is authored for one background.
+ * Every other plate in the story is a window too — and every one of them has a
+ * different amount of room in front of it — so a rig that knows the geometry of
+ * exactly one of them will rain down the front of the other three. That is what
+ * this map is: the same statement, made once per background, in the shape the
+ * statement actually needs.
+ *
+ * Two things it can say that a single rect cannot:
+ *
+ *   • TWO RANGES. A wall of glass with a wooden mullion across it, or with a
+ *     task chair standing in the middle of it, is two runs of glass and one
+ *     obstruction — not one run. Ellipses were tried on exactly this problem and
+ *     the frames came back with the same note four times, because subtracting
+ *     round holes from a rectangle leaks at every gap between them.
+ *   • A SILL PER RANGE. The ops room's window goes to the floor out in the
+ *     outboard bay and stops at a chair's crown in the middle of frame. The
+ *     upper range therefore ends at the crown and the lower one runs on to the
+ *     floor line, so the field terminates in mid-air only where an object is
+ *     standing in it. A rain field that ends on a horizontal everywhere at once
+ *     is a layer; one that ends where a chair is is occlusion.
+ *
+ * EVERY NUMBER HERE WAS MEASURED, not chosen, off a framed 1920×1080 capture of
+ * each plate as the stage actually composes it — the plate is drawn at 1.3×
+ * overscan and slid by the framing bias, so texture coordinates and screen
+ * coordinates are two different things (see computeFraming). The feathers are
+ * then set so the mask reaches exactly ZERO on the near face of whatever solid
+ * object bounds the range; each range below records that clearance.
+ */
+const PLATE_RAIN_WINDOWS: Record<string, RainWindowSpec> = {
+  /* THE OPS ROOM. Left to right: concrete out to x 0.396, the jamb the glass is
+   * set into from 0.4135 to 0.429, then a wall of window to the frame edge. The
+   * task chair sits in that window — its crown peaks at y 0.437 and its widest
+   * point (y 0.30) reaches x 0.630 — and it is the object every previous round
+   * failed on, because it is opaque, it is the largest mass in the middle third,
+   * and a bright vertical crossing it is the loudest possible statement that the
+   * weather layer and the room were never in the same space.
+   *
+   *   A — the window wall ABOVE the chair. x0 0.462 − 0.032 = 0.430, i.e. the
+   *       mask is arithmetically zero on the outer face of the jamb (0.429), so
+   *       nothing lands on the frame member, the partition or anything left of
+   *       it. y0 0.492 − 0.045 = 0.447, ten pixels clear above the chair's crown
+   *       (0.437).
+   *   B — the OUTBOARD BAY, right of the chair, which is where the glass really
+   *       does run to the floor. x0 0.678 − 0.032 = 0.646, clear of the chair's
+   *       widest point (0.630); y0 0.305 − 0.045 = 0.260, i.e. it dies into the
+   *       glass/floor junction at y≈0.31 rather than continuing onto the carpet.
+   *
+   * The union is the picture: rain across the whole upper window wall, running
+   * on down to the sill only outboard of the chair. */
+  ops_room: {
+    ranges: [
+      { x0: 0.462, x1: 1, y0: 0.492, y1: 1 },
+      { x0: 0.678, x1: 1, y0: 0.305, y1: 1 },
+    ],
+    softX: 0.032,
+    softY: 0.045,
+  },
+  /* WINDOW_RAIN. Framed, this plate is very nearly all glass: the interior
+   * reveal and the lamp behind it are cropped down to a black strip at the far
+   * left that runs out at x≈0.145. One range, no sill — the pane genuinely
+   * continues to the bottom of the frame on the right, and the dark building
+   * mass down there is on the far side of it. x0 0.185 − 0.035 = 0.150. */
+  window_rain: {
+    ranges: [{ x0: 0.185, x1: 1, y0: 0, y1: 1 }],
+    softX: 0.035,
+    softY: 0.04,
+  },
+  /* WINDOW_DAWN. A sash window, so this is the two-range case in its purest
+   * form: a narrow left light, a wide timber mullion, then the main glass.
+   *   A — the left light, x 0.055→0.148 measured, y 0.20→top (the painted sill
+   *       under it runs at y≈0.17). Authored 0.082→0.122 so that with a 0.028
+   *       feather the mask is zero at 0.054 and again at 0.150 — the sash's own
+   *       two edges — and never touches the timber.
+   *   B — the main glass, x0 0.328 − 0.028 = 0.300, which is the inboard face of
+   *       the mullion (0.298). */
+  window_dawn: {
+    ranges: [
+      { x0: 0.082, x1: 0.122, y0: 0.2, y1: 1 },
+      { x0: 0.328, x1: 1, y0: 0, y1: 1 },
+    ],
+    softX: 0.028,
+    softY: 0.04,
+  },
+  /* MEMORY_ATRIUM. Authored defensively: the story sets `@weather none` here, so
+   * nothing draws today — but the plate had no pane entry at all, which means
+   * the instant anything ever does, it rains on the bookcases, the reading
+   * tables and the floor of a daylit library. A clerestory band across the top
+   * (x 0.03→0.78, above y 0.66) and the tall window behind the near stacks
+   * (x 0.29→0.49, y 0.18→0.58) are the only glass in frame; the right third is
+   * wall, a plant and a picture. */
+  memory_atrium: {
+    ranges: [
+      { x0: 0.03, x1: 0.78, y0: 0.66, y1: 1 },
+      { x0: 0.29, x1: 0.49, y0: 0.18, y1: 0.58 },
+    ],
+    softX: 0.035,
+    softY: 0.04,
+  },
+};
+
 /* ── Where the lens is focused ───────────────────────────────────────────────
  *
  * See PostFX.setFieldFocus. One ellipse per plate around the thing the camera
@@ -1764,6 +1866,7 @@ export class Stage implements IStage {
     const interior = PLATE_INTERIORS[id];
     this.weather.setInteriorMask(interior?.lobes ?? [], interior?.amount ?? 0);
     this.weather.setPaneMask(PLATE_PANES[id] ?? null);
+    this.weather.setRainWindow(PLATE_RAIN_WINDOWS[id] ?? null);
     this.plateFocus = PLATE_FOCUS[id] ?? null;
     this.applyFieldFocus();
     this.postfx.setShadowBridge(this.plateFocus?.bridge ?? 0);
