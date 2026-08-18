@@ -301,17 +301,44 @@ export async function stopServer(handle) {
 /* ─────────────────────────  hermetic stories dir (scenarios C/C2/E/F)  ───────────────────────── */
 
 /**
- * A fresh OS-temp directory seeded with copies of stories/lumen and
- * stories/_template — nothing scenario C/C2/E/F generates ever lands in the
- * repo, and a failed run leaves no cleanup debt in the repo tree. Uses
- * `os.tmpdir()` (not the repo) since this is what the shipped test suite
- * itself runs against on every machine/CI, not a one-off agent scratch file.
+ * A fresh OS-temp directory seeded with a copy of EVERY real story directory
+ * the repo currently ships (plus `_template`) — nothing scenario C/C2/E/F
+ * generates ever lands in the repo, and a failed run leaves no cleanup debt
+ * in the repo tree. Uses `os.tmpdir()` (not the repo) since this is what the
+ * shipped test suite itself runs against on every machine/CI, not a one-off
+ * agent scratch file.
+ *
+ * Deliberately NOT a hardcoded `lumen` (+ `_template`) list: the BUNDLED
+ * `import.meta.glob` discovery path (src/engine/registry.ts) always reads
+ * the repo's REAL /stories/* regardless of STORYGEN_STORIES_DIR, so it picks
+ * up every story the repo ships — including ones this suite never asked
+ * for. A story present in the bundled surface but absent from the hermetic
+ * copy produces a bundled record whose asset URLs resolve to `ctx.storiesDir`
+ * (this temp dir) via the storygen static handler and 404 the moment
+ * anything requests them — concretely, the title screen's own backdrop is
+ * requested unconditionally at boot for whichever story sorts first
+ * alphabetically (TitleScreen#applyBackdrop), so ANY undiscovered real story
+ * can fail the very first scenario in a hermetic group before that
+ * scenario's own steps even begin. Copying every real entry keeps the
+ * bundled and runtime surfaces in permanent agreement no matter what the
+ * repo ships next (confirmed against `stories/before-the-lanterns-drown`
+ * landing at HEAD after this suite was first written).
  */
 export function makeHermeticStoriesDir(tag) {
   const dir = mkdtempSync(path.join(os.tmpdir(), `lamplighter-e2e-${tag}-`));
-  cpSync(path.join(ROOT, 'stories', 'lumen'), path.join(dir, 'lumen'), { recursive: true });
-  cpSync(path.join(ROOT, 'stories', '_template'), path.join(dir, '_template'), { recursive: true });
-  log(`Hermetic stories dir (${tag}): ${dir} (seeded: lumen, _template)`);
+  const storiesRoot = path.join(ROOT, 'stories');
+  const seeded = [];
+  for (const entry of readdirSync(storiesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('_') || entry.name.startsWith('.')) continue;
+    cpSync(path.join(storiesRoot, entry.name), path.join(dir, entry.name), { recursive: true });
+    seeded.push(entry.name);
+  }
+  // _template is copied too, exactly as before — it is itself "_"-prefixed
+  // so the loop above always skips it, but every hermetic scenario should
+  // still see the same _template/lumen/... shape the real repo has.
+  cpSync(path.join(storiesRoot, '_template'), path.join(dir, '_template'), { recursive: true });
+  seeded.push('_template');
+  log(`Hermetic stories dir (${tag}): ${dir} (seeded: ${seeded.join(', ')})`);
   return dir;
 }
 
