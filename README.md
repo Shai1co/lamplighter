@@ -37,6 +37,12 @@ Other scripts:
 Requires Node 18+. Only `npm run gen-assets` needs anything beyond the repo (see
 [Art pipeline](#art-pipeline)).
 
+Want to *write* a story instead of just playing Lumen? Copy `.env.example` to
+`.env.local`, add a `GEMINI_KEY`, run `npm run dev`, and click **Create a
+Story** on the title screen — or skip the key entirely and pick **Mock**
+under Advanced to try the whole flow offline. See
+[Story generation](#story-generation-server-side) below.
+
 ---
 
 ## Adding a story in three steps
@@ -116,13 +122,26 @@ The engine never requires any of it. Art is optional to run.
 (`src/server/`, wired in by `storygen()` in `vite.config.ts`) that writes
 whole new stories from a premise: an LLM drafts a `manifest.json` +
 `story.pq`, the real parser and a 34-rule checklist validate and — if
-needed — repair it, and only then does it land in `stories/<id>/` as an
-ordinary story. A static `dist/` has none of this; it just plays what's
-already in `stories/`.
+needed — repair it, it lands in `stories/<id>/` as an ordinary story, and —
+if a key is configured — its art is painted by the Gemini image model. A
+static `dist/` has none of this; it just plays what's already in `stories/`.
+
+**In the app:** click **Create a Story** on the title screen (present only
+when a dev/preview server is running behind the page), write a premise, and
+Generate. A five-step rail tracks the run; **Begin** drops you straight into
+the finished story — no trip back through the title screen — and **Begin
+now** lets you start playing while its art keeps painting in the background.
+The result is an ordinary story folder you can hand-edit afterwards, exactly
+like one written by hand (see
+[docs/AUTHORING.md §9](docs/AUTHORING.md#9-generating-a-story-from-inside-the-app)
+for the full walkthrough, including how to repaint it later with
+`gen-assets --backend gemini --force`).
 
 Nothing here is required to run the app. Without any key set below, `GET
 /api/health` reports every provider as unconfigured except `mock`, which
-needs no key at all and runs the whole pipeline offline.
+needs no key at all and runs the whole pipeline — draft, validate, save, and
+(if art is left on) paint every asset as a placeholder — offline and
+deterministically.
 
 Copy `.env.example` to `.env.local` and fill in whichever of these you want
 (all optional, none committed — `.env.local` is git-ignored):
@@ -148,11 +167,10 @@ If your network needs an HTTPS proxy, Node's `fetch` only honours
 `HTTPS_PROXY` when started with `NODE_USE_ENV_PROXY=1` (Node ≥ 22.15) — the
 server logs one line at startup when it detects a proxy it isn't using.
 
-No UI ships with this yet — that (and `/api/generate-assets` for the art
-pipeline) lands in a later change. For now the surface is the HTTP/SSE API
-itself: `GET /api/health`, `GET /api/stories`, `POST /api/generate-story`
-(streams progress over Server-Sent Events), and `GET/DELETE
-/api/jobs/:id[/events]`.
+The full HTTP/SSE surface, if you want to drive it directly: `GET
+/api/health`, `GET /api/stories`, `POST /api/generate-story` and `POST
+/api/generate-assets` (both stream progress over Server-Sent Events), and
+`GET`/`DELETE /api/jobs/:id[/events]`.
 
 ---
 

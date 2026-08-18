@@ -413,3 +413,118 @@ Runs `tsc --noEmit` then `vite build` and prints a PASS/FAIL banner — the quic
 6. `npm run check` before you share it.
 
 That's the whole workflow. Everything else is storytelling.
+
+---
+
+## 9. Generating a story from inside the app
+
+Everything above this line is done by hand. There is a second author: run the
+dev or preview server and use **Create a Story** right from the title screen.
+An LLM drafts a complete `manifest.json` + `story.pq`, the same parser and a
+34-rule checklist validate it — repairing it automatically, up to twice, if
+it fails — and the result lands in `stories/<id>/` as an ordinary story: same
+shape as everything else in this guide, indistinguishable from one you typed
+by hand, and just as editable afterwards.
+
+### The flow
+
+1. **Title screen → Create a Story.** The entry only appears when a
+   dev/preview server is running behind the page — a static `dist/` has no
+   server to ask, so it is simply absent there. Nothing about the offline
+   anthology regresses; it just doesn't grow.
+2. **Write a premise.** A sentence or two is enough — three example chips
+   fill the field for you if you'd rather start from one of those. Give it a
+   title if you like (leave it blank and the story names itself), pick a
+   length (Short/Standard/Long — Standard is the default), and leave "Paint
+   the art" on if you want real backgrounds, character poses and a cover
+   painted as part of the run. An **Advanced** disclosure holds the provider
+   and model, for when the default isn't the one you want.
+3. **Generate.** A five-step rail (Plan · Write · Check · Save · Paint)
+   tracks the run, with an honest elapsed clock instead of a fake progress
+   bar during the write step — that one genuinely takes twenty to ninety
+   seconds with no sub-progress to show. If the draft fails the checklist,
+   the server automatically tells the model exactly what failed and asks for
+   a fix, up to twice, before giving up and showing you why.
+4. **Begin.** The finished story is already on disk and in the picker;
+   clicking Begin (or "Begin now", offered the moment the story is playable
+   even if its art is still being painted) drops you straight into it — no
+   trip back through the title screen.
+
+The output is **exactly** the folder shape §1 describes, plus one extra file
+that records where it came from:
+
+```
+stories/<id>/
+  story.pq
+  manifest.json
+  generation.json     ← provenance: premise, model, prompt version, attempts
+  assets/...
+```
+
+From here a generated story is just a story. Edit `story.pq` or
+`manifest.json` by hand like any other, and repaint it after a manifest
+change with:
+
+```bash
+npm run gen-assets <id> -- --backend gemini --force
+```
+
+(`--backend gemini` uses the same image model the in-app "Paint the art"
+toggle does. `--backend codex` still works too, exactly as §7 describes.
+`--backend auto` — the default — picks whichever one has a key configured.)
+
+### Requirements
+
+Generation needs a **server** — `npm run dev` or `npm run preview` — because
+it needs a real filesystem to write into and a place to keep provider keys
+out of the browser. A plain static host (the output of `npm run build`,
+served with no server behind it) plays every story already in `stories/`
+exactly as before, but never shows the Create entry at all — there is
+nowhere for it to write to.
+
+Without any key configured, the **mock** provider (pick it under Advanced)
+still runs the entire pipeline offline and deterministically: draft, check,
+save, and — if you leave art on — paint every asset as a placeholder image,
+with no network call at all. Useful for trying the flow, or for a CI run.
+
+### Environment variables
+
+Copy `.env.example` to `.env.local` and fill in whichever of these you want
+— every one is optional, and none of it is committed (`.env.local` is
+git-ignored):
+
+| Purpose | Variable | Default |
+|---|---|---|
+| Default provider | `STORYGEN_PROVIDER` | `gemini` |
+| Default text model override | `STORYGEN_MODEL` | the provider's own default |
+| Gemini key | `GEMINI_KEY` (fallback `GEMINI_API_KEY`) | — |
+| Gemini text model | `GEMINI_MODEL` | `gemini-3.7-flash` |
+| Gemini image model | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-image` |
+| xAI key | `XAI_API_KEY` (fallback `GROK_API_KEY`) | — |
+| OpenAI-compatible key | `OPENAI_API_KEY` | — |
+| OpenAI-compatible base URL | `OPENAI_BASE_URL` | `https://api.openai.com/v1` |
+| Anthropic key | `ANTHROPIC_API_KEY` | — |
+| Stories root override | `STORYGEN_STORIES_DIR` | `<repo>/stories` |
+| Image backend override | `STORYGEN_IMAGE_BACKEND` | `gemini` \| `mock` \| `none` (auto) |
+
+README.md carries the complete table (every per-provider model override
+included); this is the short version — the one thing most people actually
+need is `GEMINI_KEY`.
+
+### Behind a proxy
+
+If your network only reaches the internet through an HTTPS proxy, tell Node
+to use it explicitly:
+
+```bash
+NODE_USE_ENV_PROXY=1 npm run dev
+```
+
+`HTTPS_PROXY` alone is not enough — Node (≥ 22.15) only honours it when
+started with `--use-env-proxy` (the `NODE_USE_ENV_PROXY=1` environment
+variable is equivalent). Without it, a provider call attempts a direct
+connection and hangs until it times out — the single most confusing
+first-run failure, and the least diagnosable from the symptom alone. The
+server detects a configured-but-unused proxy and logs one line about it at
+startup; if a generation actually hits it, the Create panel's own error
+copy names the same fix.

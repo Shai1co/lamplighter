@@ -2,835 +2,617 @@
 /**
  * Lamplighter — end-to-end Playwright harness.
  *
- *   node tests/e2e.mjs [--keep-open]
- *   npm run test:e2e
+ *   node tests/e2e.mjs [--mode dev|preview|both] [--keep-open]
+ *   npm run test:e2e                    (== --mode both)
  *
- * Proves the EXISTING game is playable start to finish, headless, with no test
- * framework: boots a real `vite` dev server on a scratch port, drives a real
- * Chromium tab through the title screen and the whole Lumen story to an
- * ending, and asserts the credits roll and the app returns cleanly to the
- * title screen. Exits 0 on success, 1 on any failure (including any uncaught
- * page error / "[pq] fatal boot error" / "[pq:runtime]" console message).
+ * Boots real `vite` servers on scratch ports, drives a real headless
+ * Chromium tab through the title screen, and proves the anthology AND the
+ * in-app story generator both work start to finish. Exits 0 on success, 1 on
+ * any failure (including any uncaught page error / "[pq] fatal boot error" /
+ * "[pq:runtime]" console message — see helpers.mjs's console-error policy).
  *
- * ── How this drives the app (see the source files it was reverse-engineered
- *    from: src/ui/UILayer.ts, DialogueBox.ts, ChoiceMenu.ts, ProxyPanel.ts,
- *    ChapterCard.ts, TitleScreen.ts, Settings.ts, src/engine/runtime.ts) ──
+ * Shared machinery (server boot/teardown, hermetic stories dirs, Chromium
+ * launch, console capture, DOM snapshots, CreateStory driving helpers,
+ * failure-artifact dumps) lives in tests/helpers.mjs — this file holds only
+ * the six scenario bodies and the mode/group orchestration around them.
  *
- *   Advance gesture: click `.pq-advance` — a full-stage hit target UILayer
- *   arms with the class `.is-armed` (CSS: `pointer-events: none` until armed)
- *   whenever it is safe to advance. ONE handler (`requestAdvance()`) covers
- *   every blocking node kind: it dismisses chapter cards, resolves `@wait`
- *   beats, skips/advances the dialogue typewriter, and is a no-op during a
- *   choice or the title/credits screens. So the whole play loop below only
- *   ever needs to distinguish 3 states: credits visible / a choice is up /
- *   otherwise click `.pq-advance.is-armed`.
+ * ── Scenarios ───────────────────────────────────────────────────────────
+ *   A  Boot: title screen, discovery, Create reachable.
+ *   B  Play Lumen to an ending via the picker.
+ *   D  API contract: /api/health, /api/stories, raw-socket traversal 404s.
+ *   C  Create flow (mock, art off): menu -> premise -> Advanced -> mock ->
+ *      Generate -> stage rail -> done -> Begin -> autostart lands DIRECTLY
+ *      in Signal Hill (title never shown) -> advance a few lines.
+ *   C2 From there: play Signal Hill to BOTH endings (derived from
+ *      src/server/mock-story.ts — see ALL_SUGGESTED_CHOICES /
+ *      OFF_SCRIPT_CHOICES below), restarting via the title screen between
+ *      runs, asserting different final narration and two credits rolls.
+ *   E  Art path: STORYGEN_IMAGE_BACKEND=mock + STORYGEN_MOCK_ART_DELAY_MS —
+ *      per-asset SSE progress, "Begin now" before done, art finishes on
+ *      disk after the client navigates away (the job is detached).
+ *   F  Repair loop: STORYGEN_MOCK_BREAK=targets forces one bad draft;
+ *      generation.json proves attempts.length===2 with a TARGET_MISSING
+ *      first attempt.
  *
- *   Choices: rendered as `<button class="pq-tile">` (the Lumen "ProxyPanel" —
- *   used whenever any option is `suggested`/`offscript`, which is every choice
- *   in Lumen) or `<button class="pq-choice">` (the plain ChoiceMenu, used only
- *   for `>?` neutral-only menus — not present in Lumen, handled anyway for
- *   robustness). Both disappear from the DOM entirely when no choice is
- *   pending, so "`.pq-tile, .pq-choice` exists" doubles as "a choice is open".
+ * ── Server grouping (design doc §14.1) ─────────────────────────────────
+ * A/B/D share one plain server per mode (nothing about them needs a
+ * hermetic stories dir). C/C2 get their own hermetic server (art forced
+ * OFF via STORYGEN_IMAGE_BACKEND=none, so the toggle's default state is
+ * deterministic regardless of what's configured in .env.local). E and F
+ * each get their own hermetic server too, and — because a full generate
+ * cycle plus a real playthrough per mode adds real wall-clock time for
+ * comparatively little additional proof once A-D have already run in both
+ * modes — run dev-only; the design doc's own scenario table marks this
+ * acceptable ("E/F may run dev-only"). That is 4 distinct server
+ * configurations total (≤4 per the task brief), reused sequentially on the
+ * SAME fixed port within a mode — never run concurrently, so "≤4" is about
+ * distinct configurations, not simultaneous processes.
  *
- *   Choice path taken (verified by hand against stories/lumen/story.pq): at
- *   each of Lumen's 3 choice points we click the FIRST offered line — LUMEN's
- *   suggested/on-script reply (`>`, always listed — and rendered — before the
- *   off-script `>!` reply). That path is:
- *     scene_open -> open_script -> after_open -> atrium_scene ->
- *     building_script -> after_building -> deeper_gate -> holding (the
- *     `{trust>=2}` guard on `-> deeper` never fires because trust stays 0) ->
- *     converge -> ch2 -> final_script -> climax -> ending_withdraw ->
- *     credits_end -> END.
- *   This is a genuine, complete ending (not a loop/soft-lock) reached via
- *   `-> END`, which is what makes the credits roll. We match each choice
- *   screen against a hardcoded, punctuation-free substring of its expected
- *   tile text (see EXPECTED_CHOICES) rather than blindly trusting index 0, so
- *   a change to the story's choice order fails loudly instead of silently
- *   steering onto an unverified path.
+ * Every hermetic server points STORYGEN_STORIES_DIR at a fresh OS-temp
+ * directory seeded with copies of stories/lumen and stories/_template
+ * (tests/helpers.mjs#makeHermeticStoriesDir) — nothing these scenarios
+ * generate ever lands in the repo. IMPORTANT: the BUNDLED
+ * `import.meta.glob` discovery path (src/engine/registry.ts) always reads
+ * the REPO's own /stories/*, regardless of STORYGEN_STORIES_DIR — only the
+ * RUNTIME path (/api/stories, read fresh off disk on every request) honours
+ * the override. Signal Hill therefore exists ONLY via runtime discovery,
+ * which is exactly the code path these scenarios exist to prove.
  *
- *   Speed/determinism: before starting, we open Settings from the title menu
- *   and, via the real controls, set Text speed to its minimum (an
- *   `<input type=range>`; the app treats speed<=0 as an instant, non-animated
- *   reveal — see DialogueBox.show()) and turn Reduced motion on (skips the
- *   choice "lift into dialogue" FLIP animation and the credits scroll
- *   animation). We still don't rely on any fixed animation length anywhere:
- *   every wait in this script is a bounded poll on an observable DOM/console
- *   condition, and we end the story by clicking the credits' own Skip /
- *   Return-to-title button rather than waiting out the credits scroll.
+ * ── A note on the repo's stories/ directory during this run ────────────
+ * Another process in this environment may be running its own dev server on
+ * a different port and writing a real generated story straight into the
+ * repo's stories/ directory. This suite never touches stories/ itself
+ * (every generation happens in a hermetic temp dir), and scenario A/D's
+ * assertions are deliberately agnostic to how many OTHER story folders the
+ * shared, non-hermetic group-1 server happens to discover there — they only
+ * assert that Lumen is present and that "_template" never is, never an
+ * exact count or a specific title being first.
  */
 
-import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  ART_DONE_TIMEOUT_MS,
+  DEV_PORT,
+  GENERATE_TIMEOUT_MS,
+  PREVIEW_PORT,
+  STEP_TIMEOUT_MS,
+  STORY_START_TIMEOUT_MS,
+  advanceFew,
+  applyFastSettings,
+  assertAutostartLandsInStory,
+  assertCreditsContain,
+  bannerFail,
+  bannerPass,
+  clickCreateResultButton,
+  clickCreditsSkipAndReturnToTitle,
+  clickGenerate,
+  cleanupHermeticDir,
+  dumpFailureArtifacts,
+  ensureBuilt,
+  fillPremiseViaChip,
+  launchBrowser,
+  log,
+  makeHermeticStoriesDir,
+  newPage,
+  openCreateViaMenu,
+  playToEnding,
+  pollCreateUntil,
+  rawHttpGet,
+  readCreateStateNow,
+  readGenerationJson,
+  section,
+  selectProvider,
+  setArtToggle,
+  startServer,
+  startStoryFromPicker,
+  stopServer,
+  waitForArtSettled,
+  warn,
+} from './helpers.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-const ARTIFACTS_DIR = path.join(__dirname, 'artifacts');
+const GLOBAL_TIMEOUT_MS = 30 * 60 * 1000; // whole-script budget across every mode/group
 
-const KEEP_OPEN = process.argv.includes('--keep-open');
-const PORT = 5199;
-const BASE_URL = `http://127.0.0.1:${PORT}/`;
+/* ─────────────────────────  CLI  ───────────────────────── */
 
-const GLOBAL_TIMEOUT_MS = 5 * 60 * 1000; // whole-script budget
-const SERVER_READY_TIMEOUT_MS = 30_000; // vite must answer HTTP by then
-// Generous: the first `New Story` click awaits Promise.all([stage.loadStory,
-// audio.loadStory]) — decoding + uploading every Lumen background/portrait PNG
-// as WebGL textures under software (SwiftShader) rendering, which measured
-// ~20-25s in this sandbox (see the header comment / final report for the
-// measured figure). Everything after that first scene is far cheaper.
-const STORY_START_TIMEOUT_MS = 60_000;
-const STEP_TIMEOUT_MS = 30_000; // any single click/waitFor
-const STALL_MS = 30_000; // no observable DOM change for this long while playing => fail
-const MAX_ADVANCE_STEPS = 400; // hard loop cap (a real playthrough is ~40)
-const MIN_EXPECTED_ADVANCES = 25; // sanity floor, warning-only (see header comment for the ~40 tally)
+function parseArgs(argv) {
+  const keepOpen = argv.includes('--keep-open');
+  const idx = argv.indexOf('--mode');
+  const raw = idx !== -1 ? argv[idx + 1] : 'both';
+  if (!['dev', 'preview', 'both'].includes(raw)) {
+    throw new Error(`--mode must be one of dev|preview|both (got ${JSON.stringify(raw)})`);
+  }
+  const modes = raw === 'both' ? ['dev', 'preview'] : [raw];
+  return { modes, keepOpen };
+}
+const { modes: MODES, keepOpen: KEEP_OPEN } = parseArgs(process.argv.slice(2));
 
-// The suggested/on-script reply at each of Lumen's 3 choice points, in order.
-// Matched with String.includes() against the rendered tile text, which is
-// re-typeset by smartQuotes() (straight " / ' -> curly, "--" -> em dash) — so
+/* ─────────────────────────  scenario A: boot + discovery  ───────────────────────── */
+
+async function runScenarioA(page) {
+  section('Scenario A — Boot: title screen, discovery, Create reachable');
+  await page.locator('.pq-title:not([hidden])').waitFor({ state: 'visible', timeout: STORY_START_TIMEOUT_MS });
+  log('Title screen is visible.');
+
+  const before = await page.evaluate(() => ({
+    wordmark: (document.querySelector('.pq-title__word-a')?.textContent ?? '') + (document.querySelector('.pq-title__word-b')?.textContent ?? ''),
+    menuLabels: Array.from(document.querySelectorAll('.pq-menuitem__label')).map((l) => l.textContent || ''),
+    titleInnerText: document.querySelector('.pq-title')?.innerText ?? '',
+  }));
+  log('Wordmark:', JSON.stringify(before.wordmark), 'Menu:', JSON.stringify(before.menuLabels));
+  if (!/lamplighter/i.test(before.wordmark)) throw new Error(`Wordmark did not read "Lamplighter" (got ${JSON.stringify(before.wordmark)})`);
+  if (!before.menuLabels.some((l) => /^new story$/i.test(l.trim()))) {
+    throw new Error(`Menu did not contain "New Story": ${JSON.stringify(before.menuLabels)}`);
+  }
+  if (!before.menuLabels.some((l) => /create a story/i.test(l))) {
+    throw new Error(`Expected a "Create a Story" menu entry (a live dev/preview server always answers /api/health here). Menu: ${JSON.stringify(before.menuLabels)}`);
+  }
+  if (/template/i.test(before.titleInnerText)) throw new Error('The word "template" is visible on the title screen.');
+
+  // The create card and the discovered-story rail both live INSIDE the
+  // picker (src/ui/TitleScreen.ts's renderRail), not on the base title
+  // screen — open it via "New Story", which always opens the picker here
+  // (canCreate() is true against any live server; design doc §12.1).
+  const newStoryBtn = page.locator('.pq-menuitem.is-primary');
+  await newStoryBtn.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
+  await page.locator('.pq-modal--picker.is-open').waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
+
+  const picker = await page.evaluate(() => {
+    const allCards = Array.from(document.querySelectorAll('.pq-storycard'));
+    const cards = allCards.filter((c) => !c.classList.contains('pq-storycard--create'));
+    const createCard = document.querySelector('.pq-storycard--create');
+    const lockslot = document.querySelector('.pq-lockslot');
+    return {
+      cardLabels: cards.map((c) => c.getAttribute('aria-label') || ''),
+      createCardLabel: createCard ? createCard.getAttribute('aria-label') || '' : null,
+      hasLockslot: !!lockslot,
+    };
+  });
+  log('Picker cards:', JSON.stringify(picker.cardLabels), 'Create card:', JSON.stringify(picker.createCardLabel));
+
+  // Deliberately NOT an exact count: another process in this environment may
+  // have generated an extra story straight into the repo's stories/ dir
+  // (see this file's header comment) — this only asserts Lumen is present
+  // and _template never is, regardless of how many other cards exist.
+  if (!picker.cardLabels.some((l) => /lumen/i.test(l))) {
+    throw new Error(`Expected a card titled Lumen in the picker, got: ${JSON.stringify(picker.cardLabels)}`);
+  }
+  if (picker.cardLabels.some((l) => /template/i.test(l))) {
+    throw new Error(`A story card referencing "template" was found (_template must be excluded): ${JSON.stringify(picker.cardLabels)}`);
+  }
+  if (!picker.createCardLabel || !/write a new/i.test(picker.createCardLabel)) {
+    throw new Error(`Expected a create card on the shelf (server is up), got aria-label ${JSON.stringify(picker.createCardLabel)}`);
+  }
+  if (picker.hasLockslot) throw new Error('Expected .pq-lockslot to be ABSENT once a create card is shown — both rendered at once.');
+
+  await page.keyboard.press('Escape');
+  await page.locator('.pq-modal--picker').waitFor({ state: 'hidden', timeout: STEP_TIMEOUT_MS });
+  log('PASS: Lumen is discovered, "_template" appears nowhere, Create is reachable via the menu and the shelf.');
+}
+
+/* ─────────────────────────  scenario B: play Lumen  ───────────────────────── */
+
+// The suggested/on-script reply at each of Lumen's 3 choice points, in
+// order — verified by hand against stories/lumen/story.pq. Matched with
+// String.includes() against the rendered tile text, which is re-typeset by
+// smartQuotes() (straight "/' -> curly, "--" -> em dash — src/ui/dom.ts), so
 // every substring below is chosen from the middle of its sentence, clear of
 // any apostrophe/quote/dash smartQuotes could touch.
-const EXPECTED_CHOICES = [
+const LUMEN_EXPECTED_CHOICES = [
   'Take all the time you need',
   'That sounds like a place that held real meaning',
   'LUMEN is always here whenever you need us',
 ];
 
-/* ─────────────────────────  tiny console helpers  ───────────────────────── */
-
-const t0 = Date.now();
-const elapsed = () => `[${((Date.now() - t0) / 1000).toFixed(1)}s]`;
-const log = (...a) => console.log(elapsed(), ...a);
-const warn = (...a) => console.warn(elapsed(), 'WARN', ...a);
-const section = (title) => console.log(`\n${elapsed()} === ${title} ===`);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-function bannerPass(summary) {
-  const line = '='.repeat(78);
-  console.log('\n' + line);
-  console.log('PASS — Lumen was played start to finish (headless) and reached its ending.');
-  for (const l of summary) console.log('  ' + l);
-  console.log(line + '\n');
-}
-function bannerFail(reason) {
-  const line = '='.repeat(78);
-  console.log('\n' + line);
-  console.log('FAIL — ' + reason);
-  console.log(line + '\n');
-}
-
-/* ─────────────────────────  module-level run state  ───────────────────────── */
-
-let viteProc = null;
-const viteOutputLines = [];
-let browserRef = null;
-let pageRef = null;
-let consoleLog = [];
-let cleaningUp = false;
-let globalTimer = null;
-
-/* ─────────────────────────  console capture + fatal-error policy  ───────────────────────── */
-
-// Every console.error/warn call site in this app (confirmed exhaustively by
-// grepping src/ — see the final report): "[pq] fatal boot error" and
-// "[pq] failed to start story" (console.error, main.ts) and
-// "[pq:runtime] ..." (console.warn, runtime.ts — missing label / step-cap,
-// i.e. the runtime aborting rather than reaching a real `-> END`). All three
-// are treated as fatal below, in addition to the task's literal requirement
-// (any uncaught page error, or the literal "[pq] fatal boot error" string).
-const FATAL_CONSOLE_PATTERNS = [
-  /\[pq\] fatal boot error/,
-  /\[pq\] failed to start story/,
-  /\[pq:runtime\]/,
-];
-
-// The ONE console entry that is deliberately not fatal: Chromium's own
-// automatic `GET /favicon.ico` probe, logged as a console error whenever a
-// page has no <link rel="icon"> — which index.html does not declare, and
-// adding one is outside this task's scope (not app source we're allowed to
-// touch, and not a real defect). Confirmed by hand with a throwaway probe
-// script during development: `msg.text()` never includes the URL, so this is
-// matched on the resource actually being favicon.ico via `console.location()`,
-// not on the generic "Failed to load resource" text — any OTHER 404/network
-// console error still fails the run.
-function isBenignFaviconError(entry) {
-  return entry.type === 'error' && /Failed to load resource/.test(entry.text) && /\/favicon\.ico$/.test(entry.locationUrl ?? '');
-}
-
-function wireConsoleCapture(page) {
-  consoleLog = [];
-  page.on('console', (msg) => {
-    const entry = { type: msg.type(), text: msg.text(), locationUrl: msg.location()?.url ?? '', time: Date.now() };
-    if (isBenignFaviconError(entry)) {
-      log('[page:error] (ignored — browser favicon probe, not an app error)', entry.text);
-    } else {
-      consoleLog.push(entry);
-      if (entry.type === 'error' || entry.type === 'warning') log(`[page:${entry.type}]`, entry.text);
-    }
-    if (consoleLog.length > 3000) consoleLog.shift();
-  });
-  page.on('pageerror', (err) => {
-    const text = err && err.stack ? err.stack : String(err);
-    consoleLog.push({ type: 'pageerror', text, time: Date.now() });
-    log('[page:pageerror]', text);
-  });
-}
-
-/** Throws on the first fatal console/page entry seen so far. Call often. */
-function checkConsoleForFatal() {
-  for (const entry of consoleLog) {
-    if (entry.type === 'pageerror') throw new Error(`Uncaught page error: ${entry.text}`);
-    if (entry.type === 'error') throw new Error(`Page console error: ${entry.text}`);
-    for (const pat of FATAL_CONSOLE_PATTERNS) {
-      if (pat.test(entry.text)) throw new Error(`Fatal console message (matched ${pat}): ${entry.text}`);
-    }
-  }
-}
-
-/* ─────────────────────────  vite dev server  ───────────────────────── */
-
-async function startViteServer() {
-  section('Starting vite dev server');
-  const viteBin = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
-  if (!existsSync(viteBin)) {
-    throw new Error(`vite entry script not found at ${viteBin} — is vite installed? (npm install)`);
-  }
-
-  // Pre-flight: --strictPort makes vite refuse to start if PORT is taken, but
-  // that only helps if we notice — a stray/foreign process already answering
-  // on PORT would otherwise satisfy the readiness poll below and this run
-  // would silently drive a browser against THAT server instead of our own.
-  // (Hit exactly this during development: a leftover vite from a manual debug
-  // session was still bound to 5199, and it — not this run's own spawn, which
-  // had in fact failed with EADDRINUSE — was what answered the first poll.)
-  try {
-    await fetch(BASE_URL, { method: 'GET', signal: AbortSignal.timeout(500) });
-    throw new Error(
-      `Something is already answering at ${BASE_URL} before this run even started vite. ` +
-        `Refusing to proceed, since it could be a stray process this run would then be silently ` +
-        `testing against instead of its own server. Free port ${PORT} and re-run.`,
-    );
-  } catch (err) {
-    if (err instanceof Error && err.message.startsWith('Something is already answering')) throw err;
-    // fetch failing (connection refused / timeout) is the expected, good case.
-  }
-
-  const args = [viteBin, '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'];
-  log('Spawning:', process.execPath, args.join(' '));
-  const proc = spawn(process.execPath, args, {
-    cwd: ROOT,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    detached: true, // own process group, so cleanup can signal any stray children too
-    env: process.env,
-  });
-  viteProc = proc;
-
-  const capture = (buf, streamLabel) => {
-    for (const line of buf.toString('utf8').split(/\r?\n/)) {
-      if (!line) continue;
-      viteOutputLines.push(`[vite:${streamLabel}] ${line}`);
-      if (viteOutputLines.length > 500) viteOutputLines.shift();
-      log(`[vite:${streamLabel}]`, line);
-    }
-  };
-  proc.stdout.on('data', (b) => capture(b, 'out'));
-  proc.stderr.on('data', (b) => capture(b, 'err'));
-
-  let earlyExit = null;
-  proc.once('exit', (code, signal) => {
-    earlyExit = { code, signal };
-  });
-  proc.once('error', (err) => {
-    earlyExit = { code: null, signal: null, error: err };
-  });
-
-  log(`Waiting for ${BASE_URL} to respond (timeout ${SERVER_READY_TIMEOUT_MS}ms)...`);
-  const deadline = Date.now() + SERVER_READY_TIMEOUT_MS;
-  for (;;) {
-    if (earlyExit) {
-      throw new Error(
-        `vite dev server exited before becoming ready (code=${earlyExit.code} signal=${earlyExit.signal}` +
-          `${earlyExit.error ? ` error=${earlyExit.error}` : ''})\n` +
-          viteOutputLines.slice(-40).join('\n'),
-      );
-    }
-    try {
-      const res = await fetch(BASE_URL, { method: 'GET' });
-      if (res.status >= 200 && res.status < 500) {
-        log(`vite responded with HTTP ${res.status} — server is ready (pid ${proc.pid}).`);
-        break;
-      }
-    } catch {
-      /* connection refused / not listening yet — keep polling */
-    }
-    if (Date.now() > deadline) {
-      throw new Error(`vite dev server did not answer HTTP within ${SERVER_READY_TIMEOUT_MS}ms`);
-    }
-    await sleep(200);
-  }
-  return proc;
-}
-
-async function stopViteServer() {
-  const proc = viteProc;
-  if (!proc || proc.exitCode !== null || proc.signalCode !== null) return;
-  log('Stopping vite dev server (pid', proc.pid, ')...');
-  try {
-    // Negative pid == signal the whole detached process group (vite + any
-    // esbuild/rollup helper children it may have spawned), not just the shim.
-    process.kill(-proc.pid, 'SIGTERM');
-  } catch {
-    try {
-      proc.kill('SIGTERM');
-    } catch {
-      /* already gone */
-    }
-  }
-  const exited = await Promise.race([
-    new Promise((resolve) => proc.once('exit', () => resolve(true))),
-    sleep(4000).then(() => false),
-  ]);
-  if (!exited) {
-    warn('vite did not exit after SIGTERM — sending SIGKILL');
-    try {
-      process.kill(-proc.pid, 'SIGKILL');
-    } catch {
-      try {
-        proc.kill('SIGKILL');
-      } catch {
-        /* already gone */
-      }
-    }
-  }
-}
-
-/* ─────────────────────────  Chromium resolution + launch  ───────────────────────── */
-
-function resolveChromiumExecutable() {
-  const base = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
-  const candidates = [path.join(base, 'chromium')]; // the pre-installed symlink -> chrome-linux/chrome
-  try {
-    for (const name of readdirSync(base)) {
-      if (/^chromium-\d+$/.test(name)) candidates.push(path.join(base, name, 'chrome-linux', 'chrome'));
-    }
-  } catch {
-    /* base dir missing/unreadable — fall through with just the direct candidate */
-  }
-  for (const c of candidates) {
-    try {
-      if (existsSync(c) && statSync(c).isFile()) return c;
-    } catch {
-      /* broken symlink etc. — try the next candidate */
-    }
-  }
-  return null;
-}
-
-const BASE_CHROME_ARGS = [
-  '--no-sandbox',
-  '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',
-  '--disable-gpu-sandbox',
-  '--window-size=1280,800',
-];
-
-// Tried in order; the environment notes say "try default headless first". Each
-// is verified against BOTH a raw WebGL context probe and the real app
-// actually reaching the title screen with no fatal boot error before it's
-// accepted — see launchBrowserWithWebglFallback().
-const LAUNCH_ATTEMPTS = [
-  { label: 'default headless (no extra GL flags)', extraArgs: [] },
-  {
-    label: '--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader',
-    extraArgs: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-  },
-  { label: '--use-gl=swiftshader --enable-unsafe-swiftshader', extraArgs: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] },
-];
-
-async function launchBrowserWithWebglFallback() {
-  section(`Launching Chromium (headless=${!KEEP_OPEN})`);
-  const executablePath = resolveChromiumExecutable();
-  if (!executablePath) {
-    throw new Error(
-      `Could not find a chromium executable under PLAYWRIGHT_BROWSERS_PATH=` +
-        `${process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers'}`,
-    );
-  }
-  log('Using chromium executable:', executablePath);
-
-  let lastErr = null;
-  for (const attempt of LAUNCH_ATTEMPTS) {
-    log(`Attempt: ${attempt.label}`);
-    let browser = null;
-    try {
-      browser = await chromium.launch({
-        executablePath,
-        headless: !KEEP_OPEN,
-        args: [...BASE_CHROME_ARGS, ...attempt.extraArgs],
-      });
-      browserRef = browser;
-      // Small viewport deliberately: the Three.js stage (rain/weather particles,
-      // character portrait, antialiasing) renders every frame under SwiftShader
-      // software rasterization here, and its cost scales with pixel count. A
-      // first pass at 1280x800 measured ~9-10s of real time per advance click
-      // (the render loop competing with the page's main thread for every CDP
-      // round trip) — this cuts pixel count by ~9x, which is what actually
-      // fixed it (see the final report for the before/after numbers). Still a
-      // real, laid-out desktop viewport; no selector in this script depends on
-      // a specific size.
-      const context = await browser.newContext({ viewport: { width: 480, height: 300 } });
-      const page = await context.newPage();
-      pageRef = page;
-      wireConsoleCapture(page);
-
-      log('Navigating to', BASE_URL);
-      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: STEP_TIMEOUT_MS });
-
-      const probe = await page.evaluate(() => {
-        try {
-          const canvas = document.getElementById('stage') || document.createElement('canvas');
-          const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-          if (!gl) return { ok: false, reason: 'getContext() returned null for webgl2/webgl' };
-          // The plain RENDERER/VENDOR parameters are masked to a generic
-          // "WebKit WebGL"/"WebKit" string; the debug extension (when exposed)
-          // reports what's actually driving the context (e.g. SwiftShader).
-          const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-          const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-          const vendor = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
-          return { ok: true, renderer, vendor };
-        } catch (e) {
-          return { ok: false, reason: String(e) };
-        }
-      });
-      log('Raw WebGL probe on #stage:', JSON.stringify(probe));
-
-      log('Waiting for the title screen to appear...');
-      await page.locator('.pq-title:not([hidden])').waitFor({ state: 'visible', timeout: STORY_START_TIMEOUT_MS });
-
-      checkConsoleForFatal(); // catches "[pq] fatal boot error" (and any uncaught page error) if boot failed
-      if (!probe.ok) throw new Error(`WebGL context unavailable: ${probe.reason}`);
-
-      log(`SUCCESS with: ${attempt.label}`);
-      log(`WebGL renderer: "${probe.renderer}" vendor: "${probe.vendor}"`);
-      return { browser, page, flagsLabel: attempt.label, webgl: probe };
-    } catch (err) {
-      lastErr = err;
-      warn(`Launch attempt failed (${attempt.label}):`, err && err.message ? err.message : err);
-      if (browser) {
-        await browser.close().catch(() => {});
-        if (browserRef === browser) browserRef = null;
-        pageRef = null;
-      }
-    }
-  }
-  throw new Error(
-    `All Chromium launch attempts failed to reach the title screen with a working WebGL context. ` +
-      `Last error: ${lastErr && lastErr.message ? lastErr.message : lastErr}`,
-  );
-}
-
-/* ─────────────────────────  page-state snapshot  ───────────────────────── */
-
-async function snapshotUi(page) {
-  return page.evaluate(() => {
-    const q = (sel) => document.querySelector(sel);
-    const titleEl = q('.pq-title');
-    const creditsEl = q('.pq-credits');
-    const chapterEl = q('.pq-chapter');
-    const dialogueEl = q('.pq-dialogue');
-    const advanceEl = q('.pq-advance');
-    const tiles = Array.from(document.querySelectorAll('.pq-tile, .pq-choice'));
-    return {
-      titleVisible: !!titleEl && !titleEl.hidden,
-      creditsVisible: !!creditsEl && !creditsEl.hidden,
-      // Not just "not hidden": ChapterCard.hide() flips `open=false` and swaps
-      // is-in -> is-out synchronously, but leaves the `hidden` attribute false
-      // until its CSS fade finishes (transitionend, or a 640ms fallback) — so
-      // `hidden` alone lags the real state by up to that long. is-in/is-out
-      // mirror the synchronous flip and keep this snapshot honest immediately.
-      chapterOpen: !!chapterEl && !chapterEl.hidden && chapterEl.classList.contains('is-in') && !chapterEl.classList.contains('is-out'),
-      chapterTitle: chapterEl ? (chapterEl.querySelector('.pq-chapter__title')?.textContent ?? '') : '',
-      dialogueVisible: !!dialogueEl && !dialogueEl.hidden,
-      dialogueSpeaker: dialogueEl ? (dialogueEl.querySelector('.pq-dialogue__name')?.textContent ?? '') : '',
-      dialogueText: dialogueEl
-        ? (dialogueEl.querySelector('.pq-dialogue__body')?.textContent ?? '') +
-          (dialogueEl.querySelector('.pq-dialogue__tail')?.textContent ?? '')
-        : '',
-      advanceArmed: !!advanceEl && advanceEl.classList.contains('is-armed'),
-      choiceOpen: tiles.length > 0,
-      choiceTexts: tiles.map((t) => (t.textContent || '').replace(/\s+/g, ' ').trim()),
-    };
-  });
-}
-
-/* ─────────────────────────  scenario steps  ───────────────────────── */
-
-async function assertTitleScreenAndDiscovery(page) {
-  section('Title screen: Lumen discovered, _template excluded, Create reachable');
-  await page.locator('.pq-title:not([hidden])').waitFor({ state: 'visible', timeout: STORY_START_TIMEOUT_MS });
-  log('Title screen is visible.');
-
-  const info = await page.evaluate(() => {
-    // The create card (.pq-storycard--create) is a MODIFIER on .pq-storycard
-    // (see src/ui/TitleScreen.ts, buildCreateCard) — same base class as a
-    // real story card, so it has to be excluded here rather than counted as
-    // a second discovered story.
-    const allCards = Array.from(document.querySelectorAll('.pq-storycard'));
-    const cards = allCards.filter((c) => !c.classList.contains('pq-storycard--create'));
-    const createCard = document.querySelector('.pq-storycard--create');
-    const plate = document.querySelector('.pq-title__plate');
-    const lockslot = document.querySelector('.pq-lockslot');
-    const menuLabels = Array.from(document.querySelectorAll('.pq-menuitem__label')).map((l) => l.textContent || '');
-    return {
-      cardCount: cards.length,
-      cardLabels: cards.map((c) => c.getAttribute('aria-label') || ''),
-      createCardLabel: createCard ? createCard.getAttribute('aria-label') || '' : null,
-      hasLockslot: !!lockslot,
-      plateSrc: plate ? plate.getAttribute('src') : null,
-      titleInnerText: document.querySelector('.pq-title')?.innerText ?? '',
-      menuLabels,
-    };
-  });
-  log('Discovered story card(s):', JSON.stringify(info.cardLabels));
-  log('Title backdrop plate src:', info.plateSrc);
-  log('Create card aria-label:', JSON.stringify(info.createCardLabel));
-  log('Menu entries:', JSON.stringify(info.menuLabels));
-
-  if (info.cardCount !== 1) {
-    throw new Error(`Expected exactly 1 discovered story card, found ${info.cardCount}: ${JSON.stringify(info.cardLabels)}`);
-  }
-  if (!/lumen/i.test(info.cardLabels[0])) {
-    throw new Error(`Expected the discovered story to be Lumen, got aria-label ${JSON.stringify(info.cardLabels[0])}`);
-  }
-  if (info.cardLabels.some((l) => /template/i.test(l))) {
-    throw new Error(`A story card referencing "template" was found (_template must be excluded): ${JSON.stringify(info.cardLabels)}`);
-  }
-  if (/template/i.test(info.titleInnerText)) {
-    throw new Error('The word "template" is visible on the title screen — _template must be excluded.');
-  }
-  if (!info.plateSrc || !info.plateSrc.includes('/stories/lumen/')) {
-    throw new Error(`The visible title backdrop does not point at Lumen's art (src=${JSON.stringify(info.plateSrc)}).`);
-  }
-  // This harness always runs against a real vite dev server (see
-  // startViteServer below), which always mounts the storygen plugin — so
-  // the boot-time health probe always succeeds and Create is always
-  // reachable here. That flips two things at once (design doc §12.1,
-  // §12.5): the picker's shelf renders the create card instead of the old
-  // "N slots · Locked" ledger, and (asserted in startLumen below) "New
-  // Story" opens the picker even though Lumen is the only real story.
-  if (!info.createCardLabel || !/write a new/i.test(info.createCardLabel)) {
-    throw new Error(`Expected a create card on the shelf (server is up), got aria-label ${JSON.stringify(info.createCardLabel)}`);
-  }
-  if (info.hasLockslot) {
-    throw new Error('Expected .pq-lockslot to be ABSENT once a create card is shown — both rendered at once.');
-  }
-  if (!info.menuLabels.some((l) => /create a story/i.test(l))) {
-    throw new Error(`Expected a "Create a Story" menu entry (server is up). Menu: ${JSON.stringify(info.menuLabels)}`);
-  }
-  log('PASS: Lumen is the sole discovered story (its own art is the visible title backdrop); "_template" appears nowhere; Create is reachable via the menu and the shelf.');
-}
-
-async function applyFastSettings(page) {
-  section('Settings: Text speed -> Instant, Reduced motion -> on, Cinematic -> off');
-  const settingsItem = page.locator('.pq-title__menu .pq-menuitem', { hasText: 'Settings' });
-  await settingsItem.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
-  await page.locator('.pq-modal--set.is-open').waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  log('Settings modal is open.');
-
-  const speedInput = page.locator('input[aria-label="Text speed"]');
-  await speedInput.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  await speedInput.click();
-  await speedInput.press('Home'); // native <input type=range> behavior: Home -> min (0 == instant reveal)
-  let speedVal = await speedInput.inputValue();
-  if (speedVal !== '0') {
-    warn(`Home key left the slider at "${speedVal}", not "0" — falling back to a direct value+input-event set.`);
-    await speedInput.evaluate((el) => {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-      setter.call(el, '0');
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    speedVal = await speedInput.inputValue();
-  }
-  log('Text speed slider value:', speedVal);
-  if (speedVal !== '0') throw new Error(`Text speed slider did not reach "0" (Instant); got "${speedVal}"`);
-
-  const reducedMotion = page.locator('button[aria-label="Reduced motion"]');
-  await reducedMotion.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  if ((await reducedMotion.getAttribute('aria-checked')) !== 'true') {
-    await reducedMotion.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
-  }
-  const checked = await reducedMotion.getAttribute('aria-checked');
-  log('Reduced motion aria-checked:', checked);
-  if (checked !== 'true') throw new Error(`Reduced motion toggle did not report aria-checked="true" (got "${checked}")`);
-
-  // Cinematic (bloom/DoF/grade post-processing) off: purely a render-cost cut
-  // for a software-rendered (SwiftShader) headless run — same real Settings
-  // control a player would use on low-end hardware. Not required for
-  // correctness, but meaningfully cheaper per Three.js frame.
-  const cinematic = page.locator('button[aria-label="Cinematic"]');
-  await cinematic.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  if ((await cinematic.getAttribute('aria-checked')) !== 'false') {
-    await cinematic.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
-  }
-  log('Cinematic aria-checked:', await cinematic.getAttribute('aria-checked'));
-
-  log('Closing Settings (Escape).');
-  await page.keyboard.press('Escape');
-  await page.locator('.pq-modal--set').waitFor({ state: 'hidden', timeout: STEP_TIMEOUT_MS });
-  log('Settings closed.');
-}
-
-async function startLumen(page) {
-  section('Starting Lumen via "New Story" -> picker (Create is reachable, so the picker opens even for one story) -> Lumen card');
-  const newStoryBtn = page.locator('.pq-menuitem.is-primary');
-  await newStoryBtn.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  log('Clicking primary menu button:', JSON.stringify((await newStoryBtn.innerText()).trim()));
-  await newStoryBtn.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
-
-  // TitleScreen.newStory() opens the picker whenever `stories.length > 1 ||
-  // canCreate()` (design doc §12.1) — this harness's dev server always
-  // answers /api/health, so canCreate() is always true here even with
-  // Lumen as the only real story. The old "single story starts directly"
-  // path is exercised instead by the static/no-server scenario this repo's
-  // manual verification covers (no dev server behind it at all).
-  await page.locator('.pq-modal--picker.is-open').waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  log('Story picker is open.');
-
-  const lumenCard = page.locator('.pq-storycard:not(.pq-storycard--create)[aria-label*="Lumen" i]');
-  await lumenCard.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  log('Clicking the Lumen story card.');
-  await lumenCard.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
-
-  await page.locator('.pq-title').waitFor({ state: 'hidden', timeout: STORY_START_TIMEOUT_MS });
-  log('Title screen dismissed.');
-
-  await page.waitForFunction(
-    () => {
-      const ch = document.querySelector('.pq-chapter');
-      const dl = document.querySelector('.pq-dialogue');
-      return (ch && !ch.hidden) || (dl && !dl.hidden);
-    },
-    { timeout: STORY_START_TIMEOUT_MS },
-  );
-  checkConsoleForFatal();
-  log('First story content is on screen — Lumen is running.');
-}
-
-async function playThroughToEnding(page) {
-  section('Playing Lumen to an ending');
-  log('Advance gesture: click .pq-advance.is-armed. Choice gesture: click the matching .pq-tile/.pq-choice.');
-  log(`Expected choice path (first/on-script reply at each of ${EXPECTED_CHOICES.length} choice points):`);
-  EXPECTED_CHOICES.forEach((c, i) => log(`  ${i + 1}. "${c}..."`));
-
-  let advanceClicks = 0;
-  let choicesMade = 0;
-  let lastFingerprint = null;
-  let lastChangeAt = Date.now();
-  // A just-clicked choice tile lingers on screen for ~90ms (UILayer.selectChoice
-  // takes the plain `window.setTimeout(finish, 90)` branch once Reduced motion
-  // is on, skipping the FLIP-lift animation) before the panel actually clears —
-  // so the choice screen we already answered can still be the thing our very
-  // next snapshot sees. That's a transitional frame, not a stuck/wrong choice,
-  // so a mismatch only becomes a hard failure once it persists past a short
-  // grace window (comfortably above 90ms, well under STALL_MS).
-  const CHOICE_MISMATCH_GRACE_MS = 5000;
-  let choiceMismatchSince = null;
-  // `@wait` nodes (e.g. the two in ending_withdraw/credits_end) don't touch
-  // the dialogue box, so the click that resolves one leaves the SAME text on
-  // screen as the say line before it — tracked here purely so the log says
-  // that plainly instead of printing the same quoted line twice in a row.
-  let lastLoggedDialogue = null;
-
-  for (let step = 0; ; step++) {
-    checkConsoleForFatal();
-    if (step > MAX_ADVANCE_STEPS) {
-      throw new Error(`Exceeded MAX_ADVANCE_STEPS (${MAX_ADVANCE_STEPS}) without reaching the credits — likely stuck or looping.`);
-    }
-
-    const snap = await snapshotUi(page);
-    const fingerprint = JSON.stringify([snap.creditsVisible, snap.chapterOpen, snap.chapterTitle, snap.dialogueText, snap.choiceTexts]);
-    if (fingerprint !== lastFingerprint) {
-      lastFingerprint = fingerprint;
-      lastChangeAt = Date.now();
-    } else if (Date.now() - lastChangeAt > STALL_MS) {
-      throw new Error(`UI has not changed for ${STALL_MS}ms while playing (possible soft-lock). Last snapshot: ${fingerprint}`);
-    }
-
-    if (snap.creditsVisible) {
-      log(`Credits reached after ${advanceClicks} advance click(s) and ${choicesMade} choice(s).`);
-      return { advanceClicks, choicesMade };
-    }
-
-    if (snap.choiceOpen) {
-      // `expected === undefined` (more choice screens than the 3 the story
-      // takes on this path) and `idx === -1` (tiles that don't contain the
-      // expected text) get the SAME grace-then-fail treatment: both are
-      // equally likely to be the choice screen we just answered, still on
-      // screen mid its ~90ms dismiss animation (see CHOICE_MISMATCH_GRACE_MS
-      // above) rather than a genuinely new/wrong one.
-      const expected = EXPECTED_CHOICES[choicesMade];
-      const idx = expected === undefined ? -1 : snap.choiceTexts.findIndex((t) => t.includes(expected));
-      if (idx === -1) {
-        if (choiceMismatchSince === null) choiceMismatchSince = Date.now();
-        if (Date.now() - choiceMismatchSince > CHOICE_MISMATCH_GRACE_MS) {
-          const what =
-            expected === undefined
-              ? `an unexpected extra choice screen (#${choicesMade + 1}; only ${EXPECTED_CHOICES.length} were expected)`
-              : `no visible tile contained the expected text "${expected}" (choice #${choicesMade + 1})`;
-          throw new Error(`${what}, persisting for over ${CHOICE_MISMATCH_GRACE_MS}ms. Tiles seen: ${JSON.stringify(snap.choiceTexts)}`);
-        }
-        // Likely still the PREVIOUS choice screen mid-dismiss-animation. Give
-        // it a beat and re-snapshot rather than acting on stale tiles.
-        await sleep(60);
-        continue;
-      }
-      choiceMismatchSince = null;
-      log(`Choice #${choicesMade + 1}/${EXPECTED_CHOICES.length}: tile ${idx} — "${snap.choiceTexts[idx].slice(0, 72)}..."`);
-      await page.locator('.pq-tile, .pq-choice').nth(idx).click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
-      choicesMade++;
-      continue;
-    }
-
-    try {
-      await page.locator('.pq-advance.is-armed').click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
-    } catch (err) {
-      throw new Error(
-        `Could not click the advance affordance (.pq-advance.is-armed) at step ${step}: ` +
-          `${err.message}\nLast snapshot: ${fingerprint}`,
-      );
-    }
-    advanceClicks++;
-    if (snap.chapterOpen) {
-      log(`  [${advanceClicks}] dismissed chapter card: "${snap.chapterTitle}"`);
-      lastLoggedDialogue = null;
-    } else if (snap.dialogueVisible && snap.dialogueText === lastLoggedDialogue) {
-      // Same text as last time with no chapter in between: this click resolved
-      // a `@wait` beat (input:continue), not a new dialogue line.
-      log(`  [${advanceClicks}] (resolved a @wait beat — dialogue unchanged)`);
-    } else if (snap.dialogueVisible) {
-      const who = snap.dialogueSpeaker ? `${snap.dialogueSpeaker}: ` : '(narration) ';
-      const txt = snap.dialogueText.length > 64 ? snap.dialogueText.slice(0, 64) + '…' : snap.dialogueText;
-      log(`  [${advanceClicks}] ${who}"${txt}"`);
-      lastLoggedDialogue = snap.dialogueText;
-    } else {
-      log(`  [${advanceClicks}] advance click (no dialogue/chapter text captured — likely a @wait beat)`);
-    }
-  }
-}
-
-async function finishAtCredits(page) {
-  section('Credits: verifying content, then returning to title');
-  const credits = await page.evaluate(() => {
-    const el = document.querySelector('.pq-credits');
-    return { text: el ? el.innerText : '' };
-  });
-  log('Credits text (first 200 chars):', JSON.stringify(credits.text.slice(0, 200)));
-  if (!/Lumen/.test(credits.text) || !/Lamplighter/.test(credits.text)) {
-    throw new Error(`Credits panel did not contain the expected "Lumen"/"Lamplighter" text. Got: ${JSON.stringify(credits.text)}`);
-  }
-
-  const skipBtn = page.locator('.pq-credits__skip');
-  await skipBtn.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  log('Clicking credits button:', JSON.stringify((await skipBtn.innerText()).trim()));
-  await skipBtn.click({ timeout: STEP_TIMEOUT_MS, noWaitAfter: true });
-
-  await page.locator('.pq-credits').waitFor({ state: 'hidden', timeout: STEP_TIMEOUT_MS });
-  await page.locator('.pq-title:not([hidden])').waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  checkConsoleForFatal();
-  log('Confirmed: credits closed and the app returned cleanly to the title screen.');
-}
-
-async function runScenario(page) {
-  await assertTitleScreenAndDiscovery(page);
+async function runScenarioB(page, checkFatal) {
+  section('Scenario B — Play Lumen to an ending');
   await applyFastSettings(page);
-  await startLumen(page);
-  const stats = await playThroughToEnding(page);
-  await finishAtCredits(page);
-  checkConsoleForFatal();
+  await startStoryFromPicker(page, 'Lumen');
+  checkFatal();
 
-  section('Playthrough summary');
-  log(`Advance clicks: ${stats.advanceClicks}`);
-  log(`Choices made:   ${stats.choicesMade} / ${EXPECTED_CHOICES.length}`);
-  if (stats.choicesMade !== EXPECTED_CHOICES.length) {
-    throw new Error(`Expected exactly ${EXPECTED_CHOICES.length} choices to be made, made ${stats.choicesMade}`);
+  const stats = await playToEnding(page, checkFatal, LUMEN_EXPECTED_CHOICES);
+  if (stats.choicesMade !== LUMEN_EXPECTED_CHOICES.length) {
+    throw new Error(`Expected exactly ${LUMEN_EXPECTED_CHOICES.length} choices, made ${stats.choicesMade}`);
   }
-  if (stats.advanceClicks < MIN_EXPECTED_ADVANCES) {
-    warn(
-      `Only ${stats.advanceClicks} advance clicks recorded (expected roughly ~40 for a full Lumen ` +
-        `playthrough — see the header comment's tally). Not failing on this alone.`,
-    );
-  }
-  return stats;
+  await assertCreditsContain(page, ['Lumen', 'Lamplighter']);
+  log(`Lumen playthrough: ${stats.advanceClicks} advance click(s), ${stats.choicesMade} choice(s).`);
+  await clickCreditsSkipAndReturnToTitle(page);
+  checkFatal();
+  log('PASS: Lumen played start to finish, credits rolled, returned cleanly to the title screen.');
 }
 
-/* ─────────────────────────  failure diagnostics  ───────────────────────── */
+/* ─────────────────────────  scenario D: API contract  ───────────────────────── */
 
-async function dumpFailureArtifacts(page, err) {
-  mkdirSync(ARTIFACTS_DIR, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const base = path.join(ARTIFACTS_DIR, `fail-${stamp}`);
-  section('Dumping failure artifacts');
+async function runScenarioD(baseUrl, port) {
+  section('Scenario D — API contract');
 
-  if (page && !page.isClosed()) {
-    try {
-      log('Current URL:', page.url());
-    } catch {
-      /* page may already be unusable */
+  const health = await (await fetch(`${baseUrl}api/health`)).json();
+  if (health.ok !== true) throw new Error(`/api/health: ok !== true (${JSON.stringify(health)})`);
+  if (health.api !== '1.0') throw new Error(`/api/health: api !== "1.0" (got ${JSON.stringify(health.api)})`);
+  if (health.providers?.mock?.configured !== true) {
+    throw new Error(`/api/health: providers.mock.configured !== true (${JSON.stringify(health.providers?.mock)})`);
+  }
+  log('/api/health OK:', JSON.stringify({ ok: health.ok, api: health.api, mockConfigured: health.providers.mock.configured }));
+
+  const storiesBody = await (await fetch(`${baseUrl}api/stories`)).json();
+  if (storiesBody.api !== '1.0' || !Array.isArray(storiesBody.stories)) {
+    throw new Error(`/api/stories: unexpected shape: ${JSON.stringify(storiesBody).slice(0, 300)}`);
+  }
+  const lumen = storiesBody.stories.find((s) => s.id === 'lumen');
+  if (!lumen) throw new Error(`/api/stories: no "lumen" record. ids: ${storiesBody.stories.map((s) => s.id).join(', ')}`);
+  if (!lumen.manifest || typeof lumen.manifest !== 'object') throw new Error('/api/stories: lumen record is missing a manifest.');
+  if (typeof lumen.script !== 'string' || !lumen.script.trim()) throw new Error('/api/stories: lumen record has a missing/empty script.');
+  if (!Array.isArray(lumen.assets) || lumen.assets.length < 1) throw new Error('/api/stories: lumen record has no assets.');
+  for (const s of storiesBody.stories) {
+    if (s.id.startsWith('_')) throw new Error(`/api/stories: a "_"-prefixed id was returned: ${s.id}`);
+    for (const a of s.assets) {
+      if (!a.path.startsWith('assets/')) throw new Error(`/api/stories: asset path does not start with "assets/": ${JSON.stringify(a)} (story ${s.id})`);
     }
-    try {
-      await page.screenshot({ path: `${base}.png`, fullPage: true });
-      log('Screenshot:', `${base}.png`);
-    } catch (e) {
-      warn('screenshot failed:', e.message);
-    }
-    try {
-      writeFileSync(`${base}.html`, await page.content(), 'utf8');
-      log('Page HTML:', `${base}.html`);
-    } catch (e) {
-      warn('saving page HTML failed:', e.message);
-    }
-  } else {
-    warn('No open page to capture (failure happened before/without a live page).');
   }
+  log(`/api/stories OK: ${storiesBody.stories.length} stor${storiesBody.stories.length === 1 ? 'y' : 'ies'} total, lumen has ${lumen.assets.length} asset(s), nothing "_"-prefixed.`);
 
-  try {
-    const dump = consoleLog.slice(-150).map((e) => `[${e.type}] ${e.text}`).join('\n');
-    writeFileSync(`${base}.console.log`, dump, 'utf8');
-    log('Console dump:', `${base}.console.log`, `(${Math.min(150, consoleLog.length)} of ${consoleLog.length} entries)`);
-  } catch (e) {
-    warn('saving console dump failed:', e.message);
-  }
+  // Raw-socket traversal checks: fetch()/curl (without --path-as-is) both
+  // normalize ".." out of a URL's path BEFORE the request ever leaves the
+  // process, which would silently test a different, harmless request
+  // instead of the server's own defense — see rawHttpGet's doc comment.
+  const traversal = await rawHttpGet('127.0.0.1', port, '/stories/lumen/../../package.json');
+  if (traversal.status !== 404) throw new Error(`Traversal path did not 404 (got ${traversal.status}). Body: ${traversal.body.slice(0, 200)}`);
+  if (/"name"\s*:\s*"lamplighter"/i.test(traversal.body)) throw new Error('Traversal response body looks like package.json — the traversal defense failed!');
+  log('Raw traversal check (/stories/lumen/../../package.json, path-as-is) -> 404, confirmed.');
 
-  try {
-    writeFileSync(`${base}.vite.log`, viteOutputLines.slice(-150).join('\n'), 'utf8');
-    log('Vite server log:', `${base}.vite.log`);
-  } catch {
-    /* best-effort */
-  }
-
-  try {
-    writeFileSync(`${base}.error.txt`, err && err.stack ? err.stack : String(err), 'utf8');
-  } catch {
-    /* best-effort */
-  }
-  log('Artifacts prefix:', base);
+  const templateReq = await rawHttpGet('127.0.0.1', port, '/stories/_template/manifest.json');
+  if (templateReq.status !== 404) throw new Error(`_template path did not 404 (got ${templateReq.status}). Body: ${templateReq.body.slice(0, 200)}`);
+  log('Raw hidden-name check (/stories/_template/manifest.json) -> 404, confirmed.');
+  log('PASS: API contract holds in both shape and traversal-safety.');
 }
 
-/* ─────────────────────────  top-level orchestration  ───────────────────────── */
+/* ─────────────────────────  scenario C / C2: Create + both endings  ───────────────────────── */
+
+const SIGNAL_HILL_TITLE = 'Signal Hill';
+
+// Derived by hand from src/server/mock-story.ts's fixed "Signal Hill"
+// envelope (reproduced there verbatim from the design doc). Two guarded
+// jump chains close the story:
+//   :: close_warm / close_plain
+//     -> ending_ferry {trust>=4}
+//     -> ending_harbour
+// `trust` starts at 0 and is only ever mutated by the OFF-SCRIPT (">!")
+// option at each of the 6 choice menus (every ">" suggested option leaves it
+// untouched). So:
+//   - always taking the FIRST ("> suggested") option keeps trust at 0 for
+//     the whole run -> falls through to ending_harbour.
+//   - always taking the off-script ("!>") option accumulates trust well past
+//     4 by the final menu -> ending_ferry.
+// Verified line by line against the script; substrings below are chosen
+// clear of any apostrophe/quote/dash smartQuotes() could touch, exactly
+// like LUMEN_EXPECTED_CHOICES above.
+const ALL_SUGGESTED_CHOICES = [
+  'North light receiving. Go ahead, Wren',
+  'Nobody is asking you to explain a bag',
+  'It does not get to decide. You do',
+  'You still have twenty minutes',
+  'Whatever you decide, you will have decided it',
+  'Still here. North light standing by',
+];
+const OFF_SCRIPT_CHOICES = [
+  'I have got all night and nothing in it. Go on',
+  'You called a radio at three in the morning to tell me you are not asking permission',
+  'Then open it while I am here, and you will not have to do it alone',
+  'You have been on this channel four hours to avoid twenty minutes',
+  'Get on the boat, Wren',
+  'Still here, Wren',
+];
+
+// backgrounds (declaration order) -> characters/poses (declaration order) ->
+// cg, exactly the order tools/lib/asset-plan.mjs#planAssets walks
+// Object.entries() over the manifest — see art.ts's `index/total`.
+const EXPECTED_SIGNAL_HILL_ASSET_PATHS = [
+  'assets/backgrounds/radio_room.png',
+  'assets/backgrounds/harbour_dawn.png',
+  'assets/characters/wren/guarded.png',
+  'assets/characters/wren/thawing.png',
+  'assets/characters/wren/decided.png',
+  'assets/cg/cover_key.png',
+];
+
+async function runScenarioC_and_C2(page, checkFatal, storiesDir) {
+  section('Scenario C — Create flow (mock, art off)');
+  await applyFastSettings(page);
+
+  await openCreateViaMenu(page);
+  await fillPremiseViaChip(page);
+  await selectProvider(page, 'Mock');
+  await setArtToggle(page, false);
+  await clickGenerate(page);
+
+  // The 'connecting' view — and its stage rail, live at PLAN — is rendered
+  // SYNCHRONOUSLY inside CreateStory#onGenerate(), before any network round
+  // trip (src/ui/CreateStory.ts). The mock pipeline has no artificial delay
+  // and can finish before a SECOND Playwright poll would ever land, so this
+  // immediate, unpolled read is the only reliable place to "observe the
+  // stage rail" rather than a race against however fast mock happens to be.
+  const justClicked = await readCreateStateNow(page);
+  const railLabels = justClicked.railSteps.map((s) => s.label);
+  const expectedLabels = ['PLAN', 'WRITE', 'CHECK', 'SAVE', 'PAINT'];
+  if (JSON.stringify(railLabels) !== JSON.stringify(expectedLabels)) {
+    throw new Error(`Stage rail labels mismatch immediately after Generate. Expected ${JSON.stringify(expectedLabels)}, got ${JSON.stringify(railLabels)}`);
+  }
+  const liveStep = justClicked.railSteps.find((s) => s.state === 'live');
+  if (!liveStep || liveStep.label !== 'PLAN') {
+    throw new Error(`Expected the rail's live step to be PLAN immediately after clicking Generate, got ${JSON.stringify(justClicked.railSteps)}`);
+  }
+  log('Stage rail confirmed immediately after Generate:', JSON.stringify(justClicked.railSteps));
+
+  const seenStages = new Set();
+  const doneState = await pollCreateUntil(page, (s) => !!s.doneTitle, {
+    timeoutMs: GENERATE_TIMEOUT_MS,
+    onTick: (s) => {
+      if (s.stagecopy) seenStages.add(s.stagecopy);
+    },
+  });
+  log('Stage-copy line(s) observed en route to done:', JSON.stringify([...seenStages]));
+  if (!doneState.doneTitle.includes(SIGNAL_HILL_TITLE)) {
+    throw new Error(`Expected the done view to mention "${SIGNAL_HILL_TITLE}", got ${JSON.stringify(doneState.doneTitle)}`);
+  }
+  log(`Generation reached the done view: "${doneState.doneTitle}"`);
+
+  await clickCreateResultButton(page, 'Begin');
+  await assertAutostartLandsInStory(page, { expectChapterTitle: SIGNAL_HILL_TITLE });
+
+  const seen = await advanceFew(page, 3);
+  seen.forEach((snap, i) => {
+    if (!snap.chapterOpen && !snap.dialogueText.trim()) {
+      throw new Error(`advanceFew step ${i}: neither a chapter card nor dialogue text was visible. Snapshot: ${JSON.stringify(snap)}`);
+    }
+  });
+  log(`Advanced ${seen.length} line(s) into Signal Hill; dialogue/chapter text present at every step.`);
+  checkFatal();
+  log('PASS: Create (mock, art off) -> reload lands directly in Signal Hill.');
+
+  section('Scenario C2 — play Signal Hill to both endings');
+  const run1 = await playToEnding(page, checkFatal, ALL_SUGGESTED_CHOICES);
+  if (run1.choicesMade !== ALL_SUGGESTED_CHOICES.length) {
+    throw new Error(`Run 1 (all-suggested -> ending_harbour): expected ${ALL_SUGGESTED_CHOICES.length} choices, made ${run1.choicesMade}`);
+  }
+  await assertCreditsContain(page, [SIGNAL_HILL_TITLE, 'Lamplighter']);
+  log(`Run 1 (all-suggested) final narration before credits: ${JSON.stringify(run1.lastDialogueBeforeCredits)}`);
+  await clickCreditsSkipAndReturnToTitle(page);
+  checkFatal();
+
+  await startStoryFromPicker(page, 'Signal Hill');
+  const run2 = await playToEnding(page, checkFatal, OFF_SCRIPT_CHOICES);
+  if (run2.choicesMade !== OFF_SCRIPT_CHOICES.length) {
+    throw new Error(`Run 2 (off-script -> ending_ferry): expected ${OFF_SCRIPT_CHOICES.length} choices, made ${run2.choicesMade}`);
+  }
+  await assertCreditsContain(page, [SIGNAL_HILL_TITLE, 'Lamplighter']);
+  log(`Run 2 (off-script) final narration before credits: ${JSON.stringify(run2.lastDialogueBeforeCredits)}`);
+
+  if (!run1.lastDialogueBeforeCredits || !run2.lastDialogueBeforeCredits) {
+    throw new Error('Could not capture a final narration line for one or both runs — cannot compare endings.');
+  }
+  if (run1.lastDialogueBeforeCredits === run2.lastDialogueBeforeCredits) {
+    throw new Error(`Expected the two endings to show DIFFERENT final narration; both showed ${JSON.stringify(run1.lastDialogueBeforeCredits)}`);
+  }
+  log('PASS: the two runs ended on DIFFERENT final narration (different guarded-jump endings) and both rolled credits, no console error.');
+  await clickCreditsSkipAndReturnToTitle(page);
+  checkFatal();
+}
+
+/* ─────────────────────────  scenario E: art path  ───────────────────────── */
+
+async function runScenarioE(page, checkFatal, storiesDir) {
+  section('Scenario E — art path (STORYGEN_IMAGE_BACKEND=mock, per-asset SSE progress)');
+  await applyFastSettings(page);
+
+  await openCreateViaMenu(page);
+  await fillPremiseViaChip(page);
+  await selectProvider(page, 'Mock');
+  await setArtToggle(page, true);
+  await clickGenerate(page);
+
+  let sawAssetLine = '';
+  const readyState = await pollCreateUntil(page, (s) => !!s.readyBanner, {
+    timeoutMs: GENERATE_TIMEOUT_MS,
+    onTick: (s) => {
+      if (s.assetline) sawAssetLine = s.assetline;
+    },
+  });
+  if (!readyState.readyBanner.title.includes(SIGNAL_HILL_TITLE) || !/ready to play/i.test(readyState.readyBanner.title)) {
+    throw new Error(`Unexpected "ready to play" banner: ${JSON.stringify(readyState.readyBanner)}`);
+  }
+  log('Ready-to-play banner confirmed (art still running, "ready" fired before "done"):', JSON.stringify(readyState.readyBanner));
+
+  // STORYGEN_MOCK_ART_DELAY_MS keeps each asset observable for ~400ms —
+  // comfortably above one poll tick — but poll a little longer here if the
+  // very first asset hadn't started yet by the time `ready` arrived.
+  if (!sawAssetLine) {
+    await pollCreateUntil(page, (s) => !!s.assetline, {
+      timeoutMs: 5000,
+      onTick: (s) => {
+        if (s.assetline) sawAssetLine = s.assetline;
+      },
+    }).catch(() => {});
+  }
+  if (!sawAssetLine) throw new Error('Never observed a per-asset progress line (.pq-create__assetline) while art was running.');
+  log('Per-asset progress line observed:', JSON.stringify(sawAssetLine));
+
+  // "Begin now" is offered BEFORE done — click it now, mid-art.
+  await clickCreateResultButton(page, 'Begin now');
+  await assertAutostartLandsInStory(page, { expectChapterTitle: SIGNAL_HILL_TITLE });
+  checkFatal();
+  log('PASS: "Begin now" adopted the story while art was still painting.');
+
+  // The art job is detached (design doc §4.5) and keeps running server-side
+  // after the client navigates away — verify completion directly on disk
+  // rather than trying to keep an SSE connection alive across the reload.
+  const meta = await waitForArtSettled(storiesDir, 'signal-hill', { timeoutMs: ART_DONE_TIMEOUT_MS });
+  if (meta.art.state !== 'done') {
+    throw new Error(`Expected generation.json art.state === 'done' once the job settled, got ${JSON.stringify(meta.art.state)}. assets: ${JSON.stringify(meta.art.assets)}`);
+  }
+  const storyDir = path.join(storiesDir, 'signal-hill');
+  for (const rel of EXPECTED_SIGNAL_HILL_ASSET_PATHS) {
+    const p = path.join(storyDir, rel);
+    if (!existsSync(p)) throw new Error(`Expected asset PNG missing on disk: ${rel}`);
+    if (statSync(p).size <= 0) throw new Error(`Asset PNG is empty: ${rel}`);
+  }
+  log(`PASS: all ${EXPECTED_SIGNAL_HILL_ASSET_PATHS.length} planned assets exist on disk; generation.json art.state === 'done'.`);
+}
+
+/* ─────────────────────────  scenario F: repair loop  ───────────────────────── */
+
+async function runScenarioF(page, checkFatal, storiesDir) {
+  section('Scenario F — repair loop (STORYGEN_MOCK_BREAK=targets)');
+  await applyFastSettings(page);
+
+  await openCreateViaMenu(page);
+  await fillPremiseViaChip(page);
+  await selectProvider(page, 'Mock');
+  await setArtToggle(page, false);
+  await clickGenerate(page);
+
+  let sawRepairStagecopy = false;
+  const doneState = await pollCreateUntil(page, (s) => !!s.doneTitle, {
+    timeoutMs: GENERATE_TIMEOUT_MS,
+    onTick: (s) => {
+      if (/fixing|attempt/i.test(s.stagecopy)) sawRepairStagecopy = true;
+    },
+  });
+  if (!doneState.doneTitle.includes(SIGNAL_HILL_TITLE)) {
+    throw new Error(`Expected the done view to mention "${SIGNAL_HILL_TITLE}" despite the injected defect, got ${JSON.stringify(doneState.doneTitle)}`);
+  }
+  log(`Generation succeeded after repair: "${doneState.doneTitle}"`);
+  // Best-effort/soft signal only — see this file's flake-risk notes in the
+  // final report. generation.json (below) is the authoritative proof.
+  if (sawRepairStagecopy) log('Also observed a "repair" stage-copy line in the UI along the way.');
+  else warn('Did not observe a "repair" stage-copy line in the UI while polling (best-effort only — the mock repair pass can outrun a poll tick). generation.json is the real proof and is checked next.');
+
+  const meta = readGenerationJson(storiesDir, 'signal-hill');
+  if (!Array.isArray(meta.attempts) || meta.attempts.length !== 2) {
+    throw new Error(`Expected generation.json attempts.length === 2, got ${JSON.stringify(meta.attempts)}`);
+  }
+  const [first, second] = meta.attempts;
+  if (first.ok !== false) throw new Error(`Expected attempts[0].ok === false, got ${JSON.stringify(first)}`);
+  if (!Array.isArray(first.issues) || !first.issues.includes('TARGET_MISSING')) {
+    throw new Error(`Expected attempts[0].issues to contain "TARGET_MISSING", got ${JSON.stringify(first.issues)}`);
+  }
+  if (second.ok !== true) throw new Error(`Expected attempts[1].ok === true (the repaired attempt), got ${JSON.stringify(second)}`);
+  log('PASS: generation.json confirms the repair loop — attempts[0] failed with TARGET_MISSING, attempts[1] (the repair) succeeded.');
+}
+
+/* ─────────────────────────  orchestration  ───────────────────────── */
+
+let browser = null;
+let currentDiag = { page: null, consoleLog: [], serverOutputs: [], label: 'startup' };
+let globalTimer = null;
+let cleaningUp = false;
+
+/**
+ * Runs one scenario group: its own server + its own fresh page/context,
+ * always torn down. The browser itself is launched lazily on the very first
+ * group of the whole run (and reused for every group after — WebGL launch
+ * flags don't depend on which server/port is live) and verified against
+ * THIS group's own server before any scenario code sees the page.
+ */
+async function runGroup({ mode, port, env, label, hermeticTag, run }) {
+  const hermeticDir = hermeticTag ? makeHermeticStoriesDir(hermeticTag) : null;
+  const finalEnv = hermeticDir ? { ...env, STORYGEN_STORIES_DIR: hermeticDir } : env;
+  const server = await startServer({ mode, port, env: finalEnv, label });
+  // Everything from here on MUST be inside this try/finally: once a server
+  // has actually started, ANY later throw (browser launch, page creation,
+  // navigation, the scenario itself) has to still stop it — a server that
+  // outlives a mid-setup failure is exactly the stray-process trap the
+  // preflight check in startServer() exists to catch on the NEXT run.
+  let ctx = null;
+  try {
+    if (!browser) ({ browser } = await launchBrowser(server.baseUrl));
+    ctx = await newPage(browser, label);
+    currentDiag = { page: ctx.page, consoleLog: ctx.consoleLog, serverOutputs: server.outputLines, label };
+    section(`Navigating to ${server.baseUrl} (${label})`);
+    await ctx.page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: STEP_TIMEOUT_MS });
+    await run({ page: ctx.page, checkFatal: ctx.checkFatal, storiesDir: hermeticDir, baseUrl: server.baseUrl, port });
+  } catch (err) {
+    await dumpFailureArtifacts({ page: ctx?.page, err, consoleLog: ctx?.consoleLog ?? [], serverOutputs: server.outputLines, label });
+    throw err;
+  } finally {
+    if (ctx) await ctx.context.close().catch(() => {});
+    await stopServer(server);
+    if (hermeticDir) cleanupHermeticDir(hermeticDir);
+  }
+}
+
+async function runMode(mode) {
+  const port = mode === 'dev' ? DEV_PORT : PREVIEW_PORT;
+  section(`═══ MODE: ${mode} (port ${port}) ═══`);
+
+  if (mode === 'preview') await ensureBuilt();
+
+  // Group 1 — plain server, shared by A/B/D (design doc §14.1).
+  await runGroup({
+    mode,
+    port,
+    env: {},
+    label: `${mode}-shared`,
+    run: async ({ page, checkFatal, baseUrl }) => {
+      await runScenarioA(page);
+      await runScenarioB(page, checkFatal);
+      await runScenarioD(baseUrl, port);
+    },
+  });
+
+  // Group 2 — hermetic mock server (art forced off), shared by C/C2.
+  await runGroup({
+    mode,
+    port,
+    env: { STORYGEN_IMAGE_BACKEND: 'none' },
+    label: `${mode}-C`,
+    hermeticTag: `${mode}-c`,
+    run: async ({ page, checkFatal, storiesDir }) => {
+      await runScenarioC_and_C2(page, checkFatal, storiesDir);
+    },
+  });
+
+  if (mode === 'dev') {
+    // Group 3 — hermetic mock-art server, scenario E. Dev-only: E adds a
+    // full generate+art+reload cycle for comparatively little additional
+    // proof once the plugin's dev/preview parity is already established by
+    // A-D running in both modes above — kept dev-only purely for run time.
+    await runGroup({
+      mode: 'dev',
+      port,
+      env: { STORYGEN_IMAGE_BACKEND: 'mock', STORYGEN_MOCK_ART_DELAY_MS: '400' },
+      label: 'dev-E',
+      hermeticTag: 'dev-e',
+      run: async ({ page, checkFatal, storiesDir }) => {
+        await runScenarioE(page, checkFatal, storiesDir);
+      },
+    });
+
+    // Group 4 — hermetic repair-loop server, scenario F. Same dev-only
+    // rationale as E.
+    await runGroup({
+      mode: 'dev',
+      port,
+      env: { STORYGEN_MOCK_BREAK: 'targets' },
+      label: 'dev-F',
+      hermeticTag: 'dev-f',
+      run: async ({ page, checkFatal, storiesDir }) => {
+        await runScenarioF(page, checkFatal, storiesDir);
+      },
+    });
+  }
+}
 
 async function finishAndExit(code, reasonLabel) {
   if (cleaningUp) return;
   cleaningUp = true;
   if (globalTimer) clearTimeout(globalTimer);
-  if (KEEP_OPEN) {
-    log(`--keep-open set: leaving Chromium and the vite dev server running (${reasonLabel}). Press Ctrl+C to exit.`);
+  if (KEEP_OPEN && code === 0) {
+    log(`--keep-open set: leaving the last Chromium instance running (${reasonLabel}). Press Ctrl+C to exit.`);
     return;
   }
   try {
-    if (browserRef) await browserRef.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
   } finally {
-    await stopViteServer().catch(() => {});
     log(`Exiting with code ${code} (${reasonLabel})`);
     process.exit(code);
   }
@@ -844,20 +626,16 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
 }
 
 async function main() {
-  mkdirSync(ARTIFACTS_DIR, { recursive: true });
-  log(`Lamplighter e2e harness starting. keepOpen=${KEEP_OPEN} port=${PORT} globalTimeout=${GLOBAL_TIMEOUT_MS}ms`);
-
-  await startViteServer();
-  const { page, flagsLabel, webgl } = await launchBrowserWithWebglFallback();
-  const stats = await runScenario(page);
+  log(`Lamplighter e2e harness starting. modes=${JSON.stringify(MODES)} keepOpen=${KEEP_OPEN} globalTimeout=${GLOBAL_TIMEOUT_MS}ms`);
+  for (const mode of MODES) {
+    await runMode(mode);
+  }
 
   bannerPass([
-    `Chromium launch flags: ${flagsLabel}`,
-    `WebGL renderer: ${webgl.renderer} (vendor: ${webgl.vendor})`,
-    `Advance clicks: ${stats.advanceClicks}, choices made: ${stats.choicesMade}/${EXPECTED_CHOICES.length}`,
-    'Path: prologue -> scene_open -> open_script -> after_open -> atrium_scene -> building_script ->',
-    '      after_building -> deeper_gate -> holding -> converge -> ch2 -> final_script -> climax ->',
-    '      ending_withdraw -> credits_end -> END',
+    `Modes run: ${MODES.join(', ')}`,
+    'Scenario A (boot/discovery), B (Lumen playthrough), D (API contract) — every mode.',
+    'Scenario C (Create, mock, art off -> autostart) and C2 (both Signal Hill endings) — every mode.',
+    MODES.includes('dev') ? 'Scenario E (art path, mock backend) and F (repair loop) — dev only.' : 'Scenario E/F skipped (dev-only, dev mode not selected).',
   ]);
   await finishAndExit(0, 'success');
 }
@@ -865,13 +643,13 @@ async function main() {
 globalTimer = setTimeout(async () => {
   const msg = `global timeout of ${GLOBAL_TIMEOUT_MS}ms exceeded`;
   bannerFail(msg);
-  await dumpFailureArtifacts(pageRef, new Error(msg)).catch(() => {});
+  await dumpFailureArtifacts({ ...currentDiag, err: new Error(msg), label: `${currentDiag.label}-global-timeout` }).catch(() => {});
   await finishAndExit(1, 'global-timeout');
 }, GLOBAL_TIMEOUT_MS);
 
 main().catch(async (err) => {
   const msg = err && err.message ? err.message : String(err);
   bannerFail(msg);
-  await dumpFailureArtifacts(pageRef, err).catch((e) => warn('dumpFailureArtifacts itself failed:', e));
+  await dumpFailureArtifacts({ ...currentDiag, err }).catch((e) => warn('dumpFailureArtifacts itself failed:', e));
   await finishAndExit(1, 'error');
 });
