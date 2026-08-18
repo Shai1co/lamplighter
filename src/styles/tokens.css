@@ -453,7 +453,11 @@
      the dark bay beside her — which is the only rail of the two that leaves the
      figure uncrossed. Everything inside the pane was restacked for it (see
      .pq-proxy__telemetry: one column of four instrument rows, not two). */
-  --pq-rail-w: clamp(300px, 21vw, 404px);
+  /* The floor is the proxy pane's own historical minimum (324px), not a rounder
+     number: below it the reading tiles start taking four lines and the pane
+     grows upward into the speaker's face, which is the collision the bottom
+     offset was tuned to avoid. The ceiling is the rail. */
+  --pq-rail-w: clamp(324px, 21vw, 404px);
   /* ── One tool, one line ────────────────────────────────────────────────────
      Every hairline in BOTH right-column panes is struck from this and nothing
      else: the outer cut, the inner bevel, the telemetry rules, the meter
