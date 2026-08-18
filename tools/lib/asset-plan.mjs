@@ -47,6 +47,25 @@ export function layerFilename(bgId, index, total) {
   return total > 1 ? `${bgId}.${index}.png` : `${bgId}.png`;
 }
 
+/**
+ * Gemini's composed prompt: `[style, context, entryPrompt, aspect]` joined
+ * with blank lines — WITHOUT the Codex-only "save it as <filename>" clause
+ * (design doc §10.1). The Gemini API returns image bytes directly and the
+ * caller chooses the filename itself, so a save-instruction sentence inside
+ * the prompt text is only an invitation for the model to render those
+ * literal words into the picture. Shared by tools/gen-assets.mjs's
+ * `--backend gemini` path and src/server/art.ts, so both ever compose the
+ * same string for the same job.
+ * @param {AssetJob} job
+ * @returns {string}
+ */
+export function composeGeminiPrompt(job) {
+  return [job.style, job.context, job.entryPrompt, job.aspect]
+    .map((s) => String(s).trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
 export function depthHint(index, total, layerName) {
   const named = layerName ? `layer "${layerName}"` : `layer ${index + 1} of ${total}`;
   if (total <= 1) return '';

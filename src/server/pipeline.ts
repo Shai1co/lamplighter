@@ -1,17 +1,22 @@
 /**
- * Lamplighter — draft → validate → repair(≤2) → write. Owns the stage events
- * (design doc §5, §8.3).
+ * Lamplighter — draft → validate → repair(≤2) → write → art. Owns the stage
+ * events (design doc §5, §8.3, §10.3).
  *
- * PR-1 scope note: `art.ts` (the actual art job) is explicitly out of scope
- * for this PR, so this pipeline always resolves as if `art: false` were
- * requested — regardless of `req.options.art` or `health.art.available` —
- * and never emits an `art`-stage event. This is not a departure from the
- * wire contract: §5.1's own ordering guarantee already carves out exactly
- * this path ("With art: false, ready and done arrive back to back"), so
- * PR-2's Create panel and scenario C already exercise it. PR-3 wires
- * `art.ts` in here and starts honouring the request for real.
+ * Art runs INSIDE this same detached job, after `ready` fires — never
+ * before: `ready` means "files are on disk and the story is playable", and
+ * §5.1's ordering table guarantees it fires before art finishes, not before
+ * art starts. Once `ready` has fired the story itself is already a complete,
+ * successful result, so everything from here to `done` is strictly additive:
+ * a structural art failure or a mid-run cancellation (`DELETE
+ * /api/jobs/:id`) still resolves as `done` with whatever art progress there
+ * is, never a terminal `error` — nothing in §5.1's table describes an
+ * `error` following a `ready`, and §12.2's "Stop painting… settles to the
+ * done view" is the client-facing half of the same decision.
  */
 
+import { runArt } from './art';
+import type { ArtSummary } from './art';
+import { geminiImageModel, resolveImageBackend } from './env';
 import { redact } from './net';
 import { buildRepairMessage, buildUserMessage, LENGTH_PROFILES, PROMPT_VERSION, SYSTEM_PROMPT } from './prompt';
 import { extractEnvelope, generateText, resolveProvider } from './providers';
@@ -93,7 +98,15 @@ export async function runPipeline(ctx: ServerContext, job: Job, req: GenerateSto
   // depending on the caller's `length` would defeat the point of having one.
   const length: StoryLength = provider === 'mock' ? 'short' : (req.options?.length ?? 'standard');
 
-  job.emit('hello', { jobId: job.id, kind: 'story', provider, model, art: false, startedAt } satisfies EvHello);
+  // Resolved once, up front, from env + the request — never from anything
+  // that could still change (health.art.available is this same computation,
+  // reported for the client's own toggle default; here it decides for real).
+  const imageBackend = resolveImageBackend(ctx.env);
+  const artAvailable = imageBackend !== 'none';
+  const wantArt = req.options?.art ?? artAvailable;
+  const doArt = wantArt && artAvailable;
+
+  job.emit('hello', { jobId: job.id, kind: 'story', provider, model, art: doArt, startedAt } satisfies EvHello);
 
   let currentStage: Stage = 'plan';
   const stage = (s: Stage, message: string, step: number): void => {
@@ -206,7 +219,15 @@ export async function runPipeline(ctx: ServerContext, job: Job, req: GenerateSto
     durationMs: Date.now() - startedAt,
     attempts,
     warnings,
-    art: { requested: false, backend: 'none', state: 'off', assets: [] },
+    art: doArt
+      ? {
+          requested: true,
+          backend: imageBackend,
+          ...(imageBackend === 'gemini' ? { imageModel: geminiImageModel(ctx.env) } : {}),
+          state: 'running',
+          assets: [],
+        }
+      : { requested: wantArt, backend: 'none', state: 'off', assets: [] },
   };
   if (req.title) meta.title = req.title;
 
@@ -218,13 +239,32 @@ export async function runPipeline(ctx: ServerContext, job: Job, req: GenerateSto
     return;
   }
 
-  job.emit('ready', { id: writeResult.id, title: envelope.manifest.title, art: 'off' } satisfies EvReady);
+  job.emit('ready', { id: writeResult.id, title: envelope.manifest.title, art: doArt ? 'running' : 'off' } satisfies EvReady);
+
+  let art: EvDone['art'] = { generated: 0, skipped: 0, failed: 0 };
+  if (doArt) {
+    stage('art', 'Painting the art…', 5);
+    try {
+      const summary: ArtSummary = await runArt(ctx, job, { storyId: writeResult.id });
+      art = { generated: summary.generated, skipped: summary.skipped, failed: summary.failed };
+    } catch (err) {
+      // Structural failure (e.g. the manifest vanished from disk between the
+      // write above and here) — NOT an ordinary per-asset failure, which
+      // runArt already absorbs, continues past, and reports through its own
+      // summary. The story is still safely on disk and playable, so this
+      // still resolves as `done` reporting zero art progress rather than a
+      // terminal `error` this late (see the file header for why).
+      // eslint-disable-next-line no-console
+      console.error('[storygen] art job crashed after ready:', err);
+    }
+  }
+
   job.emit('done', {
     id: writeResult.id,
     title: envelope.manifest.title,
     durationMs: Date.now() - startedAt,
     warnings,
-    art: { generated: 0, skipped: 0, failed: 0 },
+    art,
   } satisfies EvDone);
   job.state = 'done';
   job.endedAt = Date.now();

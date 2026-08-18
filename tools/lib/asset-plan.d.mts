@@ -25,6 +25,7 @@ export const ASPECT: { background: string; character: string; cg: string };
 
 export function layerFilename(bgId: string, index: number, total: number): string;
 export function depthHint(index: number, total: number, layerName: string): string;
+export function composeGeminiPrompt(job: AssetJob): string;
 
 export function planAssets(
   manifest: Record<string, unknown>,

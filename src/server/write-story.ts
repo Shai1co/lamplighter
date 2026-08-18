@@ -147,8 +147,7 @@ export async function writeStory(ctx: ServerContext, env: StoryEnvelope, meta: G
       } catch {
         throw idConflict(`Could not claim either "${id}" or "${retryId}" — another job won the race twice.`);
       }
-      id = retryId;
-      return { id: retryId, dir: finalDir, renamedFrom: env.manifest.id };
+      return { id: retryId, dir: finalDir, renamedFrom: id };
     }
   } catch (err) {
     await fs.rm(stagingDir, { recursive: true, force: true }).catch(() => {});

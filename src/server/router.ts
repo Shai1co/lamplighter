@@ -13,14 +13,28 @@
 
 import type { ServerResponse } from 'node:http';
 import type { Connect } from 'vite';
+import { runArt } from './art';
 import { defaultModelFor, geminiImageModel, isConfigured, resolveImageBackend } from './env';
 import { runPipeline } from './pipeline';
 import { resolveProvider } from './providers';
 import { pipeJobToSse, startSse } from './sse';
+import type { Job } from './sse';
 import type { ServerContext } from './storygen-plugin';
-import { isStoriesDirWritable, listStories } from './stories';
+import { isStoriesDirWritable, listStories, readStoryRecord } from './stories';
 import { serveStoryFile } from './static';
-import type { ApiError, ApiErrorBody, GenerateStoryRequest, ProviderHealth, ProviderId, StoriesResponse, StorygenHealth, StoryLength } from './types';
+import type {
+  ApiError,
+  ApiErrorBody,
+  EvDone,
+  EvHello,
+  GenerateAssetsRequest,
+  GenerateStoryRequest,
+  ProviderHealth,
+  ProviderId,
+  StoriesResponse,
+  StorygenHealth,
+  StoryLength,
+} from './types';
 
 /* ─────────────────────────────  small HTTP helpers  ───────────────────────────── */
 
@@ -253,6 +267,132 @@ function makeGenerateStoryHandler(ctx: ServerContext): Connect.NextHandleFunctio
   };
 }
 
+/* ─────────────────────────────  POST /api/generate-assets  ───────────────────────────── */
+
+const ONLY_SET = new Set(['backgrounds', 'characters', 'cg']);
+
+type AssetsParseResult = { ok: true; value: GenerateAssetsRequest } | { ok: false; message: string };
+
+function parseGenerateAssetsRequest(raw: unknown): AssetsParseResult {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return { ok: false, message: 'Request body must be a JSON object.' };
+  }
+  const b = raw as Record<string, unknown>;
+  const id = typeof b.id === 'string' ? b.id.trim() : '';
+  if (!id) return { ok: false, message: 'id is required.' };
+  const value: GenerateAssetsRequest = { id };
+
+  if (b.only !== undefined) {
+    if (typeof b.only !== 'string' || !ONLY_SET.has(b.only)) {
+      return { ok: false, message: 'only must be one of: backgrounds, characters, cg.' };
+    }
+    value.only = b.only as GenerateAssetsRequest['only'];
+  }
+  if (b.force !== undefined) {
+    if (typeof b.force !== 'boolean') return { ok: false, message: 'force must be a boolean.' };
+    value.force = b.force;
+  }
+  return { ok: true, value };
+}
+
+/**
+ * The standalone re-paint job's own tiny envelope: `hello` → (art.ts's own
+ * `asset` events, emitted directly on this job) → `done`. Unlike
+ * /api/generate-story there is no `ready` — the story already exists and was
+ * already playable before this job started — and no terminal `error` on
+ * cancellation: `DELETE /api/jobs/:id` still resolves as `done` with
+ * whatever finished, exactly like the embedded art run in pipeline.ts and
+ * for the same reason (design doc §12.2 — "Stop painting" settles to the
+ * done view, not a failure view). A genuinely unexpected throw out of
+ * `runArt` (not a per-asset failure — those are already handled inside it)
+ * is left to the caller's own crash guard, matching how
+ * `makeGenerateStoryHandler` treats `runPipeline`.
+ */
+async function runAssetsJob(ctx: ServerContext, job: Job, req: GenerateAssetsRequest, title: string): Promise<void> {
+  const startedAt = Date.now();
+  const backend = resolveImageBackend(ctx.env);
+  job.emit('hello', {
+    jobId: job.id,
+    kind: 'assets',
+    provider: backend === 'gemini' ? 'gemini' : 'mock',
+    model: backend === 'gemini' ? geminiImageModel(ctx.env) : 'mock-1',
+    art: true,
+    startedAt,
+  } satisfies EvHello);
+
+  const summary = await runArt(ctx, job, { storyId: req.id, only: req.only, force: req.force });
+
+  job.emit('done', {
+    id: req.id,
+    title,
+    durationMs: Date.now() - startedAt,
+    warnings: [],
+    art: { generated: summary.generated, skipped: summary.skipped, failed: summary.failed },
+  } satisfies EvDone);
+  job.state = 'done';
+  job.endedAt = Date.now();
+}
+
+function makeGenerateAssetsHandler(ctx: ServerContext): Connect.NextHandleFunction {
+  return async (req, res, next) => {
+    if (req.method !== 'POST' || urlPath(req) !== '/api/generate-assets') {
+      next();
+      return;
+    }
+
+    let bodyRaw: unknown;
+    try {
+      bodyRaw = await readJsonBody(req, MAX_BODY_BYTES);
+    } catch (err) {
+      const status = err instanceof BodyError ? err.status : 400;
+      sendApiError(res, status, { code: 'bad_request', message: err instanceof Error ? err.message : 'Malformed request body.', retryable: false });
+      return;
+    }
+
+    const parsed = parseGenerateAssetsRequest(bodyRaw);
+    if (!parsed.ok) {
+      sendApiError(res, 400, { code: 'bad_request', message: parsed.message, retryable: false });
+      return;
+    }
+
+    const record = await readStoryRecord(ctx.storiesDir, parsed.value.id);
+    if (!record) {
+      sendApiError(res, 404, { code: 'bad_request', message: `No such story "${parsed.value.id}".`, retryable: false });
+      return;
+    }
+
+    if (ctx.jobs.hasRunningForStory(parsed.value.id)) {
+      sendApiError(res, 409, {
+        code: 'bad_request',
+        message: `An art job is already running for "${parsed.value.id}".`,
+        retryable: false,
+      });
+      return;
+    }
+
+    // From here on the request is fully accepted — same rule as
+    // /api/generate-story (see the header comment): nothing below this line
+    // may write another HTTP status.
+    const job = ctx.jobs.create('assets', parsed.value.id);
+    const sse = startSse(res);
+    const unsubscribe = pipeJobToSse(job, sse);
+    req.on('close', () => {
+      unsubscribe();
+      sse.close();
+    });
+
+    runAssetsJob(ctx, job, parsed.value, record.manifest.title).catch((err: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error('[storygen] assets job crashed:', err);
+      if (job.state === 'running') {
+        job.emit('error', { code: 'internal', message: 'Internal error.', retryable: false, stage: 'art' });
+        job.state = 'failed';
+        job.endedAt = Date.now();
+      }
+    });
+  };
+}
+
 /* ─────────────────────────────  jobs  ───────────────────────────── */
 
 const JOB_EVENTS_RE = /^\/api\/jobs\/([^/]+)\/events$/;
@@ -321,6 +461,7 @@ export function buildHandlers(ctx: ServerContext): Connect.NextHandleFunction[] 
     makeHealthHandler(ctx),
     makeStoriesHandler(ctx),
     makeGenerateStoryHandler(ctx),
+    makeGenerateAssetsHandler(ctx),
     makeJobEventsHandler(ctx),
     makeJobDeleteHandler(ctx),
     makeStaticHandler(ctx),
