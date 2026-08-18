@@ -30,6 +30,7 @@ interface SpriteUniforms {
   uPaint: { value: number };
   uBrush: { value: number };
   uMidGain: { value: number };
+  uPlateSoft: { value: number };
 }
 
 /**
@@ -70,7 +71,30 @@ interface SpriteUniforms {
  * which is what a portrait in a lamp-lit interior has to be. */
 const PLATE_DESAT = 0.15;
 const PLATE_SPLIT = 0.22;
-const PLATE_COOL = 0.3;
+/* 0.30 → 0.23. The note is a temperature one and it is stated as a number: the
+ * character layer reads roughly 200K cooler than the room around her. Three
+ * operators put teal on this plate — this one (speculars), uEnvTint (all of
+ * her) and the room grade's own split-tone downstream — and only this one is
+ * both large and confined to the surfaces the eye actually measures colour
+ * temperature on. A specular is a reflection of the source, so its hue IS the
+ * reading the eye takes; hers were being pulled a third of the way to the
+ * window while her key light is a 2700K practical eighteen inches away.
+ * A quarter rather than a third still keeps the city in her sheen — the point
+ * of the operator, and the thing that stops her being the only warm-only
+ * surface in a night interior — and lands her within about 80K of the room. */
+const PLATE_COOL = 0.23;
+
+/**
+ * PLATE_SOFT — the contrast match. See SPRITE_DIFFUSE_PATCH's contrast block for
+ * what it does and why a hue operator could never do it.
+ *
+ * 0.12, i.e. 12% off the plate's slope about a night-interior pivot, gated off
+ * the toe so it cannot lift a black. The note measured the difference at about a
+ * stop; a stop measured by eye across a modelled band is reliably an
+ * over-estimate, and the honest figure — the one that closes the gap without
+ * flattening her into the set — is roughly a sixth of one.
+ */
+const PLATE_SOFT = 0.12;
 
 /**
  * The plate's own print exposure — a midtone-weighted gain in the sprite's
@@ -180,6 +204,7 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     uPaint: { value: PLATE_PAINT },
     uBrush: { value: PLATE_BRUSH },
     uMidGain: { value: PLATE_MIDGAIN },
+    uPlateSoft: { value: PLATE_SOFT },
   };
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uBright = uniforms.uBright;
@@ -194,6 +219,7 @@ function makeSpriteMaterial(map: THREE.Texture, tint: THREE.Color): {
     shader.uniforms.uPaint = uniforms.uPaint;
     shader.uniforms.uBrush = uniforms.uBrush;
     shader.uniforms.uMidGain = uniforms.uMidGain;
+    shader.uniforms.uPlateSoft = uniforms.uPlateSoft;
     shader.fragmentShader = SPRITE_UNIFORMS_DECL + shader.fragmentShader.replace(
       '#include <map_fragment>',
       SPRITE_DIFFUSE_PATCH,

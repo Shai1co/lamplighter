@@ -461,7 +461,18 @@ const PRESENCE = {
    * her camera-right edge" is a literal description of a cool lift painted into
    * a dissolving matte. The separation it buys is real; at a quarter of the
    * ramp's old area it only needs half the level to buy the same amount. */
-  rimCoolAmt: 0.024,
+  /* 0.024 → 0.015. The note names this band twice from opposite directions — "a
+   * hard composite seam around her hair and right shoulder" and "add a light
+   * wrap to kill the halo" — and both are the same object. A rim that lives in
+   * ALPHA space is painted into the dissolving matte, i.e. outboard of her
+   * actual contour, so what it draws is not a wrap: it is a bright line tracing
+   * the matte's own shape. A wrap is the background bleeding INWARD over the
+   * subject; this is the subject bleeding outward over the background, which is
+   * the definition of the halo it was being read as. The separation it buys on
+   * the crown is real and it does not need this much of it — at ~40% off, the
+   * band no longer resolves as a contour of its own against the city bokeh her
+   * camera-right edge sits on, which is the one place it was findable. */
+  rimCoolAmt: 0.015,
   /** Floor on the camera-right side — the wrap never fully closes. */
   rimCoolDirMin: 0.34,
   rimCoolR: 116,
@@ -804,8 +815,40 @@ interface PlateScreen {
 
 /** Keyed by background id. A plate with no entry is left exactly as painted. */
 const PLATE_SCREENS: Record<string, PlateScreen> = {
-  // Measured off ops_room.png: active area (326,534) → (506,526) → (523,671).
-  ops_room: { ox: 0.1698, oy: 0.4944, ux: 0.09375, uy: -0.0074, vx: 0.008854, vy: 0.13426, bw: 180, bh: 146 },
+  /* RE-MEASURED, and the previous numbers were wrong in both of the ways a
+   * projected quad can be wrong.
+   *
+   * They described the active area as (326,534) → (506,526) → (523,671): a
+   * 180 × 146 panel whose top edge RISES eight pixels to the right. The monitor
+   * in ops_room.png is turned the other way. Its glass runs (337,487) →
+   * (610,501) → (625,688) → (356,680) — 273 × 193, with the top edge FALLING
+   * fourteen pixels to the right, because the screen is angled toward camera-
+   * left and we are looking at it from camera-right. So the board was sheared
+   * against the plane it is supposed to be lying on: every row of type ran a
+   * couple of degrees off the bezel it sits inside, which is the whole of the
+   * "the readout sits flat and frontal against a screen plane that is angled"
+   * note — the shear was present, it was simply pointing the wrong way, and a
+   * wrong shear reads worse than none because the eye has the bezel right there
+   * to compare it against.
+   *
+   * And it covered barely half the glass: a 180 × 146 panel with a nearly-opaque
+   * ground inside a 273 × 193 screen printed a hard-edged rectangle of UI
+   * floating in the middle of a bigger lit rectangle, i.e. a sticker on a
+   * monitor rather than a monitor. The quad below is the measured glass inset by
+   * one bezel margin (2.5% across, 3% down) so the board fills its screen the
+   * way a running application does, and `bw`/`bh` stay ≈1:1 with plate px so the
+   * type keeps the absolute size it was tuned at.
+   */
+  ops_room: {
+    ox: 0.179372,
+    oy: 0.456608,
+    ux: 0.135079,
+    uy: 0.012051,
+    vx: 0.009302,
+    vy: 0.167982,
+    bw: 260,
+    bh: 182,
+  },
 };
 
 /* ── What is on THIS side of the glass ───────────────────────────────────────
@@ -1021,7 +1064,15 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   const { bw, bh } = s;
   const ink = (a: number): string => `rgba(186, 236, 248, ${a * EMISSIVE})`;
   const warm = (a: number): string => `rgba(238, 178, 112, ${a * EMISSIVE})`;
-  const right = bw - 9;
+  /* The board's two edges and its type scale, expressed against `bw`/`bh` rather
+   * than as the constants they used to be — the panel grew from 180 × 146 to
+   * 260 × 182 when the screen quad was re-measured (see PLATE_SCREENS), and a
+   * layout pinned to absolute px inside a box that changed size is a layout that
+   * hugs one corner. Margins are ~5% of the panel, which is what a full-screen
+   * terminal actually leaves. */
+  const PAD = Math.round(bw * 0.05);
+  const GUTTER = Math.round(bw * 0.05);
+  const right = bw - GUTTER;
 
   ctx.save();
   ctx.setTransform(
@@ -1053,16 +1104,28 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   // reason this was never opaque), and the board supplies the rest of its glow
   // itself, from its own radial. The reflection is not deleted — it is moved to
   // where the geometry actually puts it and given an EDGE. See step 5.
+  /* …and it comes back DOWN two points, 0.90/0.89/0.92 → 0.88/0.87/0.90, because
+   * the panel now covers the whole screen rather than its middle: at the old
+   * transmission a full-bleed ground erased the painter's teal bloom entirely and
+   * left the monitor a flat dark slab. Two points is nothing on the type and is
+   * the difference between a lit display and a switched-off one at the corners. */
   const ground = ctx.createLinearGradient(0, 0, 0, bh);
-  ground.addColorStop(0, 'rgba(7, 21, 26, 0.9)');
-  ground.addColorStop(0.6, 'rgba(6, 17, 22, 0.89)');
-  ground.addColorStop(1, 'rgba(5, 13, 17, 0.92)');
+  ground.addColorStop(0, 'rgba(7, 21, 26, 0.88)');
+  ground.addColorStop(0.6, 'rgba(6, 17, 22, 0.87)');
+  ground.addColorStop(1, 'rgba(5, 13, 17, 0.9)');
   ctx.fillStyle = ground;
   ctx.fillRect(0, 0, bw, bh);
 
-  const glow = ctx.createRadialGradient(bw * 0.7, bh * 0.78, 2, bw * 0.7, bh * 0.78, bh * 0.95);
-  glow.addColorStop(0, 'rgba(104, 204, 218, 0.24)');
-  glow.addColorStop(0.42, 'rgba(72, 162, 180, 0.085)');
+  /* The backlight, RE-REGISTERED onto the bloom the painting already puts on this
+   * glass (screen-space ~0.52, 0.56 of the panel) instead of hanging off its
+   * lower-right corner, so the board's own emission and the plate's agree about
+   * where the tube is brightest. Opened a step to carry the light the ground
+   * above no longer lets through. */
+  const gx = bw * 0.52;
+  const gy = bh * 0.56;
+  const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, bw * 0.62);
+  glow.addColorStop(0, 'rgba(104, 204, 218, 0.3)');
+  glow.addColorStop(0.42, 'rgba(72, 162, 180, 0.11)');
   glow.addColorStop(1, 'rgba(40, 110, 128, 0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, bw, bh);
@@ -1088,7 +1151,10 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   ctx.textBaseline = 'alphabetic';
   const styled = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
   styled.letterSpacing = '0.05em';
-  ctx.font = '12px "JetBrains Mono", ui-monospace, monospace';
+  // 12 → 13. `bw` is still ≈1:1 with plate px, so this is one plate pixel of cap
+  // height bought back on a panel that grew 44% wider — the type holds the same
+  // share of the screen it was tuned to, rather than shrinking inside it.
+  ctx.font = '13px "JetBrains Mono", ui-monospace, monospace';
 
   /* ── Type: two passes, and this is the fix for "soft" ──────────────────────
    *
@@ -1114,7 +1180,11 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
    * now hangs off ONE content margin at 19 with the 10px tick gutter to its left,
    * and everything on the right tab hangs off `right`. Two edges, no exceptions.
    */
-  const COL = 19;
+  const COL = PAD + 13;
+  /** Title-bar depth, row pitch and the two horizontal rules, all off `bh`. */
+  const BAR = Math.round(bh * 0.165);
+  const ROW0 = BAR + Math.round(bh * 0.165);
+  const PITCH = Math.round(bh * 0.154);
   const paint = (pass: 0 | 1): void => {
     const a = pass === 0 ? 0.34 : 1;
     if (pass === 0) {
@@ -1134,23 +1204,23 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
       bar.addColorStop(0.7, ink(0.028));
       bar.addColorStop(1, ink(0.014));
       ctx.fillStyle = bar;
-      ctx.fillRect(0, 0, bw, 24);
+      ctx.fillRect(0, 0, bw, BAR);
     }
     ctx.textAlign = 'left';
     ctx.fillStyle = ink(0.14 * a);
-    ctx.fillText('LUMEN RELAY', COL, 16);
+    ctx.fillText('LUMEN RELAY', COL, BAR - 10);
     ctx.textAlign = 'right';
     ctx.fillStyle = ink(0.115 * a);
-    ctx.fillText('04', right, 16);
+    ctx.fillText('04', right, BAR - 10);
     ctx.fillStyle = ink(0.095 * a);
-    ctx.fillRect(0, 24, bw, 1);
+    ctx.fillRect(0, BAR, bw, 1);
 
     // 3 — the queue. A tick in the gutter, the line id on the content margin,
     // its state on the right tab.
     CALL_ROWS.forEach(([id, state, hot], i) => {
-      const y = 42 + i * 21;
+      const y = ROW0 + i * PITCH;
       ctx.fillStyle = hot ? warm(0.2 * a) : ink((i === 1 ? 0.15 : 0.07) * a);
-      ctx.fillRect(9, y - 8, 3, 9);
+      ctx.fillRect(PAD, y - 9, 3, 11);
       ctx.textAlign = 'left';
       ctx.fillStyle = ink(0.128 * a);
       ctx.fillText(id, COL, y);
@@ -1159,7 +1229,7 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
       ctx.fillText(state, right, y);
       if (i < CALL_ROWS.length - 1 && pass === 1) {
         ctx.fillStyle = ink(0.03);
-        ctx.fillRect(COL, y + 7, right - COL, 1);
+        ctx.fillRect(COL, y + PITCH - 19, right - COL, 1);
       }
     });
   };
@@ -1168,8 +1238,9 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   ctx.shadowColor = 'rgba(126, 208, 226, 0.5)';
   ctx.shadowBlur = 7;
 
+  const TRACE_RULE = ROW0 + (CALL_ROWS.length - 1) * PITCH + Math.round(bh * 0.11);
   ctx.fillStyle = ink(0.07);
-  ctx.fillRect(0, 94, bw, 1);
+  ctx.fillRect(0, TRACE_RULE, bw, 1);
 
   // 4 — the vocal trace, the same instrument the relay panel carries in the
   // corner, so the two pieces of UI in this frame are demonstrably one product.
@@ -1179,13 +1250,19 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   // only element not hanging off either of the board's two edges.
   const x0 = COL;
   const span = right - x0;
-  const mid = 116;
-  for (let i = 0; i < 26; i++) {
-    const t = i / 25;
+  // Centred in whatever the rule above left, and sampled at a fixed ~6.5px pitch
+  // rather than at a fixed count, so a wider panel gets MORE of the same trace
+  // instead of the same trace stretched — a waveform whose sample spacing tracks
+  // the box it is in is a picture of a waveform.
+  const mid = Math.round((TRACE_RULE + bh) / 2);
+  const amp0 = Math.min(18, (bh - mid) * 0.8);
+  const bars = Math.max(12, Math.round(span / 6.5));
+  for (let i = 0; i < bars; i++) {
+    const t = i / (bars - 1);
     const env = Math.sin(Math.PI * Math.min(1, t * 1.1)) ** 0.85;
     const syl = 0.3 + 0.7 * Math.abs(Math.sin(i * 0.63 + 0.4)) * (0.55 + 0.45 * Math.sin(i * 0.28 + 1.9));
-    const amp = Math.max(0.06, env * syl) * 15;
-    ctx.fillStyle = ink(0.058 + 0.082 * (amp / 15));
+    const amp = Math.max(0.06, env * syl) * amp0;
+    ctx.fillStyle = ink(0.058 + 0.082 * (amp / amp0));
     ctx.fillRect(x0 + t * (span - 2), mid - amp, 2, amp * 2);
   }
 
@@ -1209,13 +1286,15 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   ctx.save();
   ctx.beginPath();
   // The sliver: leading edge crisp on the lamp side, trailing edge released.
-  ctx.moveTo(-4, 30);
-  ctx.lineTo(34, -6);
-  ctx.lineTo(52, -6);
-  ctx.lineTo(-4, 47);
+  // Expressed against the panel so it survives the box re-measure — the shade is
+  // a fixed distance from the glass, so its reflection scales with the glass.
+  ctx.moveTo(-0.022 * bw, 0.205 * bh);
+  ctx.lineTo(0.189 * bw, -0.041 * bh);
+  ctx.lineTo(0.289 * bw, -0.041 * bh);
+  ctx.lineTo(-0.022 * bw, 0.322 * bh);
   ctx.closePath();
   ctx.clip();
-  const flare = ctx.createLinearGradient(-4, 30, 46, -4);
+  const flare = ctx.createLinearGradient(-0.022 * bw, 0.205 * bh, 0.256 * bw, -0.027 * bh);
   flare.addColorStop(0, 'rgba(246, 206, 150, 0.0)');
   flare.addColorStop(0.42, 'rgba(246, 206, 150, 0.055)');
   flare.addColorStop(1, 'rgba(246, 206, 150, 0.012)');

@@ -373,8 +373,15 @@
      itself. 180 + 70 lands ours on x=340 against a gutter of 90, which is the
      same proportional set, and the measure below is unchanged so the prose
      simply gains 130px of run rather than moving. */
+  /* …and the gap goes 70 → 82, which moves the prose column from x=340 to
+     x=352. Twelve pixels, and it is not a taste adjustment: 352 is where Eliza's
+     own body column actually starts on a 1920 frame (measured off the reference
+     set, not inferred from its nameplate), and the bar is being read against
+     that grid side by side. The terminus moves with it — 352 + 1050 = 1402
+     against Eliza's ~1400 — so the whole two-column set now lands on the
+     reference's verticals at both ends rather than at neither. */
   --pq-name-col: clamp(78px, 9.375vw, 180px);
-  --pq-name-gap: clamp(16px, 3.646vw, 70px);
+  --pq-name-gap: clamp(16px, 4.2708vw, 82px);
   --pq-dialogue-measure: min(1050px, 100%);
   /* ── Where the prose SITS ───────────────────────────────────────────────────
      The floor under the reading block, and the most consequential number in the
@@ -435,8 +442,23 @@
      on — short enough that it lives entirely under the first baseline (so it can
      never be read as the top of anything), neutral so it costs the left and the
      right the same, and low enough that composited with the pair above it moves
-     the bottom edge by about five points. */
-  --pq-scrim-foot: clamp(160px, 20.4vh, 220px);
+     the bottom edge by about five points.
+
+     …and 220 → 340, i.e. the foot now STARTS 120px higher (y=740 rather than
+     y=860 at 1080), with its floor 0.22 → 0.30. The note is specific and it is a
+     legibility one measured at the LEFT MARGIN: the desk's lit front edge runs
+     diagonally through the bar and crosses the nameplate's own baseline at
+     x≈90–400, so NOOR and the opening words of the sentence were being read
+     against lamp-lit wood while the rest of the line sat on near-black. A
+     reading surface whose ground changes value across its own measure is not a
+     designed bar, it is type dropped onto a photograph. 340px of neutral ramp
+     reaches above the desk edge everywhere it appears, and the extra density is
+     spent where the picture is brightest rather than uniformly.
+     The run is re-sampled off the same smoothstep at TWICE the stop count (12
+     rather than 6, ~28px apart) for the reason a longer ramp always needs it:
+     the shoulder the curve exists to hide gets easier to find as the run grows,
+     and 8-bit banding scales with the distance between stops. */
+  --pq-scrim-foot: clamp(240px, 31.5vh, 340px);
 
   /* ── Proxy panel geometry ───────────────────────────────────────────────
      The panel shares the frame with the speaker's face, and a UI edge across a

@@ -492,7 +492,22 @@ void main() {
   //     zero there is nothing to modulate), doubling as dither in the long
   //     falloffs.
   float gLum = dot(color, vec3(0.2126, 0.7152, 0.0722));
-  float gw = 1.0 - 0.55 * smoothstep(0.25, 1.2, gLum);       // roll off in highlights
+  /* The highlight roll, and it is now the term that carries the face.
+   *
+   * 0.55 over 0.25→1.2 was written as a guard against a practical picking up
+   * crawl, and against a practical it works: a lamp shade at 0.8 linear loses
+   * half its grain. The band it never reached is the one the note is about. A
+   * lit cheek and a forehead plane sit between 0.30 and 0.50 linear, where the
+   * old smoothstep had barely opened — under 10% off — so the two largest
+   * SMOOTH, CONTINUOUSLY-MODELLED surfaces in the frame were carrying nearly the
+   * full emulsion. Grain on a gradient that shallow does not read as film; it
+   * reads as an 8-bit source, because the modulation is larger than the step
+   * between the values it is modulating and the plane visibly quantises.
+   * 0.70 over 0.14→0.72 pulls roughly a third out of exactly that band (−21% at
+   * 0.35, −38% at 0.45) and leaves the deep midtones — the wool, the collar, the
+   * shadow side of the jaw, the desk's front face — inside 2% of where they
+   * were, which is where the frame's filmic weight actually lives. */
+  float gw = 1.0 - 0.70 * smoothstep(0.14, 0.72, gLum);      // roll off in highlights
   // …and eased into the toe. The floor comes 0.34 → 0.24: the note is that the
   // grain in the deep shadows reads as NOISE masking unfinished area rather than
   // as emulsion, and a deep shadow is precisely where a real stock has the least
@@ -635,6 +650,7 @@ uniform float uCanvas;
 uniform float uPaint;
 uniform float uBrush;
 uniform float uMidGain;
+uniform float uPlateSoft;
 
 /** Cheap 2->1 hash + smoothed value noise, local to the sprite program. The
  *  stage's shared GLSL_NOISE is only injected into the post passes; a plate
@@ -810,6 +826,43 @@ diffuseColor.rgb = mix(
 float _midLum = clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
 float _midW = pow(_midLum, 0.4545);
 diffuseColor.rgb *= 1.0 + clamp(uMidGain, 0.0, 1.0) * 4.0 * _midW * (1.0 - _midW);
+/* ── The contrast match ────────────────────────────────────────────────────
+ *
+ * Everything above this line moves the plate's HUE toward the room or its
+ * EXPOSURE toward the room, and the note that keeps coming back is neither: the
+ * portrait carries about a stop more contrast than the set it is sitting in.
+ * That is not a colour difference and it is not a level difference — it is the
+ * slope of the transfer curve the plate was shot on against the slope the room
+ * was painted on, and it is why a plate can measure correct at both ends and
+ * still read as pasted. The eye is extremely good at this comparison and has no
+ * name for it, which is exactly the profile of a note that arrives as "the
+ * character layer isn't in the grade".
+ *
+ * So the plate's own curve is compressed toward a night-interior pivot before
+ * the composite grade sees it, and two properties keep it from being a haze:
+ *   • it is GATED OFF THE TOE. A contrast pull about a pivot necessarily lifts
+ *     everything below that pivot, and lifting her blacks is the single most
+ *     legible composited-plate tell there is — the milky matte this whole
+ *     material exists to avoid. The weight is zero below 0.02 linear and only
+ *     fully open by 0.14, so her deep shadows keep the curve they arrived with
+ *     and only the modelled range is compressed;
+ *   • the PIVOT is the room's own midtone (0.12 linear, the value the desk's
+ *     front face and the partition sit at), not 0.18 and not her own mean. A
+ *     pull about the room's mid moves her toward the set; a pull about her own
+ *     mean only makes her flatter in place.
+ *
+ * uPlateSoft IS the pull, so 0.12 is 12% off her slope — about a sixth of a stop
+ * across the modelled band, which is what the difference measured at — costing
+ * her lit cheek roughly 3% and her blacks nothing at all. Written as a scale
+ * about the pivot rather than as a mix() so the identity case is exact: at
+ * weight zero the expression returns the sample unchanged, bit for bit.
+ */
+{
+  vec3 _sPivot = vec3(0.12);
+  float _sLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+  float _sK = 1.0 - clamp(uPlateSoft, 0.0, 1.0) * smoothstep(0.02, 0.14, _sLum);
+  diffuseColor.rgb = _sPivot + (diffuseColor.rgb - _sPivot) * _sK;
+}
 /* Painterly tooth — the last difference between the two renderers.
  *
  * The room is a painting: every surface in it carries a mottle at the scale of
@@ -829,7 +882,26 @@ diffuseColor.rgb *= 1.0 + clamp(uMidGain, 0.0, 1.0) * 4.0 * _midW * (1.0 - _midW
  */
 float _tooth = (pqPlateNoise(vMapUv * vec2(64.0, 40.0)) - 0.5) * 0.62
              + (pqPlateNoise(vMapUv * vec2(190.0, 120.0)) - 0.5) * 0.38;
-diffuseColor.rgb *= 1.0 + _tooth * 2.0 * clamp(uCanvas, 0.0, 1.0);
+/* …and the tooth is ROLLED OFF on the lit planes, which is the half of the
+ * "posterised cheek" note that the composite grain roll cannot reach.
+ *
+ * The gap in the reasoning that set uCanvas was uniformity. A ground has one
+ * tooth everywhere, so the modulation was applied at one strength everywhere —
+ * and it is a RELATIVE modulation, so at ±11% it is ±3 code values on her
+ * cardigan and ±22 on her forehead. Twenty-two values of noise laid across the
+ * two smoothest, most continuously modelled surfaces on the figure is larger
+ * than the steps the modelling itself is made of, so the planes quantise: the
+ * cheek and the brow break into flat patches with visible boundaries, which the
+ * eye reads as compression rather than as canvas. It is also wrong about paint —
+ * a ground shows through a thin scumble and is buried under a loaded highlight,
+ * so the tooth belongs in the shadows and the halftones and not on the light.
+ *
+ * ~40% off the lit band, nothing at all below 0.18, which leaves her shadow side
+ * and the cardigan measuring in the same noise band as the painted desk while
+ * her lit planes stop breaking up. */
+float _toothLum = clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
+float _toothW = 1.0 - 0.42 * smoothstep(0.18, 0.70, _toothLum);
+diffuseColor.rgb *= 1.0 + _tooth * 2.0 * clamp(uCanvas, 0.0, 1.0) * _toothW;
 `;
 
 /* ───────────────────────────  Rain ↔ light coupling  ───────────────────────────
