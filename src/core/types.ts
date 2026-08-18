@@ -302,6 +302,8 @@ export interface GameState {
   history: HistoryEntry[];
   /** Labels the player has entered at least once. */
   seen: string[];
+  /** Chapter cards shown so far — restores the card's roman numbering on load. */
+  chapters?: number;
   /** ISO timestamp of last save. */
   savedAt?: string;
 }
@@ -401,13 +403,22 @@ export interface EngineEventMap {
   // narrative (→ UI)
   'ui:say': { speaker: CharacterView | null; text: string; auto: boolean };
   'ui:choices': { options: ResolvedChoice[] };
-  'ui:chapter': { title: string; subtitle?: string };
+  /** `index` is 1-based and counts chapter cards across the WHOLE run, so it
+   *  survives a save/load (see GameState.chapters) instead of restarting at I. */
+  'ui:chapter': { title: string; subtitle?: string; index: number };
   'ui:clear': Record<string, never>;
   'ui:end': { credits?: string[] };
   'wait:begin': { seconds: number };
   // state
   'state:changed': { state: GameState };
-  'runtime:ready': { story: StoryManifest };
+  /**
+   * A story has been loaded and is about to run. `history` is the transcript
+   * SO FAR — empty for a fresh start, and the restored backlog when the run was
+   * resumed from a save. The UI seeds its transcript from it; without it a
+   * loaded game opens on an empty History panel even though the state carries
+   * the whole night. The runtime stays the sole emitter of narrative events.
+   */
+  'runtime:ready': { story: StoryManifest; history: HistoryEntry[] };
   // input (UI → runtime)
   'input:advance': Record<string, never>;
   'input:choose': { target: string };

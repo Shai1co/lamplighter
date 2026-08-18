@@ -116,8 +116,31 @@ const GRAIN_PX = 2.2;
  * and the brightest discs of city bokeh both still flare) and stops the board's
  * 12px type from being wrapped in a glow four times its own stroke.
  */
-const BLOOM_THRESHOLD = 0.82;
-const BLOOM_RADIUS = 0.25;
+/*
+ * …and the RADIUS comes in again, 0.25 → 0.17, with the gate opened four points
+ * to keep it populated.
+ *
+ * The note is a value-HIERARCHY one — "the lamp head is the brightest region in
+ * the frame and wins the eye over the face" — and half of what makes a source win
+ * an eye is not its peak value at all, it is the AREA it occupies. A 233-code
+ * shade interior is perhaps 180 × 60px; the same interior wearing a 0.25-radius
+ * halo is a soft amber event four times that size, and the eye integrates the
+ * event, not the pixel. So the shade's own exposure comes down at the plate bake
+ * (Stage → PRACTICAL_KNEE / PRACTICAL_CEIL) and its scatter is pulled to roughly
+ * two thirds of its old reach here. The two moves are the same fix billed to the
+ * two things that actually compete for attention: peak and spread.
+ *
+ * THRESHOLD 0.82 → 0.78 exists only to stop that from switching the pass off. The
+ * plate's print shoulder now ceilings at 0.80 sRGB rather than 0.90, and this file
+ * has already made the mistake once of gating above everything the plate can
+ * produce — a night interior whose practicals do not scatter at all has no air in
+ * it. Four points down keeps the shade's interior, the hottest city discs and the
+ * relay's brightest glyphs on the far side of the gate and still leaves the lit
+ * desktop, the midtones and her skin well outside it, which is what a specular
+ * gate is for.
+ */
+const BLOOM_THRESHOLD = 0.78;
+const BLOOM_RADIUS = 0.17;
 
 const v3 = (a?: [number, number, number], d = 0): THREE.Vector3 =>
   a ? new THREE.Vector3(a[0], a[1], a[2]) : new THREE.Vector3(d, d, d);

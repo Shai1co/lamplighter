@@ -17,11 +17,13 @@ export class ProxyPanel {
   readonly root: HTMLElement;
   private readonly listEl: HTMLElement;
   private readonly offEl: HTMLElement;
+  private readonly labelEl: HTMLElement;
   private tiles: HTMLElement[] = [];
 
   constructor(parent: HTMLElement) {
     this.listEl = el('div', { class: 'pq-proxy__list', role: 'list' });
     this.offEl = el('div', { class: 'pq-proxy__off' });
+    this.labelEl = el('div', { class: 'pq-proxy__label', text: 'PROXY RESPONSE' });
 
     this.root = el(
       'section',
@@ -79,7 +81,7 @@ export class ProxyPanel {
           meter('RECEPTIVITY', 0.8, '0.8'),
           meter('COHERENCE', 0.5, '0.5'),
         ]),
-        el('div', { class: 'pq-proxy__label', text: 'PROXY RESPONSE' }),
+        this.labelEl,
         this.listEl,
         this.offEl,
       ],
@@ -111,6 +113,12 @@ export class ProxyPanel {
         this.listEl.appendChild(tile);
       }
     });
+    // A menu that mixes a plain `>?` branch into a proxy menu is legal PQScript
+    // (the starter template ships one), so the label has to tell the truth about
+    // what is under it: "PROXY RESPONSE" only when every listed line actually
+    // came from the panel.
+    const allSuggested = options.every((o) => o.kind === 'suggested' || o.kind === 'offscript');
+    this.labelEl.textContent = allSuggested ? 'PROXY RESPONSE' : 'RESPONSE';
 
     this.root.hidden = false;
     // Stagger the tiles in.
@@ -118,11 +126,24 @@ export class ProxyPanel {
     return this.tiles;
   }
 
+  /**
+   * A listed response tile.
+   *
+   * Two kinds land here: the panel's own `suggested` lines, and plain `neutral`
+   * (`>?`) branches when an author mixes one into a proxy menu. They share the
+   * tile chrome — `pq-tile--suggested` carries the baseline alignment and the
+   * hover/focus treatment, and a plain branch is still a row in this list — but
+   * ONLY a real suggestion wears the "suggested" cue. The cue is the panel
+   * claiming authorship of the line, and a neutral branch is not Lumen's line to
+   * claim; `pq-tile--neutral` is there for anyone who later wants to draw the
+   * distinction harder.
+   */
   private buildSuggested(opt: ResolvedChoice, index: number, onSelect: SelectHandler): HTMLElement {
+    const suggested = opt.kind === 'suggested';
     const tile = el(
       'button',
       {
-        class: 'pq-tile pq-tile--suggested',
+        class: 'pq-tile pq-tile--suggested' + (suggested ? '' : ' pq-tile--neutral'),
         type: 'button',
         role: 'listitem',
         style: `--pq-i:${index}`,
@@ -133,7 +154,7 @@ export class ProxyPanel {
         el('span', { class: 'pq-tile__num', text: index + 1, aria: { hidden: true } }),
         el('span', { class: 'pq-tile__scan', aria: { hidden: true } }),
         el('span', { class: 'pq-tile__text', text: smartQuotes(opt.text) }),
-        el('span', { class: 'pq-tile__cue', text: 'suggested', aria: { hidden: true } }),
+        suggested ? el('span', { class: 'pq-tile__cue', text: 'suggested', aria: { hidden: true } }) : null,
       ],
     );
     return tile;

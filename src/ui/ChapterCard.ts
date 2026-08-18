@@ -64,9 +64,15 @@ export class ChapterCard {
     return this.open;
   }
 
-  show(title: string, subtitle?: string): void {
+  /**
+   * @param index 1-based card number supplied by the Runtime. It is narrative
+   * state, not view state, so it survives a save/load — a card counted here
+   * would have restarted at "Chapter I" on a resumed game. The local counter
+   * remains as the fallback for any caller that does not supply one.
+   */
+  show(title: string, subtitle?: string, index?: number): void {
     this.open = true;
-    this.count += 1;
+    this.count = index && index > 0 ? index : this.count + 1;
     this.overline.textContent = `Chapter ${roman(this.count)}`;
     // Through smartQuotes like every other authored string the reader sees. This
     // card was the one surface still setting raw script text: a chapter title is

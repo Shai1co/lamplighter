@@ -320,7 +320,7 @@ export class UILayer implements IUILayer {
         this.clearWait();
         this.clearAuto();
         this.closeChoiceUI();
-        this.chapter.show(p.title, p.subtitle);
+        this.chapter.show(p.title, p.subtitle, p.index);
         this.announce(`Chapter. ${p.title}${p.subtitle ? '. ' + p.subtitle : ''}`);
         this.updateInputMode();
       }),
@@ -357,6 +357,21 @@ export class UILayer implements IUILayer {
         this.chapter.reset();
         this.callstrip.reset();
         this.narratorLabel = p.story.narrator;
+        // Rebuild the transcript the run arrives with. A fresh start carries an
+        // empty history and this is a no-op; a game resumed from a save carries
+        // the whole night, and without replaying it the History panel opened
+        // blank on state the save had faithfully preserved. Speaker colours are
+        // re-resolved from the manifest rather than stored, exactly as
+        // Runtime.resolveSpeaker does — the save format keeps story text, not
+        // presentation.
+        for (const entry of p.history) {
+          this.backlog.push({
+            name: entry.speakerName ?? (entry.speaker ? entry.speaker : null),
+            color: entry.speaker ? p.story.characters[entry.speaker]?.color : undefined,
+            text: entry.text,
+            kind: entry.choiceKind,
+          });
+        }
         this.applyTheme(p.story.theme);
         this.applySlotArt(p.story.id);
       }),
@@ -383,9 +398,18 @@ export class UILayer implements IUILayer {
     this.clearAuto();
     if (this.dialogue.isTyping()) this.dialogue.skip();
 
-    const proxyOpts = options.filter((o) => o.kind === 'suggested' || o.kind === 'offscript');
-    const useProxy = proxyOpts.length > 0;
-    const panelOptions = useProxy ? proxyOpts : options;
+    // The panel is chosen by whether ANY option is proxy-shaped — but it is then
+    // given EVERY option, not just the proxy-shaped ones.
+    //
+    // This used to hand the panel `options.filter(proxy-shaped)`, which meant a
+    // menu mixing a plain `>?` branch into a `>` / `>!` pair silently dropped the
+    // plain branch: the author's third choice existed in the parsed script, was
+    // reachable by the runtime, and could not be selected by any player. The
+    // starter template ships exactly such a menu to demonstrate all three choice
+    // kinds, so the first thing a new author saw was one of the three quietly
+    // missing. A menu never renders fewer options than it was handed.
+    const useProxy = options.some((o) => o.kind === 'suggested' || o.kind === 'offscript');
+    const panelOptions = options;
 
     this.choiceOptions = panelOptions;
     this.choiceEls = useProxy
@@ -416,6 +440,15 @@ export class UILayer implements IUILayer {
       this.choiceEls = [];
       this.choiceOptions = [];
       this.updateInputMode();
+      // The reply the player actually gave belongs in the transcript. The
+      // Runtime already records it in GameState.history (that is what the save
+      // slot's label is derived from) and the Backlog already styles it — an
+      // off-script line keeps the warm quill accent so you can retrace where you
+      // broke script. It was simply never pushed on the live path, so History
+      // read as Noor talking to herself, and a save round-trip produced a richer
+      // transcript than the run that wrote it. Pushed here, immediately before
+      // the choice reaches the Runtime, so both transcripts stay in step.
+      this.backlog.push({ name: null, text: opt.text, kind: opt.kind });
       this.bus.emit('input:choose', { target: opt.target });
     };
 

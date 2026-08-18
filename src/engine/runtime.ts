@@ -40,6 +40,8 @@ export class Runtime implements IRuntime {
   private vars: Record<string, number | boolean> = {};
   private history: GameState['history'] = [];
   private seen: string[] = [];
+  /** Chapter cards emitted so far — part of the state, so it survives a save. */
+  private chapters = 0;
 
   private pending: Pending = null;
   private pendingChoices: ResolvedChoice[] = [];
@@ -65,6 +67,7 @@ export class Runtime implements IRuntime {
     this.cursor = state?.cursor ?? 0;
     this.history = state?.history ? state.history.map((h) => ({ ...h })) : [];
     this.seen = state?.seen ? [...state.seen] : [];
+    this.chapters = state?.chapters ?? 0;
     this.pending = null;
     this.pendingChoices = [];
     this.ended = false;
@@ -75,7 +78,13 @@ export class Runtime implements IRuntime {
     if (!this.loaded) return;
     this.ended = false;
     this.pending = null;
-    this.bus.emit('runtime:ready', { story: this.manifest });
+    // The transcript rides along: on a fresh start it is empty, and on a resumed
+    // save it is the whole night so far. The UI rebuilds its History panel from
+    // it, so a loaded game no longer opens on a blank transcript.
+    this.bus.emit('runtime:ready', {
+      story: this.manifest,
+      history: this.history.map((h) => ({ ...h })),
+    });
     this.emitState();
     this.run();
   }
@@ -88,6 +97,7 @@ export class Runtime implements IRuntime {
       vars: { ...this.vars },
       history: this.history.map((h) => ({ ...h })),
       seen: [...this.seen],
+      chapters: this.chapters,
     };
   }
 
@@ -211,9 +221,15 @@ export class Runtime implements IRuntime {
           return;
         }
         case 'chapter':
-          this.bus.emit('ui:chapter', { title: node.title, subtitle: node.subtitle });
+          this.chapters++;
+          this.bus.emit('ui:chapter', {
+            title: node.title,
+            subtitle: node.subtitle,
+            index: this.chapters,
+          });
           this.cursor++;
           this.pending = 'chapter';
+          this.emitState();
           return;
         case 'wait':
           this.bus.emit('wait:begin', { seconds: node.seconds });

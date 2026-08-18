@@ -447,9 +447,19 @@ const PRESENCE = {
    * that is supposed to be disappearing. Rim light belongs where there is a
    * surface to catch it; past alpha ~0.9 there is one, below ~0.4 there is not.
    */
-  rimCoolIn: 0.44,
-  rimCoolPeak: 0.7,
-  rimCoolOut: 0.96,
+  /* 0.44/0.70/0.96 → 0.63/0.87/0.995. The band moves INBOARD, onto the last few
+   * per cent of alpha before the plate goes solid, and that move is what lets the
+   * level below more than double without the halo coming back. The two failures
+   * are the same operator at two widths: a wide band in alpha space paints out in
+   * the dissolving matte, where there is no surface, and prints a grey aura the
+   * width of her hair; a narrow one at high alpha paints on the outermost SOLID
+   * pixels, which is where a rim light physically lives. Tightening the ramp and
+   * raising the level is therefore not a compromise between the two notes ("a
+   * milky halo" and "hair edges melt into the background") — it is the single
+   * change that answers both. */
+  rimCoolIn: 0.63,
+  rimCoolPeak: 0.87,
+  rimCoolOut: 0.995,
   /** Well under the amber, and under its own first draft (0.19): a key names
    *  the light, a kicker only separates, and this one is separating her from a
    *  background that is already almost black. Down again (0.11 → 0.07) for the
@@ -472,9 +482,18 @@ const PRESENCE = {
    * the crown is real and it does not need this much of it — at ~40% off, the
    * band no longer resolves as a contour of its own against the city bokeh her
    * camera-right edge sits on, which is the one place it was findable. */
-  rimCoolAmt: 0.015,
-  /** Floor on the camera-right side — the wrap never fully closes. */
-  rimCoolDirMin: 0.34,
+  /* 0.015 → 0.042, and it is the same light budget moved rather than added: the
+   * band it is spread over is now a quarter of the width it was (see rimCoolIn),
+   * so per unit of AREA this is barely a third of a stop up on the version that
+   * was called a halo — and all of that area is now on solid pixels. What it buys
+   * is the one thing the plate could not do for itself: her hair, her jaw and the
+   * top of her near shoulder acquire a discrete cool edge against the city, so
+   * the silhouette is resolved by light instead of dissolving into the bokeh it
+   * happens to share a value with. */
+  rimCoolAmt: 0.042,
+  /** Floor on the camera-LEFT side — the wrap never fully closes. (The band is
+   *  weighted right now; see the coolDir term at the point of use.) */
+  rimCoolDirMin: 0.22,
   rimCoolR: 116,
   rimCoolG: 186,
   rimCoolB: 204,
@@ -550,6 +569,44 @@ const PRESENCE = {
   softenRx: 0.52,
   softenRy: 0.3,
   softenSoft: 0.5,
+
+  /* ── The face, brought back up ────────────────────────────────────────────
+   * `localContrast` above takes 24% out of the plate's finest octave EVERYWHERE,
+   * because that octave is what makes a photograph read as a photograph next to a
+   * painted room. It is the right operator and it has a cost, and the cost lands
+   * on exactly one region: the marks that describe a face are in the same octave
+   * as the pores that give it away. The note names the result precisely — "eye
+   * sockets and mouth are soft / AI-adjacent, hair edges melt" — and it is the
+   * one axis on which the reference frame still wins.
+   *
+   * So the face gets a positive `crispenRegion` of its own, and the whole design
+   * of it is the RADIUS. Three bands are in play on a 600px plate:
+   *   • ~1px — pore, sensor noise, stray fibre. Photographic. Left suppressed.
+   *   • ~3px — the eyelid crease, the nostril's dark accent, the corner of the
+   *     mouth, the shadow under the lower lip, a discrete strand of hair against
+   *     the window. These are the marks a painter puts down LAST and hardest, and
+   *     they are what "painterly conviction" means at this scale.
+   *   • ~8px and up — form. Untouched; the plane structure of a cheek must not be
+   *     sharpened or the skin goes chalky.
+   * At 0.005 of plate width this pass bites squarely on the middle band, so what
+   * comes back is decision rather than texture — and it comes back only on the
+   * face: the wool below still has its own soften pass, and the two regions
+   * barely overlap by construction.
+   *
+   * The region is measured, not guessed: her published core sits at frame
+   * (0.665, 0.45) at plate uv (0.45, 0.43), the plate spans frame x 0.51–0.84 and
+   * y 0.16–0.74, and her face centre in the captured frame is (0.68, 0.33) — i.e.
+   * plate uv (0.515, 0.295). rx/ry cover the head and the hand at her temple and
+   * die well above the collar; `soft` is long, because a sharpening pass with a
+   * findable boundary is a rectangle of resolution on somebody's cheek.
+   */
+  crispAmt: 0.34,
+  crispRadius: 0.005,
+  crispCx: 0.515,
+  crispCy: 0.295,
+  crispRx: 0.34,
+  crispRy: 0.26,
+  crispSoft: 0.62,
 
   /* ── Torso falloff ────────────────────────────────────────────────────────
    * The alpha tail above dissolves the bottom of the plate, which is right for
@@ -644,7 +701,17 @@ const PRESENCE = {
    * off the lit planes and onto the midtones, which is where separation actually
    * lives and is what the note was about. Net at lum 0.3 — wool, the shadowed
    * cheek, the forearm — is +18% on the old key; net at lum 0.7 is −50%. */
-  keyAmt: 0.4,
+  /* …and 0.40 → 0.46, which is the note "lift the face key ~15%" paid literally.
+   * It is one half of a HIERARCHY change and it is worth nothing on its own: the
+   * other half is the practical coming down (see PRACTICAL_KNEE / PRACTICAL_CEIL)
+   * and its scatter being pulled in (postfx → BLOOM_RADIUS). Fifteen percent more
+   * key with the lamp left where it was would simply have made two bright things;
+   * fifteen percent more key with the shade a fifth of a stop down and its halo at
+   * two thirds of its old reach is the value ORDER the note asks for — face first,
+   * lamp second, city bokeh third. The roll above (keyRoll 0.74 opening at lum
+   * 0.50) is what keeps the extra light off the back of the hand at her temple,
+   * which is the plane that clipped the last time this number moved. */
+  keyAmt: 0.46,
   keyR: 1.0,
   keyG: 0.67,
   keyB: 0.36,
@@ -1359,12 +1426,49 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   const mid = Math.round((TRACE_RULE + bh) / 2);
   const amp0 = Math.min(18, (bh - mid) * 0.8);
   const bars = Math.max(12, Math.round(span / 6.5));
+  /* ── The trace is a SENTENCE, not a shape ─────────────────────────────────
+   * It used to be `sin(πt)^0.85 × |sin(0.63i)|` — a smooth bell with a regular
+   * ripple on it, i.e. a picture of a waveform: every bar had a neighbour it
+   * could be predicted from and the whole run was symmetrical about its own
+   * middle. Nothing a voice does is symmetrical about its own middle. Read blind
+   * that is the generic bar meter every audio widget on the web ships with, and
+   * on a board that is supposed to be a piece of a fictional product it is the
+   * one element that gives the game away.
+   *
+   * What is drawn now is what the relay would actually be showing at this moment
+   * of this scene: a woman a few words into a sentence she does not want to be
+   * saying. Four terms, all deterministic, none of them periodic against each
+   * other:
+   *   • BREATH — a slow asymmetric envelope that opens fast and decays long,
+   *     because a phrase is loudest near its start and trails at its end;
+   *   • SYLLABLES — three incommensurate rates beaten together (0.9 / 0.41 /
+   *     1.7 rad per sample) so no two bars agree and the run never repeats
+   *     inside its own width;
+   *   • CONSONANTS — a sparse hash spike on roughly one bar in seven, which is
+   *     the only thing that makes a trace look recorded rather than generated;
+   *   • the GAP — a hard, narrow dip at 46% of the run. A real vocal trace has
+   *     silence in it. One pause, three bars wide, is the single most
+   *     story-plausible mark available: it is the breath she takes in the middle
+   *     of the line the frame is captioning.
+   * The bar VALUE still tracks its own amplitude, so the trace reads as louder
+   * where it is taller rather than as a row of equally-lit ticks. */
+  const hash = (n: number): number => {
+    const s = Math.sin(n * 78.233 + 12.9898) * 43758.5453;
+    return s - Math.floor(s);
+  };
   for (let i = 0; i < bars; i++) {
     const t = i / (bars - 1);
-    const env = Math.sin(Math.PI * Math.min(1, t * 1.1)) ** 0.85;
-    const syl = 0.3 + 0.7 * Math.abs(Math.sin(i * 0.63 + 0.4)) * (0.55 + 0.45 * Math.sin(i * 0.28 + 1.9));
-    const amp = Math.max(0.06, env * syl) * amp0;
-    ctx.fillStyle = ink(0.058 + 0.082 * (amp / amp0));
+    const breath = Math.min(1, t * 5.2) * (1 - 0.62 * t ** 1.6);
+    const syl =
+      0.34 +
+      0.3 * Math.abs(Math.sin(i * 0.9 + 0.7)) +
+      0.22 * Math.abs(Math.sin(i * 0.41 + 2.3)) +
+      0.14 * Math.abs(Math.sin(i * 1.7 + 5.1));
+    const plosive = hash(i) > 0.86 ? 0.42 : 0;
+    // The pause: a narrow, deep, hard-edged notch — a gap, never a fade.
+    const gap = 1 - 0.86 * Math.exp(-(((t - 0.46) / 0.035) ** 2));
+    const amp = Math.max(0.05, breath * (syl + plosive) * gap) * amp0;
+    ctx.fillStyle = ink(0.05 + 0.095 * (amp / amp0));
     ctx.fillRect(x0 + t * (span - 2), mid - amp, 2, amp * 2);
   }
 
@@ -1404,6 +1508,33 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
   ctx.fillRect(-8, -8, bw + 16, bh + 16);
   ctx.restore();
 
+  /* 6 — THE TUBE'S OWN CORNER FALLOFF, and it is the last thing drawn because it
+   * has to be over the type as well as under it: a vignette that only darkens the
+   * ground is a shape behind the words, and a display's corners are dimmer than
+   * its centre for the words too.
+   *
+   * The note is that the board reads as a flat rectangle of UI pasted onto a
+   * monitor rather than as a monitor. Three things separate those, and the panel
+   * already had two — it is drawn through the screen's own basis (so its columns
+   * are genuinely raked with the glass) and it carries a phosphor line structure.
+   * The third is that no emissive panel is uniformly lit corner to corner. This
+   * is that: circular in the panel's own aspect (hence the scale), released to
+   * nothing across the middle two-fifths so no glyph loses contrast it needs, and
+   * struck in the board's own near-black rather than in neutral grey so it stays
+   * inside the grade. Ceiling is 40% AT THE CORNERS, which is where there is
+   * nothing but ground.
+   */
+  ctx.save();
+  ctx.translate(bw / 2, bh / 2);
+  ctx.scale(1, bh / bw);
+  const vig = ctx.createRadialGradient(0, 0, bw * 0.3, 0, 0, bw * 0.8);
+  vig.addColorStop(0, 'rgba(2, 9, 12, 0)');
+  vig.addColorStop(0.58, 'rgba(2, 9, 12, 0.12)');
+  vig.addColorStop(1, 'rgba(2, 9, 12, 0.4)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(-bw, -bw, bw * 2, bw * 2);
+  ctx.restore();
+
   ctx.restore();
 }
 
@@ -1439,8 +1570,30 @@ function drawCallBoard(ctx: CanvasRenderingContext2D, s: PlateScreen, w: number,
  * that should be going amber as it falls off. What it pulls down it also warms
  * by the amount it pulled, on the same discipline.
  */
-const PRACTICAL_KNEE = 0.62;
-const PRACTICAL_CEIL = 0.9;
+/* 0.62 / 0.90 → 0.58 / 0.80.
+ *
+ * The note came back a round later and sharper: the lamp head is still the
+ * brightest region in the frame and still wins the eye over the face. The knee
+ * moves down four points and the ceiling down ten, which reads as a small change
+ * and is not: the shoulder is exponential, so what the ceiling actually sets is
+ * how much of the top of the range the compression is allowed to bill, and a
+ * 0.22 span bills nearly twice as steeply as a 0.28 one did.
+ *
+ * The arithmetic, in sRGB, is the whole argument for these two numbers:
+ *   • the shade's interior (L = 1.0) lands at 0.778 rather than 0.828 — a fifth
+ *     of a stop off the one value the note names;
+ *   • the lamp-lit desk pool (L = 0.70) lands at 0.669 rather than 0.681, i.e.
+ *     under two per cent, so the mid-ground bridge the left third depends on is
+ *     untouched;
+ *   • nothing below the knee moves at all, by construction.
+ * A flat exposure cut would have taken the desk with it; a shoulder can bill the
+ * top of the range and only the top of the range, which is exactly what "pull the
+ * lamp CORE down" means. The other two thirds of the hierarchy fix are the face
+ * key coming up (PRESENCE.keyAmt) and the scatter around the shade being pulled
+ * in (postfx → BLOOM_RADIUS) — brightness and GLOW are separate claims on the
+ * eye, and the note makes both. */
+const PRACTICAL_KNEE = 0.58;
+const PRACTICAL_CEIL = 0.8;
 
 /**
  * The plate's near, sharp half — the region `crispenRegion` bites on, in the
@@ -2517,6 +2670,18 @@ export class Stage implements IStage {
       ry: PRESENCE.softenRy,
       soft: PRESENCE.softenSoft,
     });
+    // …and the face the other way, at a mark radius rather than a texture one.
+    // Runs AFTER the two softening passes and before the matte, for the same
+    // reason they run before it: this is a pull on painted plate, and a sharpen
+    // that reaches a feathered edge draws a bright line around a silhouette.
+    // See PRESENCE.crisp* — the radius is the whole argument.
+    crispenRegion(px, w, h, PRESENCE.crispAmt, Math.max(1, Math.round(w * PRESENCE.crispRadius)), {
+      cx: PRESENCE.crispCx,
+      cy: PRESENCE.crispCy,
+      rx: PRESENCE.crispRx,
+      ry: PRESENCE.crispRy,
+      soft: PRESENCE.crispSoft,
+    });
     const invPower = 1 / PRESENCE.power;
     for (let y = 0; y < h; y++) {
       const v = (y + 0.5) / h;
@@ -2622,9 +2787,17 @@ export class Stage implements IStage {
         const coolBand =
           smoothstep(PRESENCE.rimCoolIn, PRESENCE.rimCoolPeak, a) *
           (1 - smoothstep(PRESENCE.rimCoolPeak, PRESENCE.rimCoolOut, a));
+        // …and it is weighted CAMERA-RIGHT, which is the direction it should
+        // always have had. The window is the whole right half of this room; the
+        // lamp is hard against the left edge. Weighting the cool band to the left
+        // put the city's colour on the side of her the tungsten owns and left the
+        // contour actually sitting against the bokeh — hair, jaw, near shoulder —
+        // with no light on it at all, which is the literal mechanism behind "hair
+        // edges melt into the background". One sign, and the two sources finally
+        // come from the two places the room keeps them: amber left, teal right.
         const coolDir =
           PRESENCE.rimCoolDirMin +
-          (1 - PRESENCE.rimCoolDirMin) * (1 - smoothstep(-0.06, 0.22, dx));
+          (1 - PRESENCE.rimCoolDirMin) * smoothstep(-0.2, 0.12, dx);
         const cool = PRESENCE.rimCoolAmt * coolBand * coolDir * shadeRow;
         // Both sources are gains on the same surface, so they SUM inside the
         // multiplier rather than compounding: two lights on a cheek add their
