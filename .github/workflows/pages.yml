@@ -1,8 +1,15 @@
-# Build the static bundle and publish it to GitHub Pages on every push to
-# master. The Pages build is the pure static dist/: every story in /stories
-# plays (Lumen and the shipped generated example included); the in-app
+# Build the static bundle and publish it to the gh-pages branch on every push
+# to master. Pages serves that branch (auto-enabled on public repos by the
+# branch's first push; source: Settings → Pages → gh-pages if it ever needs
+# re-selecting). The branch-publish route is used instead of
+# actions/deploy-pages because creating the Pages site via the workflow token
+# fails with "Resource not accessible by integration" on this repo — the
+# gh-pages branch needs only `contents: write`, which the token does have.
+#
+# The Pages build is the pure static dist/: every story in /stories plays
+# (Lumen and the shipped generated example included); the in-app
 # Create-a-Story flow needs a dev/preview server behind the page and is
-# hidden on Pages by design — see README "Story generation (server-side)".
+# hidden on a static host by design — see README "Story generation".
 name: Deploy to GitHub Pages
 
 on:
@@ -11,16 +18,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,21 +35,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      # enablement: true switches Pages on for the repo (build_type: workflow)
-      # the first time this runs, so no manual Settings → Pages step is needed.
-      - uses: actions/configure-pages@v5
+      # Pages runs the branch through Jekyll unless told not to; .nojekyll
+      # keeps it serving dist/ verbatim.
+      - run: touch dist/.nojekyll
+      - uses: peaceiris/actions-gh-pages@v4
         with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          force_orphan: true
